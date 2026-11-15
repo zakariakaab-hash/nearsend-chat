@@ -1,5 +1,7 @@
 # Nearsend Chat
 
+Repository: https://github.com/zakariakaab-hash/nearsend-chat (formerly `bitchat`; the old address redirects). Work lives on the `ios-app` branch.
+
 Offline, nearby chat for iPhone and Android over Bluetooth LE. No internet, no account, no phone number.
 Belongs to the [nearsend.app](https://nearsend.app) family and shares its "Open Sky" design.
 
@@ -45,8 +47,8 @@ Light ("day sky") and dark ("night sky") themes follow the device setting.
 
 **iOS** (Xcode 15+, macOS)
 ```
-git clone -b ios-app https://github.com/zakariakaab-hash/bitchat
-cd bitchat/NearsendChatiOS
+git clone -b ios-app https://github.com/zakariakaab-hash/nearsend-chat
+cd nearsend-chat/NearsendChatiOS
 ./run-on-mac.sh            # builds, launches in an iPhone simulator, opens Xcode
 ```
 Or open `NearsendChatiOS/NearsendChat.xcodeproj` and press Run. For a real iPhone choose your Apple ID under
