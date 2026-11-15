@@ -68,13 +68,15 @@ class MeshRouter(val myId: String, var myName: String, private val crypto: MeshC
     private class PeerInfo(val name: String, val pk: ByteArray, val hops: Int, val lastSeen: Long, val direct: Boolean)
 
     var now: () -> Long = { System.currentTimeMillis() }
+    /** Link ids are "out:<id>" (we connected to that phone and can write to it) or "in:<id>" (it connected to us and we reply
+     *  with notifications). A neighbour can have both; direct sends prefer "out:". */
     var transmit: ((link: String, data: ByteArray, done: (Boolean) -> Unit) -> Unit)? = null
     var onPeers: ((List<Peer>) -> Unit)? = null
     var onText: ((from: String, name: String, text: String, hops: Int, msgId: String) -> Unit)? = null
     var onPublic: ((from: String, name: String, text: String, id: String) -> Unit)? = null
     var onDelivered: ((msgId: String) -> Unit)? = null
 
-    private val links = LinkedHashMap<String, String>()      // link id -> peer id (direct neighbours)
+    private val links = LinkedHashMap<String, String>()      // link id -> peer id (direct neighbours; possibly two links per peer)
     private val peers = HashMap<String, PeerInfo>()
     private val rssi = HashMap<String, Int>()
     private val seen = HashSet<String>()
@@ -84,12 +86,21 @@ class MeshRouter(val myId: String, var myName: String, private val crypto: MeshC
 
     // ---- neighbours
 
-    fun neighborConnected(link: String, id: String, name: String, pk: ByteArray) {
+    /** `sayHello`: when we opened the link ("out:") we tell the other phone who we are, so it can answer over the same
+     *  connection even though it never discovered us (the one-directional link problem). */
+    fun neighborConnected(link: String, id: String, name: String, pk: ByteArray, sayHello: Boolean = true) {
         if (id == myId || pk.size != 32) return
         links[link] = id
         peers[id] = PeerInfo(name, pk, 1, now(), true)
         emitPeers()
+        if (sayHello) sendHello(link)
         sendAnnounce(listOf(link))
+    }
+
+    private fun sendHello(link: String) {
+        val p = Packet("hi", UUID.randomUUID().toString(), myId, null, 1, now(), n = myName, pk = b64.encodeToString(crypto.publicKey))
+        remember(p.id)
+        transmit?.invoke(link, p.toBytes()) { }
     }
 
     fun neighborLost(link: String) {
@@ -112,7 +123,7 @@ class MeshRouter(val myId: String, var myName: String, private val crypto: MeshC
         val before = peers.size
         peers.entries.removeIf { !it.value.direct && it.value.lastSeen <= cutoff }
         if (peers.size != before) emitPeers()
-        sendAnnounce(links.keys.toList())
+        sendAnnounce(allBestLinks(null))
     }
 
     private fun sendAnnounce(targets: List<String>) {
@@ -146,6 +157,11 @@ class MeshRouter(val myId: String, var myName: String, private val crypto: MeshC
         remember(p.id)
         val hops = maxOf(1, START_TTL + 1 - p.ttl)
         when (p.t) {
+            "hi" -> {            // a phone that connected to us introduces itself; we can now reply over that connection
+                val link = from ?: return
+                val pk = runCatching { unb64.decode(p.pk ?: return) }.getOrNull() ?: return
+                if (pk.size == 32) neighborConnected(link, p.src, p.n ?: "?", pk, sayHello = false)
+            }
             "ann" -> {
                 val pk = runCatching { unb64.decode(p.pk ?: return) }.getOrNull() ?: return
                 if (pk.size != 32) return
@@ -175,10 +191,19 @@ class MeshRouter(val myId: String, var myName: String, private val crypto: MeshC
         route(p.withTtl(p.ttl - 1), from, null)
     }
 
+    private fun bestLink(peer: String): String? {
+        val ls = links.filterValues { it == peer }.keys.sorted()
+        return ls.firstOrNull { it.startsWith("out:") } ?: ls.firstOrNull()
+    }
+
+    /** One link per neighbouring phone (never both of its links), skipping the phone a packet came from. */
+    private fun allBestLinks(exceptPeer: String?): List<String> =
+        links.values.toSet().filter { it != exceptPeer }.sorted().mapNotNull { bestLink(it) }
+
     /** Sends straight to the destination if it is a neighbour, otherwise floods to all other neighbours. */
     private fun route(p: Packet, except: String?, completion: ((SendOutcome) -> Unit)?) {
-        var targets = links.keys.filter { it != except }
-        p.dst?.let { dst -> links.entries.firstOrNull { it.value == dst }?.let { targets = listOf(it.key) } }
+        var targets = allBestLinks(except?.let { links[it] })
+        p.dst?.let { dst -> bestLink(dst)?.let { targets = listOf(it) } }
         if (targets.isEmpty()) { completion?.invoke(SendOutcome.Unreachable); return }
         val data = p.toBytes()
         var pending = targets.size; var ok = false

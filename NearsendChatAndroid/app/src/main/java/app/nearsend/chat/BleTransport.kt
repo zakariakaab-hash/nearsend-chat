@@ -10,12 +10,17 @@ import android.os.Looper
 import android.os.ParcelUuid
 import org.json.JSONObject
 import java.io.ByteArrayOutputStream
+import java.util.Base64
 import java.util.UUID
 
 /**
  * Bluetooth LE link layer, wire-compatible with the iOS app (same UUIDs, identity JSON {"id","name","pk"}).
  * Every phone advertises the service (GATT server) and scans for it (GATT client). It only moves bytes:
  * identities and packets go up to [MeshRouter] (see PROTOCOL.md).
+ *
+ * Two kinds of link, because discovery can be one-sided (e.g. an iPhone app in the background is invisible to Android scans):
+ * - "out:<addr>": we connected to that phone's server. We write packets to its packet characteristic and receive its notifications.
+ * - "in:<addr>":  that phone connected to our server and subscribed to our notify characteristic. We reply by notifying it.
  */
 @SuppressLint("MissingPermission")
 class BleTransport(private val ctx: Context, private val id: String, private var name: String, private val publicKey: ByteArray) {
@@ -23,33 +28,51 @@ class BleTransport(private val ctx: Context, private val id: String, private var
         val SERVICE: UUID = UUID.fromString("7A3C5E10-9D2B-4F6A-8C1E-4E4541525345")
         val ID_CHAR: UUID = UUID.fromString("7A3C5E11-9D2B-4F6A-8C1E-4E4541525345")
         val MSG_CHAR: UUID = UUID.fromString("7A3C5E12-9D2B-4F6A-8C1E-4E4541525345")
+        val NOTIFY_CHAR: UUID = UUID.fromString("7A3C5E13-9D2B-4F6A-8C1E-4E4541525345")
+        val CCCD: UUID = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb")
     }
 
     var onNeighbor: ((link: String, id: String, name: String, pk: ByteArray) -> Unit)? = null
     var onLost: ((link: String) -> Unit)? = null
-    var onPacket: ((data: ByteArray) -> Unit)? = null
+    var onPacket: ((data: ByteArray, link: String) -> Unit)? = null
     var onRssi: ((link: String, rssi: Int) -> Unit)? = null
     var onState: ((String) -> Unit)? = null
 
+    /** Our central connection to a neighbour's server (an "out" link). */
     private class Link(val gatt: BluetoothGatt) {
         var msgChar: BluetoothGattCharacteristic? = null
+        var notifyChar: BluetoothGattCharacteristic? = null
+        var identityChar: BluetoothGattCharacteristic? = null
+        var identity: Triple<String, String, ByteArray>? = null
         var peerId: String? = null
+        var notifyReady = false
+        var announced = false
         var busy = false
         val queue = ArrayDeque<Pair<ByteArray, (Boolean) -> Unit>>()
         var inflight: ((Boolean) -> Unit)? = null
+        val rx = Reassembler()
         fun failAll() { inflight?.invoke(false); inflight = null; queue.forEach { it.second(false) }; queue.clear() }
     }
+
+    /** Fragments of one packet waiting to be notified to a subscribed phone. */
+    private class OutNotify(val addr: String, val frags: ArrayDeque<ByteArray>, val done: (Boolean) -> Unit)
 
     private val main = Handler(Looper.getMainLooper())
     private val btManager = ctx.getSystemService(BluetoothManager::class.java)
     private var server: BluetoothGattServer? = null
     private var running = false
-    private val links = HashMap<String, Link>()          // key: device address = link id (main thread only)
+    private val links = HashMap<String, Link>()                 // key: device address (main thread only)
     private val pendingWrites = HashMap<String, ByteArrayOutputStream>()
+    private val subscribers = HashMap<String, BluetoothDevice>()   // phones subscribed to our notify characteristic
+    private val mtus = HashMap<String, Int>()
+    private val notifySeq = HashMap<String, Int>()
+    private val notifyQueue = ArrayDeque<OutNotify>()
+    private var notifying = false
+    private var notifyCharacteristic: BluetoothGattCharacteristic? = null
 
     private val rssiTick = object : Runnable {
         override fun run() {
-            links.values.forEach { if (!it.busy && it.peerId != null) it.gatt.readRemoteRssi() }
+            links.values.forEach { if (!it.busy && it.announced) it.gatt.readRemoteRssi() }
             if (running) main.postDelayed(this, 2000)
         }
     }
@@ -64,6 +87,10 @@ class BleTransport(private val ctx: Context, private val id: String, private var
         val svc = BluetoothGattService(SERVICE, BluetoothGattService.SERVICE_TYPE_PRIMARY)
         svc.addCharacteristic(BluetoothGattCharacteristic(ID_CHAR, BluetoothGattCharacteristic.PROPERTY_READ, BluetoothGattCharacteristic.PERMISSION_READ))
         svc.addCharacteristic(BluetoothGattCharacteristic(MSG_CHAR, BluetoothGattCharacteristic.PROPERTY_WRITE, BluetoothGattCharacteristic.PERMISSION_WRITE))
+        val nc = BluetoothGattCharacteristic(NOTIFY_CHAR, BluetoothGattCharacteristic.PROPERTY_NOTIFY, 0)
+        nc.addDescriptor(BluetoothGattDescriptor(CCCD, BluetoothGattDescriptor.PERMISSION_READ or BluetoothGattDescriptor.PERMISSION_WRITE))
+        notifyCharacteristic = nc
+        svc.addCharacteristic(nc)
         server?.addService(svc)   // advertising starts in onServiceAdded
         val filter = ScanFilter.Builder().setServiceUuid(ParcelUuid(SERVICE)).build()
         val settings = ScanSettings.Builder().setScanMode(ScanSettings.SCAN_MODE_BALANCED).build()
@@ -78,21 +105,41 @@ class BleTransport(private val ctx: Context, private val id: String, private var
         val adapter = btManager?.adapter
         runCatching { adapter?.bluetoothLeScanner?.stopScan(scanCb) }
         runCatching { adapter?.bluetoothLeAdvertiser?.stopAdvertising(advCb) }
-        links.forEach { (addr, l) -> l.failAll(); runCatching { l.gatt.close() }; if (l.peerId != null) onLost?.invoke(addr) }
+        links.forEach { (addr, l) -> l.failAll(); runCatching { l.gatt.close() }; if (l.announced) onLost?.invoke("out:$addr") }
         links.clear()
+        subscribers.keys.toList().forEach { onLost?.invoke("in:$it") }
+        subscribers.clear(); mtus.clear(); notifySeq.clear(); pendingWrites.clear()
+        notifyQueue.forEach { it.done(false) }; notifyQueue.clear(); notifying = false
         runCatching { server?.close() }
-        server = null
+        server = null; notifyCharacteristic = null
     }
 
     fun setName(n: String) { name = n }   // identity is read on demand, so nothing to rebuild
 
-    /** Queues one packet for a neighbour. `done(true)` once the other phone acknowledged the write. */
+    /** Sends one packet to a neighbour over "out:" (write) or "in:" (notify). `done(true)` once it was handed over / acknowledged. */
     fun write(linkId: String, data: ByteArray, done: (Boolean) -> Unit) {
-        val link = links[linkId]
-        if (link == null || link.msgChar == null) { done(false); return }
-        link.queue.addLast(data to done)
-        pump(link)
+        when {
+            linkId.startsWith("out:") -> {
+                val link = links[linkId.removePrefix("out:")]
+                if (link == null || link.msgChar == null) { done(false); return }
+                link.queue.addLast(data to done)
+                pump(link)
+            }
+            linkId.startsWith("in:") -> {
+                val addr = linkId.removePrefix("in:")
+                if (subscribers[addr] == null) { done(false); return }
+                val seq = notifySeq[addr] ?: 0
+                notifySeq[addr] = (seq + 1) and 0xFF
+                val frags = Framing.fragments(data, seq, (mtus[addr] ?: 23) - 3 - 3)
+                if (frags.isEmpty()) { done(false); return }
+                notifyQueue.addLast(OutNotify(addr, ArrayDeque(frags), done))
+                pumpNotify()
+            }
+            else -> done(false)
+        }
     }
+
+    // ---- writing to a neighbour's server ("out" links)
 
     /** GATT allows one operation at a time, so packets are written one after another. */
     private fun pump(link: Link) {
@@ -113,25 +160,75 @@ class BleTransport(private val ctx: Context, private val id: String, private var
         if (!ok) { link.busy = false; link.inflight = null; done(false); pump(link) }
     }
 
+    // ---- notifying a phone that connected to us ("in" links)
+
+    private fun pumpNotify() {
+        if (notifying) return
+        val out = notifyQueue.firstOrNull() ?: return
+        val device = subscribers[out.addr]
+        val ch = notifyCharacteristic
+        val frag = out.frags.firstOrNull()
+        if (device == null || ch == null || frag == null) {
+            notifyQueue.removeFirst()
+            out.done(device != null && frag == null)     // all fragments sent -> true
+            pumpNotify()
+            return
+        }
+        notifying = true
+        val ok = if (Build.VERSION.SDK_INT >= 33) {
+            server?.notifyCharacteristicChanged(device, ch, false, frag) == BluetoothStatusCodes.SUCCESS
+        } else {
+            @Suppress("DEPRECATION") run { ch.value = frag; server?.notifyCharacteristicChanged(device, ch, false) == true }
+        }
+        if (!ok) { notifying = false; notifyQueue.removeFirst(); out.done(false); pumpNotify() }
+    }
+
+    private fun removeSubscriber(addr: String) {
+        if (subscribers.remove(addr) == null) return
+        mtus.remove(addr); notifySeq.remove(addr)
+        if (notifying && notifyQueue.firstOrNull()?.addr == addr) notifying = false   // its completion callback will never come
+        val it = notifyQueue.iterator()
+        while (it.hasNext()) { val o = it.next(); if (o.addr == addr) { it.remove(); o.done(false) } }
+        onLost?.invoke("in:$addr")
+        pumpNotify()
+    }
+
+    // ---- discovery of neighbours ("out" links)
+
     private fun identityBytes() = JSONObject().put("id", id).put("name", name)
-        .put("pk", java.util.Base64.getEncoder().encodeToString(publicKey)).toString().toByteArray()
+        .put("pk", Base64.getEncoder().encodeToString(publicKey)).toString().toByteArray()
+
+    private fun readIdentity(link: Link) {
+        val ic = link.identityChar ?: return
+        link.busy = true
+        if (!link.gatt.readCharacteristic(ic)) link.busy = false
+    }
 
     private fun handleIdentity(gatt: BluetoothGatt, bytes: ByteArray?) {
         val addr = gatt.device.address
         val link = links[addr] ?: return
         link.busy = false
-        pump(link)
         val o = runCatching { JSONObject(String(bytes ?: return)) }.getOrNull() ?: return
         val pid = o.optString("id")
-        val pk = runCatching { java.util.Base64.getDecoder().decode(o.optString("pk")) }.getOrNull() ?: return
+        val pk = runCatching { Base64.getDecoder().decode(o.optString("pk")) }.getOrNull() ?: return
         if (pid.isEmpty() || pid == id || pk.size != 32) return
+        link.identity = Triple(pid, o.optString("name"), pk)
+        maybeAnnounce(addr, link)
+        pump(link)
+    }
+
+    /** A link becomes a neighbour once we have subscribed to its notifications AND read its identity. */
+    private fun maybeAnnounce(addr: String, link: Link) {
+        val ident = link.identity ?: return
+        if (link.announced || !link.notifyReady) return
         // Same phone seen under a new address: drop the stale link.
-        links.entries.filter { it.value !== link && it.value.peerId == pid }.forEach { e ->
-            links.remove(e.key); runCatching { e.value.gatt.close() }; onLost?.invoke(e.key)
+        links.entries.filter { it.value !== link && it.value.peerId == ident.first }.forEach { e ->
+            links.remove(e.key); e.value.failAll(); runCatching { e.value.gatt.close() }; onLost?.invoke("out:${e.key}")
         }
-        link.peerId = pid
-        onNeighbor?.invoke(addr, pid, o.optString("name"), pk)
-        gatt.readRemoteRssi()
+        link.announced = true
+        link.peerId = ident.first
+        onNeighbor?.invoke("out:$addr", ident.first, ident.second, ident.third)
+        link.gatt.readRemoteRssi()
     }
 
     private fun drop(gatt: BluetoothGatt) {
@@ -139,7 +236,13 @@ class BleTransport(private val ctx: Context, private val id: String, private var
         val link = links.remove(addr)
         link?.failAll()
         runCatching { gatt.close() }
-        if (link?.peerId != null) onLost?.invoke(addr)
+        if (link?.announced == true) onLost?.invoke("out:$addr")
+    }
+
+    private fun incoming(gatt: BluetoothGatt, bytes: ByteArray?) {
+        val link = links[gatt.device.address] ?: return
+        val packet = link.rx.add(bytes ?: return) ?: return
+        onPacket?.invoke(packet, "out:${gatt.device.address}")
     }
 
     private val scanCb = object : ScanCallback() {
@@ -148,8 +251,7 @@ class BleTransport(private val ctx: Context, private val id: String, private var
                 if (!running) return@post
                 val addr = result.device.address
                 if (links.containsKey(addr)) return@post
-                val g = result.device.connectGatt(ctx, false, gattCb, BluetoothDevice.TRANSPORT_LE)
-                links[addr] = Link(g)
+                links[addr] = Link(result.device.connectGatt(ctx, false, gattCb, BluetoothDevice.TRANSPORT_LE))
             }
         }
     }
@@ -176,9 +278,32 @@ class BleTransport(private val ctx: Context, private val id: String, private var
                 val link = links[gatt.device.address] ?: return@post
                 val svc = gatt.getService(SERVICE) ?: return@post
                 link.msgChar = svc.getCharacteristic(MSG_CHAR)
-                val idc = svc.getCharacteristic(ID_CHAR) ?: return@post
-                link.busy = true
-                gatt.readCharacteristic(idc)
+                link.identityChar = svc.getCharacteristic(ID_CHAR)
+                link.notifyChar = svc.getCharacteristic(NOTIFY_CHAR)
+                // Step 1: subscribe to the phone's notifications (so it can answer us). Step 2 (after it completes): read its identity.
+                val nc = link.notifyChar
+                val cccd = nc?.getDescriptor(CCCD)
+                if (nc != null && cccd != null && gatt.setCharacteristicNotification(nc, true)) {
+                    link.busy = true
+                    val ok = if (Build.VERSION.SDK_INT >= 33) {
+                        gatt.writeDescriptor(cccd, BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE) == BluetoothStatusCodes.SUCCESS
+                    } else {
+                        @Suppress("DEPRECATION") run { cccd.value = BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE; gatt.writeDescriptor(cccd) }
+                    }
+                    if (!ok) { link.busy = false; link.notifyReady = true; readIdentity(link) }
+                } else {                                   // older peers have no notify characteristic
+                    link.notifyReady = true
+                    readIdentity(link)
+                }
+            }
+        }
+
+        override fun onDescriptorWrite(gatt: BluetoothGatt, descriptor: BluetoothGattDescriptor, status: Int) {
+            main.post {
+                val link = links[gatt.device.address] ?: return@post
+                link.busy = false
+                link.notifyReady = true
+                readIdentity(link)
             }
         }
 
@@ -194,10 +319,22 @@ class BleTransport(private val ctx: Context, private val id: String, private var
             if (ch.uuid == ID_CHAR) main.post { handleIdentity(gatt, value) }
         }
 
+        @Deprecated("Used on API < 33")
+        override fun onCharacteristicChanged(gatt: BluetoothGatt, ch: BluetoothGattCharacteristic) {
+            if (Build.VERSION.SDK_INT < 33 && ch.uuid == NOTIFY_CHAR) {
+                @Suppress("DEPRECATION") val v = ch.value
+                main.post { incoming(gatt, v) }
+            }
+        }
+
+        override fun onCharacteristicChanged(gatt: BluetoothGatt, ch: BluetoothGattCharacteristic, value: ByteArray) {
+            if (ch.uuid == NOTIFY_CHAR) main.post { incoming(gatt, value) }
+        }
+
         override fun onReadRemoteRssi(gatt: BluetoothGatt, rssi: Int, status: Int) {
             main.post {
                 val link = links[gatt.device.address] ?: return@post
-                if (status == BluetoothGatt.GATT_SUCCESS && link.peerId != null) onRssi?.invoke(gatt.device.address, rssi)
+                if (status == BluetoothGatt.GATT_SUCCESS && link.announced) onRssi?.invoke("out:${gatt.device.address}", rssi)
             }
         }
 
@@ -223,6 +360,34 @@ class BleTransport(private val ctx: Context, private val id: String, private var
             btManager?.adapter?.bluetoothLeAdvertiser?.startAdvertising(settings, data, advCb)
         }
 
+        override fun onConnectionStateChange(device: BluetoothDevice, status: Int, newState: Int) {
+            if (newState == BluetoothProfile.STATE_DISCONNECTED) main.post { removeSubscriber(device.address) }
+        }
+
+        override fun onMtuChanged(device: BluetoothDevice, mtu: Int) { main.post { mtus[device.address] = mtu } }
+
+        override fun onDescriptorWriteRequest(
+            device: BluetoothDevice, requestId: Int, descriptor: BluetoothGattDescriptor,
+            preparedWrite: Boolean, responseNeeded: Boolean, offset: Int, value: ByteArray?,
+        ) {
+            if (descriptor.uuid == CCCD && descriptor.characteristic.uuid == NOTIFY_CHAR) {
+                val on = value != null && value.isNotEmpty() && value[0].toInt() != 0
+                main.post { if (on) subscribers[device.address] = device else removeSubscriber(device.address) }
+            }
+            if (responseNeeded) server?.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, offset, value)
+        }
+
+        override fun onNotificationSent(device: BluetoothDevice, status: Int) {
+            main.post {
+                notifying = false
+                val out = notifyQueue.firstOrNull()
+                if (out != null) {
+                    if (status != BluetoothGatt.GATT_SUCCESS) { notifyQueue.removeFirst(); out.done(false) } else out.frags.removeFirstOrNull()
+                }
+                pumpNotify()
+            }
+        }
+
         override fun onCharacteristicReadRequest(device: BluetoothDevice, requestId: Int, offset: Int, characteristic: BluetoothGattCharacteristic) {
             val data = identityBytes()
             val slice = if (offset <= data.size) data.copyOfRange(offset, data.size) else ByteArray(0)
@@ -235,14 +400,14 @@ class BleTransport(private val ctx: Context, private val id: String, private var
         ) {
             if (characteristic.uuid == MSG_CHAR && value != null) {
                 if (preparedWrite) pendingWrites.getOrPut(device.address) { ByteArrayOutputStream() }.write(value)
-                else main.post { onPacket?.invoke(value) }
+                else main.post { onPacket?.invoke(value, "in:${device.address}") }
             }
             if (responseNeeded) server?.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, offset, value)
         }
 
         override fun onExecuteWrite(device: BluetoothDevice, requestId: Int, execute: Boolean) {
             val buf = pendingWrites.remove(device.address)
-            if (execute && buf != null) { val bytes = buf.toByteArray(); main.post { onPacket?.invoke(bytes) } }
+            if (execute && buf != null) { val bytes = buf.toByteArray(); main.post { onPacket?.invoke(bytes, "in:${device.address}") } }
             server?.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, 0, null)
         }
     }

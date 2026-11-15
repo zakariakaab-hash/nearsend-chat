@@ -74,7 +74,7 @@ final class ChatStore: ObservableObject {
         r.onDelivered = { [weak self] id in Task { @MainActor in self?.markDelivered(id) } }
         t.onNeighbor = { link, id, name, pk in r.neighborConnected(link: link, id: id, name: name, pk: pk) }
         t.onLost = { r.neighborLost(link: $0) }
-        t.onPacket = { r.receive($0, from: nil) }
+        t.onPacket = { data, link in r.receive(data, from: link) }
         t.onRSSI = { r.updateRSSI(link: $0, rssi: $1) }
         t.onState = { [weak self] s in Task { @MainActor in self?.bluetoothState = s } }
         router = r; transport = t

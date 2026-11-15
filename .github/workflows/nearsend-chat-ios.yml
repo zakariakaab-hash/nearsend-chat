@@ -22,7 +22,7 @@ jobs:
       - name: Protocol tests (crypto vectors + relay simulation)
         run: |
           set +e
-          swiftc -o /tmp/proto Sources/Models/Models.swift Sources/Mesh/MeshCrypto.swift Sources/Mesh/MeshRouter.swift Tests/main.swift > /tmp/t.log 2>&1 && /tmp/proto >> /tmp/t.log 2>&1
+          swiftc -o /tmp/proto Sources/Models/Models.swift Sources/Mesh/MeshCrypto.swift Sources/Mesh/Framing.swift Sources/Mesh/MeshRouter.swift Tests/main.swift > /tmp/t.log 2>&1 && /tmp/proto >> /tmp/t.log 2>&1
           code=$?
           grep -E "FAIL|error:" /tmp/t.log | head -30 | while IFS= read -r l; do echo "::error::${l//%/%25}"; done
           grep -E "PASSED" /tmp/t.log | while IFS= read -r l; do echo "::notice::$l ($(grep -c '^PASS' /tmp/t.log) checks)"; done

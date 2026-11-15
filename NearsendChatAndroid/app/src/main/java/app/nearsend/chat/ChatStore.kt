@@ -98,7 +98,7 @@ class ChatStore private constructor(private val app: Application) {
             r.onDelivered = { markDelivered(it) }
             t.onNeighbor = { link, id, name, pk -> r.neighborConnected(link, id, name, pk) }
             t.onLost = { r.neighborLost(it) }
-            t.onPacket = { r.receive(it, null) }
+            t.onPacket = { data, link -> r.receive(data, link) }
             t.onRssi = { link, rssi -> r.updateRssi(link, rssi) }
             t.onState = { bluetoothState = it }
             router = r; transport = t

@@ -33,13 +33,15 @@ final class MeshRouter {
     private let crypto: MeshCrypto
     var now: () -> Date = { Date() }
 
+    /// Link ids are "out:<id>" (we connected to that phone and can write to it) or "in:<id>" (it connected to us and we reply
+    /// with notifications). A neighbour can have both; direct sends prefer "out:".
     var transmit: ((_ link: String, _ data: Data, _ done: @escaping (Bool) -> Void) -> Void)?
     var onPeers: (([Peer]) -> Void)?
     var onText: ((_ from: String, _ name: String, _ text: String, _ hops: Int, _ msgID: String) -> Void)?
     var onPublic: ((_ from: String, _ name: String, _ text: String, _ id: String) -> Void)?
     var onDelivered: ((_ msgID: String) -> Void)?
 
-    private var links: [String: String] = [:]      // link id -> peer id (direct neighbours)
+    private var links: [String: String] = [:]      // link id -> peer id (direct neighbours; possibly two links per peer)
     private var peers: [String: PeerInfo] = [:]
     private var rssi: [String: Int] = [:]
     private var seen = Set<String>()
@@ -57,11 +59,14 @@ final class MeshRouter {
 
     // MARK: neighbours
 
-    func neighborConnected(link: String, id: String, name: String, pk: Data) {
+    /// `sayHello`: when we opened the link ("out:") we tell the other phone who we are, so it can answer over the same
+    /// connection even though it never discovered us (the one-directional link problem).
+    func neighborConnected(link: String, id: String, name: String, pk: Data, sayHello: Bool = true) {
         guard id != myID, pk.count == 32 else { return }
         links[link] = id
         peers[id] = PeerInfo(name: name, pk: pk, hops: 1, lastSeen: now(), direct: true)
         emitPeers()
+        if sayHello { sendHello(to: link) }
         sendAnnounce(to: [link])
     }
 
@@ -69,6 +74,14 @@ final class MeshRouter {
         guard let id = links.removeValue(forKey: link) else { return }
         if !links.values.contains(id) { peers.removeValue(forKey: id); rssi.removeValue(forKey: id) }
         emitPeers()
+    }
+
+    private func sendHello(to link: String) {
+        var p = Packet(t: "hi", id: UUID().uuidString, src: myID, ttl: 1, ts: ms())
+        p.n = myName; p.pk = crypto.publicKey.base64EncodedString()
+        remember(p.id)
+        guard let data = try? encoder.encode(p) else { return }
+        transmit?(link, data) { _ in }
     }
 
     func updateRSSI(link: String, rssi value: Int) {
@@ -85,7 +98,7 @@ final class MeshRouter {
         let before = peers.count
         peers = peers.filter { $0.value.direct || $0.value.lastSeen > cutoff }
         if peers.count != before { emitPeers() }
-        sendAnnounce(to: Array(links.keys))
+        sendAnnounce(to: allBestLinks(except: nil))
     }
 
     private func sendAnnounce(to targets: [String]) {
@@ -121,6 +134,9 @@ final class MeshRouter {
         remember(p.id)
         let hops = max(1, Self.startTTL + 1 - p.ttl)
         switch p.t {
+        case "hi":                       // a phone that connected to us introduces itself; we can now reply over that connection
+            guard let link, let s = p.pk, let pk = Data(base64Encoded: s), pk.count == 32 else { return }
+            neighborConnected(link: link, id: p.src, name: p.n ?? "?", pk: pk, sayHello: false)
         case "ann":
             guard let s = p.pk, let pk = Data(base64Encoded: s), pk.count == 32 else { return }
             let direct = peers[p.src]?.direct ?? false
@@ -154,10 +170,20 @@ final class MeshRouter {
         route(q, except: link, completion: nil)
     }
 
+    private func bestLink(for peer: String) -> String? {
+        let ls = links.filter { $0.value == peer }.map { $0.key }.sorted()
+        return ls.first { $0.hasPrefix("out:") } ?? ls.first
+    }
+
+    /// One link per neighbouring phone (never both of its links), skipping the phone a packet came from.
+    private func allBestLinks(except exceptPeer: String?) -> [String] {
+        Set(links.values).filter { $0 != exceptPeer }.sorted().compactMap { bestLink(for: $0) }
+    }
+
     /// Sends straight to the destination if it is a neighbour, otherwise floods to all other neighbours.
     private func route(_ p: Packet, except: String?, completion: ((SendOutcome) -> Void)?) {
-        var targets = links.keys.filter { $0 != except }
-        if let dst = p.dst, let direct = links.first(where: { $0.value == dst })?.key { targets = [direct] }
+        var targets = allBestLinks(except: except.flatMap { links[$0] })
+        if let dst = p.dst, let direct = bestLink(for: dst) { targets = [direct] }
         guard !targets.isEmpty, let data = try? encoder.encode(p) else { completion?(targets.isEmpty ? .unreachable : .failed); return }
         var pending = targets.count; var ok = false
         for l in targets {

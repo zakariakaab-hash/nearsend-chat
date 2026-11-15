@@ -38,7 +38,23 @@ class ProtocolTest {
         assertEquals("hej", MeshRouter.clip("hej"))
     }
 
-    // ---- simulated networks
+    // ---- notification framing (must match the Swift implementation byte for byte)
+
+    @Test fun framingMatchesSharedVector() {
+        val data = ByteArray(10) { it.toByte() }
+        val frags = Framing.fragments(data, 7, 4)
+        assertEquals(listOf("07000300010203", "07010304050607", "07020308" + "09"), frags.map { toHex(it) })
+        val r = Reassembler(); var out: ByteArray? = null
+        frags.forEach { out = r.add(it) }
+        assertArrayEquals(data, out)
+        val r2 = Reassembler()
+        assertNull(r2.add(frags[1])); assertNull(r2.add(frags[0])); assertNull(r2.add(frags[1]))
+        assertArrayEquals(data, r2.add(frags[2]))
+        assertTrue(Framing.fragments(ByteArray(300), 0, 1).isEmpty())
+    }
+
+    // ---- simulated networks. Link ids follow the app: "out:<peer>" = we connected to that peer (we can write to it),
+    //      "in:<peer>" = that peer connected to us (we answer with notifications).
 
     private class Node(val id: String, net: Net) {
         val crypto = MeshCrypto.generate()
@@ -56,12 +72,19 @@ class ProtocolTest {
 
     private class Net {
         val nodes = LinkedHashMap<String, Node>()
+        var transmits = 0
         fun add(id: String) = Node(id, this).also { nodes[id] = it }
-        fun deliver(from: String, to: String, data: ByteArray) { nodes[to]?.router?.receive(data, from) }
-        fun connect(x: String, y: String) {
-            nodes[x]!!.router.neighborConnected(y, y, y, nodes[y]!!.crypto.publicKey)
-            nodes[y]!!.router.neighborConnected(x, x, x, nodes[x]!!.crypto.publicKey)
+        fun deliver(from: String, link: String, data: ByteArray) {
+            transmits++
+            when {
+                link.startsWith("out:") -> nodes[link.removePrefix("out:")]?.router?.receive(data, "in:$from")
+                link.startsWith("in:") -> nodes[link.removePrefix("in:")]?.router?.receive(data, "out:$from")
+            }
         }
+        /** x discovered y and connected to it; y never discovered x (it only learns of x from x's hello). */
+        fun connectOneWay(x: String, y: String) = nodes[x]!!.router.neighborConnected("out:$y", y, y, nodes[y]!!.crypto.publicKey)
+        /** Both discovered each other: each has an out link and an in link to the other. */
+        fun connect(x: String, y: String) { connectOneWay(x, y); connectOneWay(y, x) }
         fun settle() { repeat(3) { nodes.values.forEach { it.router.tick() } } }
     }
 
@@ -79,6 +102,28 @@ class ProtocolTest {
         assertEquals(listOf("hi all"), n[1].pubs); assertEquals(listOf("hi all"), n[3].pubs)
     }
 
+    @Test fun oneDirectionalDiscoveryStillWorksBothWays() {
+        val net = Net(); val n = listOf("A", "B").map { net.add(it) }
+        net.connectOneWay("A", "B"); net.settle()          // B never discovered A
+        assertEquals(listOf("A"), n[1].peers.map { it.id })
+        var o1: SendOutcome? = null; var o2: SendOutcome? = null
+        n[0].router.sendText("A to B", "B", "ab") { o1 = it }
+        n[1].router.sendText("B to A", "A", "ba") { o2 = it }
+        assertEquals(SendOutcome.Sent, o1); assertEquals(SendOutcome.Sent, o2)
+        assertEquals(listOf("A to B"), n[1].texts.map { it.second }); assertEquals(listOf("B to A"), n[0].texts.map { it.second })
+        assertEquals(listOf("ab"), n[0].delivered); assertEquals(listOf("ba"), n[1].delivered)
+    }
+
+    @Test fun relayWorksOverInLinksOnly() {
+        val net = Net(); val n = listOf("A", "B", "C").map { net.add(it) }
+        net.connectOneWay("A", "B"); net.connectOneWay("C", "B"); net.settle()   // B discovered nobody
+        assertEquals(2, n[0].peers.first { it.id == "C" }.hops)
+        n[0].router.sendText("via B", "C", "acx") { }
+        assertEquals(listOf("via B"), n[2].texts.map { it.second }); assertEquals(listOf("acx"), n[0].delivered)
+        n[2].router.sendPublic("from C", "pc") { }
+        assertEquals(listOf("from C"), n[0].pubs); assertEquals(listOf("from C"), n[1].pubs)
+    }
+
     @Test fun ttlLimitsReachToFiveHops() {
         val net = Net(); val ids = (0 until 8).map { "N$it" }; val n = ids.map { net.add(it) }
         for (i in 0 until 7) net.connect(ids[i], ids[i + 1]); net.settle()
@@ -88,22 +133,26 @@ class ProtocolTest {
         assertEquals(SendOutcome.Unreachable, outcome)
     }
 
-    @Test fun loopsDoNotDuplicate() {
+    @Test fun loopsDoNotDuplicateAndUseOneLinkPerNeighbour() {
         val net = Net(); val n = listOf("A", "B", "C").map { net.add(it) }
         net.connect("A", "B"); net.connect("B", "C"); net.connect("C", "A"); net.settle()
+        net.transmits = 0
         n[0].router.sendText("once", "C", "id-tri") { }
         n[0].router.sendPublic("loop", "pub-tri") { }
         assertEquals(1, n[2].texts.size)
         assertEquals(1, n[1].pubs.size); assertEquals(1, n[2].pubs.size)
+        assertTrue("transmissions: ${net.transmits}", net.transmits <= 6)
     }
 
-    @Test fun peersExpireAndNeighboursDrop() {
+    @Test fun peersExpireAndNeighboursDropWhenAllLinksAreLost() {
         val net = Net(); val n = listOf("A", "B", "C").map { net.add(it) }
         net.connect("A", "B"); net.connect("B", "C"); net.settle()
         assertEquals(2, n[0].peers.size)
         var t = System.currentTimeMillis(); n[0].router.now = { t }; t += 60_000; n[0].router.tick()
         assertEquals(listOf("B"), n[0].peers.map { it.id })
-        n[0].router.neighborLost("B")
+        n[0].router.neighborLost("out:B")
+        assertEquals(listOf("B"), n[0].peers.map { it.id })     // its in link is still alive
+        n[0].router.neighborLost("in:B")
         assertTrue(n[0].peers.isEmpty())
     }
 
