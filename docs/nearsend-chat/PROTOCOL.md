@@ -7,18 +7,30 @@ Not related to the Bitchat protocol.
 
 ## 1. Link layer (Bluetooth LE)
 
-Every phone is both a **GATT server** (advertises the service) and a **GATT client** (scans, connects to everyone it finds).
-No pairing. Each phone therefore holds a central link to each neighbour; to reach a neighbour you write to *their* server.
+Every phone is both a **GATT server** (advertises the service) and a **GATT client** (scans, connects to everyone it finds). No pairing.
+
+Discovery can be **one-sided**: for example an iPhone app in the background advertises its service UUID in the "overflow area",
+which Android scan filters cannot see, so only the iPhone discovers the Android phone. A phone must therefore be able to answer over a
+connection the *other* phone opened. There are two kinds of link, named by prefix:
+
+- `out:<id>` — **we** connected to that phone's server. We send by *writing* to its packet characteristic and we receive what it *notifies*.
+- `in:<id>` — **that phone** connected to *our* server and subscribed to our notify characteristic. We send by *notifying* it and receive what it writes.
+
+A client first subscribes to the server's notify characteristic, then reads its identity, and only then counts the server as a neighbour.
+Right after that it writes a `hi` packet (section 2), which is how the server learns who the subscriber is and can start sending to it.
+A pair of phones that discovered each other has both an `out` and an `in` link to each other; sends use `out` and fall back to `in`,
+and floods use **one link per neighbouring phone**.
 
 | | UUID | Access |
 |---|---|---|
 | Service | `7A3C5E10-9D2B-4F6A-8C1E-4E4541525345` | advertised |
 | Identity characteristic | `7A3C5E11-9D2B-4F6A-8C1E-4E4541525345` | read |
 | Packet characteristic | `7A3C5E12-9D2B-4F6A-8C1E-4E4541525345` | write (with response) |
+| Notify characteristic | `7A3C5E13-9D2B-4F6A-8C1E-4E4541525345` | notify (with the standard CCCD descriptor) |
 
 Identity value (JSON): `{"id": "<device id>", "name": "<nickname>", "pk": "<base64 X25519 public key, 32 bytes>"}`.
 A phone is a *neighbour* once its identity has been read. Signal strength (RSSI) of the link is polled every 2 s.
-Packets are limited to 512 bytes (one ATT long write).
+Packets are limited to 512 bytes (one ATT long write). Notifications carry at most MTU−3 bytes, so server→client packets are fragmented (below).
 
 ## 2. Packets
 
@@ -27,7 +39,7 @@ JSON object, optional fields omitted when absent.
 | field | meaning |
 |---|---|
 | `v` | protocol version, `2` |
-| `t` | `ann` (announce) · `msg` (direct message) · `pub` (public channel) · `ack` (delivery receipt) |
+| `t` | `hi` (link hello, never forwarded: `ttl` 1, carries `n` and `pk`) · `ann` (announce) · `msg` (direct message) · `pub` (public channel) · `ack` (delivery receipt) |
 | `id` | unique packet id (for `msg`: the message id) |
 | `src` | sender device id |
 | `dst` | destination device id (`msg`, `ack`); absent for broadcasts |
@@ -40,6 +52,13 @@ JSON object, optional fields omitted when absent.
 | `ref` | `ack`: id of the acknowledged message |
 
 Text is limited to **180 UTF-8 bytes** (cut on a character boundary).
+
+### Notification fragments
+Each notification is `[seq][index][count][chunk…]` (one byte each; `seq` increments per packet per subscriber; chunk size is
+MTU−3−3, using the central's maximum update length on iOS and the negotiated MTU on Android). The receiver appends chunks while
+`seq` is unchanged and `index` is the next expected one; a mismatch drops the packet; the last chunk (`index = count−1`) completes it.
+At most 255 fragments. Shared test vector: the bytes `00 01 … 09` with `seq` 7 and 4-byte chunks give
+`07 00 03 00010203`, `07 01 03 04050607`, `07 02 03 0809`.
 
 ## 3. Relaying
 

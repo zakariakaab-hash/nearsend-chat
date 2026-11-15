@@ -81,7 +81,7 @@ Taken from the Nearsend web app's `DESIGN.md`:
 
 ## Known limitations
 
-- Untested on real hardware. Android↔iPhone interoperability is designed and unit-tested at the message level, not proven over the air.
+- Untested on real hardware (this includes the notify channel that lets a phone answer over a connection the other phone opened). Android↔iPhone interoperability is designed and unit-tested at the message level, not proven over the air.
 - Not audited. No forward secrecy; announcements are unauthenticated until two people compare fingerprints; metadata is visible to relays.
 - Messages are limited to 180 UTF-8 bytes; no photos or voice notes yet.
 - Background operation: Android has a foreground service ("Keep running in the background", on by default) that also restarts itself after a reboot, an app update, a system kill or when Bluetooth is toggled; the start/restart wiring is verified on an emulator only; real Bluetooth in the background is untested, and some phone makers kill background apps. iOS keeps Bluetooth running in the background and has **state restoration** (iOS relaunches the app after the system terminates it), compiled but untested on a real iPhone. iOS does not relaunch an app the user force-quit from the app switcher, and it does not run our 8-second announcement timer while suspended.
