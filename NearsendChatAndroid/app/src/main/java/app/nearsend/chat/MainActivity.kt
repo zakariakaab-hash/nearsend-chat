@@ -38,8 +38,10 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // Demo/screenshot extra: force a language, e.g. `--es lang ar`. Normal use goes through the You tab or system settings.
-        intent.getStringExtra("lang")?.let { tag ->
+        // Demo/screenshot extra: force a language, e.g. `--es lang ar`; `--es lang system` goes back to the phone's language.
+        // The choice is saved (like the You-tab picker), so later launches keep it until reset.
+        intent.getStringExtra("lang")?.let { raw ->
+            val tag = if (raw == "system") "" else raw
             if (AppCompatDelegate.getApplicationLocales().toLanguageTags() != tag) {
                 AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags(tag))
             }
@@ -55,8 +57,9 @@ class MainActivity : AppCompatActivity() {
         if (intent.getBooleanExtra("startService", false)) MeshService.start(this)   // CI check of the foreground service
         val tab = intent.getIntExtra("tab", 0)
         val thread = intent.getStringExtra("thread")
+        val info = intent.getBooleanExtra("info", false)   // open the contact info sheet of `thread`
         setContent {
-            NearsendApp(store, onboarded, tab, thread) {
+            NearsendApp(store, onboarded, tab, thread, info) {
                 prefs.edit().putBoolean("onboarded", true).apply()
                 requestPermissions()
             }
@@ -81,7 +84,7 @@ class MainActivity : AppCompatActivity() {
 }
 
 @Composable
-fun NearsendApp(store: ChatStore, startOnboarded: Boolean, startTab: Int, startThread: String?, onOnboardingDone: () -> Unit) {
+fun NearsendApp(store: ChatStore, startOnboarded: Boolean, startTab: Int, startThread: String?, startInfo: Boolean, onOnboardingDone: () -> Unit) {
     val night = isSystemInDarkTheme()
     var onboarded by remember { mutableStateOf(startOnboarded) }
     var tab by remember { mutableIntStateOf(startTab) }
@@ -97,7 +100,7 @@ fun NearsendApp(store: ChatStore, startOnboarded: Boolean, startTab: Int, startT
                 OnboardingScreen { onboarded = true; onOnboardingDone() }
             } else if (thread != null && openPeer != null) {
                 BackHandler { thread = null; threadPeer = null }
-                ThreadScreen(store, thread!!, openPeer) { thread = null; threadPeer = null }
+                ThreadScreen(store, thread!!, openPeer, startInfo && thread == startThread) { thread = null; threadPeer = null }
             } else {
                 Column(Modifier.fillMaxSize()) {
                     Box(Modifier.weight(1f)) {

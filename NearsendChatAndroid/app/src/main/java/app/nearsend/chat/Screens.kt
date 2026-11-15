@@ -277,7 +277,7 @@ fun ChatsScreen(store: ChatStore, onOpen: (String) -> Unit) {
 // ───────────────────────── Thread ─────────────────────────
 
 @Composable
-fun ThreadScreen(store: ChatStore, conversationId: String, peer: Peer, onBack: () -> Unit) {
+fun ThreadScreen(store: ChatStore, conversationId: String, peer: Peer, startInfo: Boolean, onBack: () -> Unit) {
     val p = LocalPalette.current
     val isPublic = conversationId == PUBLIC_CHANNEL_ID
     val messages = store.conversations.firstOrNull { it.id == conversationId }?.messages ?: emptyList()
@@ -285,7 +285,7 @@ fun ThreadScreen(store: ChatStore, conversationId: String, peer: Peer, onBack: (
     val online = isPublic || store.peers.any { it.id == conversationId }
     val encrypted = store.simulated || livePeer.fingerprint.isNotEmpty()
     var draft by remember { mutableStateOf("") }
-    var showInfo by remember { mutableStateOf(false) }
+    var showInfo by remember { mutableStateOf(startInfo) }
     val listState = rememberLazyListState()
     DisposableEffect(conversationId) {
         store.activeConversation = conversationId

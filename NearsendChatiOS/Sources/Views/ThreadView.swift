@@ -5,7 +5,7 @@ struct ThreadView: View {
     let conversationID: String
     let peer: Peer
     @State private var draft = ""
-    @State private var showInfo = false
+    @State private var showInfo = UserDefaults.standard.bool(forKey: "showInfo")   // `-showInfo YES` launch argument (screenshots)
     @FocusState private var focused: Bool
 
     private var isPublic: Bool { conversationID == publicChannelID }
@@ -43,6 +43,8 @@ struct ThreadView: View {
         .onChange(of: messages.count) { _, _ in store.markRead(conversationID) }
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
+        .toolbarBackground(.visible, for: .navigationBar)   // otherwise the bar is clear until you scroll and Back/info vanish into the blue sky
+        .toolbar(.hidden, for: .tabBar)                     // full-height conversation, like Android
         .toolbar {
             ToolbarItem(placement: .principal) {
                 VStack(spacing: 1) {
