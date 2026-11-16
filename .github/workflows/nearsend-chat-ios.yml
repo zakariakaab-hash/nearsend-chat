@@ -34,14 +34,16 @@ jobs:
       - name: Build for simulator
         run: |
           set +e
-          xcodebuild -project NearsendChat.xcodeproj -scheme NearsendChat -destination 'platform=iOS Simulator,name=iPhone 16 Pro' -derivedDataPath dd CODE_SIGNING_ALLOWED=NO build > build.log 2>&1
+          # Use whichever "iPhone NN Pro" the runner image has (the image dropped "iPhone 16 Pro" once already).
+          UDID=$(xcrun simctl list devices available | grep -E "iPhone [0-9]+ Pro \(" | head -1 | grep -oE '[0-9A-F-]{36}')
+          echo "UDID=$UDID" >> "$GITHUB_ENV"
+          xcodebuild -project NearsendChat.xcodeproj -scheme NearsendChat -destination "id=$UDID" -derivedDataPath dd CODE_SIGNING_ALLOWED=NO build > build.log 2>&1
           code=$?
           grep -E "error:" build.log | sort -u | head -20 | while IFS= read -r l; do echo "::error::${l//%/%25}"; done
           exit $code
       - name: Screenshots
         run: |
           set -x
-          UDID=$(xcrun simctl list devices available | grep "iPhone 16 Pro (" | head -1 | grep -oE '[0-9A-F-]{36}')
           xcrun simctl boot $UDID; xcrun simctl bootstatus $UDID -b
           xcrun simctl status_bar $UDID override --time 9:41 --batteryState charged --batteryLevel 100 --cellularBars 0 || true
           xcrun simctl install $UDID dd/Build/Products/Debug-iphonesimulator/NearsendChat.app

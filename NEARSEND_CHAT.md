@@ -8,7 +8,7 @@ Belongs to the [nearsend.app](https://nearsend.app) family and shares its "Open 
 > **Status: early development.** Everything below is implemented and compiles, and the crypto + relay logic is unit-tested in CI
 > (iOS 21 checks, Android 9 tests, including a message encrypted by Python that both apps decrypt).
 > **Nothing has been tested on physical phones yet**, so real Bluetooth behaviour is unproven. Not security audited
-> (see `docs/nearsend-chat/PROTOCOL.md`, section 5). Not compatible with the Bitchat protocol. This repository is a fork of
+> (see `docs/nearsend-chat/PROTOCOL.md`, section 7). Not compatible with the Bitchat protocol. This repository is a fork of
 > Bitchat (GPL-3.0), so this work is GPL-3.0 too.
 
 ## Features (both apps)

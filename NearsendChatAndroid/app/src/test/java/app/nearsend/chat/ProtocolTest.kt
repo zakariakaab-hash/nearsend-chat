@@ -167,6 +167,34 @@ class ProtocolTest {
         assertTrue(n[0].peers.isEmpty())
     }
 
+    @Test fun sosFloodsWithLocationAndEnds() {
+        val net = Net(); val n = listOf("A", "B", "C").map { net.add(it) }
+        val got = mutableListOf<String>(); val ended = mutableListOf<String>()
+        n[2].router.onSos = { f, _, alarm, note, loc, hops -> got += "$f|$alarm|$note|$loc|$hops" }
+        n[1].router.onSos = { _, _, _, _, _, _ -> got += "B" }
+        n[2].router.onSosEnd = { f, alarm -> ended += "$f|$alarm" }
+        net.connect("A", "B"); net.connect("B", "C"); net.settle()
+        n[0].router.sendSos("al-1", "hurt leg", "59.3293,18.0686,8")
+        n[0].router.sendSos("al-1", "hurt leg", "59.3293,18.0686,8")   // a repeat: new packet id, same alarm id
+        assertEquals(listOf("B", "A|al-1|hurt leg|59.3293,18.0686,8|2", "B", "A|al-1|hurt leg|59.3293,18.0686,8|2"), got)
+        n[0].router.sendSos("al-1", null, null, end = true)
+        assertEquals(listOf("A|al-1"), ended)
+        val p = Packet.parse(Packet("sos", "x", "A", null, 5, 1, n = "A", ref = "al-1", loc = "1,2,3").toBytes())!!
+        assertEquals("1,2,3", p.loc); assertEquals("al-1", p.ref)
+    }
+
+    @Test fun groupMessageReachesEachMemberSealedAndAcked() {
+        val net = Net(); val n = listOf("A", "B", "C", "D").map { net.add(it) }
+        val got = mutableMapOf<String, String>()
+        for (x in n) x.router.onGroup = { f, _, g, gn, m, t, _, id -> got[x.id] = "$f|$g|$gn|${m.joinToString(",") { it.first }}|$t|$id" }
+        net.connect("A", "B"); net.connect("B", "C"); net.connect("C", "D"); net.settle()
+        val members = listOf("A" to "A", "B" to "B", "D" to "D")
+        for (dst in listOf("B", "D")) n[0].router.sendGroup("hej gruppen", "g:1", "Trip", members, dst, "m1") { assertEquals(SendOutcome.Sent, it) }
+        assertEquals("A|g:1|Trip|A,B,D|hej gruppen|m1", got["B"]); assertEquals("A|g:1|Trip|A,B,D|hej gruppen|m1", got["D"])
+        assertNull(got["C"])                                            // C relayed D's copy but could not open it
+        assertEquals(setOf("m1.B", "m1.D"), n[0].delivered.toSet())     // one ack per member copy
+    }
+
     @Test fun packetsInteroperateWithIosJson() {
         // A packet exactly as the iOS JSONEncoder writes it (keys in a different order, optional fields absent).
         val json = """{"ts":1700000000000,"ttl":4,"t":"pub","src":"IOS-1","v":2,"id":"p-1","tx":"hej","n":"Ios"}"""

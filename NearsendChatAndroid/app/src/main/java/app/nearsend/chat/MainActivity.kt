@@ -20,6 +20,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Sensors
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
@@ -98,7 +99,7 @@ fun NearsendApp(store: ChatStore, startOnboarded: Boolean, startTab: Int, startT
         Box(Modifier.fillMaxSize()) {
             SkyBackground()
             if (!onboarded) {
-                OnboardingScreen { onboarded = true; onOnboardingDone() }
+                OnboardingScreen(store) { onboarded = true; onOnboardingDone() }
             } else if (thread != null && openPeer != null) {
                 BackHandler { thread = null; threadPeer = null }
                 ThreadScreen(store, thread!!, openPeer, startInfo && thread == startThread) { thread = null; threadPeer = null }
@@ -110,10 +111,11 @@ fun NearsendApp(store: ChatStore, startOnboarded: Boolean, startTab: Int, startT
                             1 -> ChatsScreen(store, startAdd = startQr && startTab == 1,
                                 onOpen = { id -> threadPeer = null; thread = id },
                                 onOpenPeer = { peer -> store.ensureConversation(peer); threadPeer = peer; thread = peer.id })
+                            SOS_TAB -> SosScreen(store)
                             else -> IdentityScreen(store, startQr)
                         }
                     }
-                    TabBar(tab, store.unreadTotal) { tab = it }
+                    TabBar(tab, mapOf(1 to store.unreadTotal, SOS_TAB to store.activeAlerts)) { tab = it }
                 }
             }
         }
@@ -121,17 +123,20 @@ fun NearsendApp(store: ChatStore, startOnboarded: Boolean, startTab: Int, startT
 }
 
 @Composable
-private fun TabBar(selected: Int, unread: Int, onSelect: (Int) -> Unit) {
+private fun TabBar(selected: Int, badges: Map<Int, Int>, onSelect: (Int) -> Unit) {
     val p = LocalPalette.current
-    val items: List<Pair<Int, ImageVector>> = listOf(R.string.tab_nearby to Icons.Filled.Sensors, R.string.tab_chats to Icons.Filled.Chat, R.string.tab_you to Icons.Filled.Person)
+    // (tab index, label, icon) in display order; SOS is index 3 but sits third.
+    val items: List<Triple<Int, Int, ImageVector>> = listOf(Triple(0, R.string.tab_nearby, Icons.Filled.Sensors), Triple(1, R.string.tab_chats, Icons.Filled.Chat),
+        Triple(SOS_TAB, R.string.tab_sos, Icons.Filled.Warning), Triple(2, R.string.tab_you, Icons.Filled.Person))
     Row(Modifier.fillMaxWidth().glass(0.dp).navigationBarsPadding().padding(vertical = 8.dp)) {
-        items.forEachIndexed { i, (labelRes, icon) ->
-            val color = if (i == selected) p.link else p.inkSecondary
+        items.forEach { (i, labelRes, icon) ->
+            val color = when { i == selected && i == SOS_TAB -> SosRed; i == selected -> p.link; i == SOS_TAB -> SosRed.copy(alpha = 0.8f); else -> p.inkSecondary }
+            val count = badges[i] ?: 0
             val label = stringResource(labelRes)
             Column(Modifier.weight(1f).clickable { onSelect(i) }.padding(vertical = 4.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                 Box {
                     Icon(icon, label, tint = color)
-                    if (i == 1 && unread > 0) Text("$unread", color = androidx.compose.ui.graphics.Color.White, fontSize = 10.sp,
+                    if (count > 0) Text("$count", color = androidx.compose.ui.graphics.Color.White, fontSize = 10.sp,
                         modifier = Modifier.align(Alignment.TopEnd).offset(10.dp, (-4).dp).background(androidx.compose.ui.graphics.Color(0xFFFF3B30), RoundedCornerShape(50)).padding(horizontal = 5.dp))
                 }
                 Text(label, color = color, fontSize = 11.sp)

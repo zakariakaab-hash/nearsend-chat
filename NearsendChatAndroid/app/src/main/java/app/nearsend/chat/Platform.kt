@@ -38,6 +38,25 @@ object Notifier {
         nm.notify((System.nanoTime() and 0x7FFFFFFF).toInt(), n)
     }
 
+    /** Someone nearby sent SOS: always shown (even with the app open), long vibration, opens the SOS tab. */
+    fun alarm(ctx: Context, title: String, body: String) {
+        val nm = NotificationManagerCompat.from(ctx)
+        ctx.getSystemService(Vibrator::class.java)?.takeIf { it.hasVibrator() }
+            ?.vibrate(VibrationEffect.createWaveform(longArrayOf(0, 600, 250, 600, 250, 600), -1))
+        if (!nm.areNotificationsEnabled()) return
+        if (Build.VERSION.SDK_INT >= 26) {
+            ctx.getSystemService(NotificationManager::class.java)
+                .createNotificationChannel(NotificationChannel("sos", "SOS", NotificationManager.IMPORTANCE_HIGH))
+        }
+        val open = ctx.packageManager.getLaunchIntentForPackage(ctx.packageName)!!
+            .putExtra("tab", SOS_TAB).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+        val pi = android.app.PendingIntent.getActivity(ctx, 1, open, android.app.PendingIntent.FLAG_IMMUTABLE or android.app.PendingIntent.FLAG_UPDATE_CURRENT)
+        val n = NotificationCompat.Builder(ctx, "sos").setSmallIcon(android.R.drawable.stat_sys_warning)
+            .setContentTitle(title).setContentText(body).setPriority(NotificationCompat.PRIORITY_MAX)
+            .setCategory(NotificationCompat.CATEGORY_ALARM).setAutoCancel(true).setContentIntent(pi).build()
+        nm.notify(title.hashCode(), n)
+    }
+
     fun tap(ctx: Context, ms: Long = 30) {
         val v = ctx.getSystemService(Vibrator::class.java) ?: return
         if (v.hasVibrator()) v.vibrate(VibrationEffect.createOneShot(ms, VibrationEffect.DEFAULT_AMPLITUDE))

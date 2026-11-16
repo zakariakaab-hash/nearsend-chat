@@ -39,17 +39,18 @@ JSON object, optional fields omitted when absent.
 | field | meaning |
 |---|---|
 | `v` | protocol version, `2` |
-| `t` | `hi` (link hello, never forwarded: `ttl` 1, carries `n` and `pk`) · `ann` (announce) · `msg` (direct message) · `pub` (public channel) · `ack` (delivery receipt) · `vfy` (QR verification proof, section 4) |
+| `t` | `hi` (link hello, never forwarded: `ttl` 1, carries `n` and `pk`) · `ann` (announce) · `msg` (direct message) · `pub` (public channel) · `ack` (delivery receipt) · `vfy` (QR verification proof, section 4) · `gm` (group message, section 5) · `sos` / `sosx` (SOS alarm on / off, section 6) |
 | `id` | unique packet id (for `msg`: the message id) |
 | `src` | sender device id |
-| `dst` | destination device id (`msg`, `ack`, `vfy`); absent for broadcasts |
+| `dst` | destination device id (`msg`, `ack`, `vfy`, `gm`); absent for broadcasts |
 | `ttl` | remaining hops; the sender starts at **5** |
 | `ts` | sender clock, ms since epoch (informational) |
 | `n` | sender nickname |
 | `pk` | `ann`: base64 public key |
-| `ct` | `msg`: base64 sealed text · `vfy`: base64 sealed one-time code (section 4) |
-| `tx` | `pub`: plain text |
-| `ref` | `ack`: id of the acknowledged message |
+| `ct` | `msg`: base64 sealed text · `vfy`: base64 sealed one-time code (section 4) · `gm`: base64 sealed group JSON (section 5) |
+| `tx` | `pub`: plain text · `sos`: optional plain note |
+| `ref` | `ack`: id of the acknowledged packet · `sos`/`sosx`: alarm id (the same on every repeat) |
+| `loc` | `sos`: `"lat,lon,accuracyMetres"` (decimal degrees, WGS84) when the sender shares a position; absent otherwise |
 
 Text is limited to **180 UTF-8 bytes** (cut on a character boundary).
 
@@ -70,7 +71,8 @@ At most 255 fragments. Shared test vector: the bytes `00 01 … 09` with `seq` 7
 - `ann` creates/refreshes a peer entry (name, key, hops). Relayed peers not heard from for **40 s** are dropped; direct
   neighbours are dropped when the link is lost. Reach is therefore at most **5 hops**.
 - `msg` for me: decrypt, show, reply with an `ack`. `pub`: show. `ack` for me: mark the message delivered.
-  `vfy` for me: handled as in section 4 (no `ack`). `msg`, `ack` and `vfy` for someone else are forwarded like any packet.
+  `vfy` for me: handled as in section 4 (no `ack`). `gm` for me: section 5 (with `ack`). `sos`/`sosx`: section 6.
+  `msg`, `ack`, `vfy` and `gm` for someone else are forwarded like any packet. Unknown types are ignored (not forwarded).
 - Messages to a peer that is not currently known stay queued in the app and are sent when the peer appears (give up after 10 min).
 
 ## 4. Direct-message encryption
@@ -121,7 +123,31 @@ plaintext      "Hej världen 👋"
 fingerprint A  AAA8 FFF7 03B5 0B22 / 97F4 F6E1 3508 F724
 ```
 
-## 5. What this does **not** protect against (read before relying on it)
+## 5. Groups (`gm`)
+
+A group is an id (`g:` + UUID), a name and a member list chosen by whoever created it. There is no group key: every group
+message is **sealed separately for each member**, exactly like a direct message (section 4), and sent as its own `gm` packet:
+
+- `dst` = the member, `id` = `<message id>.<member id>` (unique per copy; the aad), `ct` = `base64(seal(json))` where
+  `json` = `{"g":<group id>,"gn":<group name>,"m":[{"id":<device id>,"n":<name>}, ...all members incl. sender],"tx":<text>}`.
+- The receiver opens it with the sender's known key, creates the group if it is new (taking the name and member list from
+  the message), shows the text under the sender's name and answers with a normal `ack` whose `ref` is the packet id.
+- Replies go to every member in `m` except yourself. Copies for members out of range stay queued (10 min, like direct messages).
+- Leaving a group is local: the phone forgets it and ignores later `gm` packets for that group id.
+
+## 6. SOS (`sos`, `sosx`)
+
+An SOS alarm is a **public, unencrypted broadcast**, flooded like `pub` (ttl 5) so it reaches every phone around, including
+phones that are not contacts.
+
+- `sos`: `ref` = alarm id (random, fixed for the whole alarm), optional `tx` note (clipped to 180 bytes), optional `loc`.
+- While the alarm is on, the sender repeats `sos` every **15 s** with a fresh packet `id` (so it passes the id cache and
+  reaches phones that arrive later) and the latest position.
+- `sosx`: same `ref`, sent once when the sender taps "I'm safe". Receivers mark that alarm as ended.
+- Receivers group repeats by (`src`, `ref`), notify only on the first packet of an alarm, and show distance and compass
+  direction from their own position when both phones have one.
+
+## 7. What this does **not** protect against (read before relying on it)
 
 - **Not audited.** Custom protocol built from standard primitives; no third-party review.
 - **Announcements are unauthenticated.** Anyone can claim any id/name/key. A person in the middle could substitute a key
@@ -133,3 +159,7 @@ fingerprint A  AAA8 FFF7 03B5 0B22 / 97F4 F6E1 3508 F724
   your friend does could be marked verified. Show the QR only to the person in front of you; codes die when the app restarts.
 - No replay protection beyond the id cache; no rate limiting or spam control; relays can drop or delay packets.
 - Bluetooth advertising reveals that a phone runs Nearsend Chat.
+- **SOS alarms are public and unauthenticated.** Anyone nearby can read the note and position, and anyone can send a fake
+  alarm under any name. The alarm only reaches phones within 5 hops; it does not contact emergency services.
+- **Group membership is not authenticated.** Any member can send a member list; there is no admin. Members learn each
+  other's device ids and names. Each copy is end-to-end encrypted, but a group of N people costs N packets per message.

@@ -30,4 +30,19 @@ data class Conversation(
     val peer: Peer,
     val messages: List<Message>,
     val unread: Int = 0,
+    val members: List<Pair<String, String>>? = null,   // groups only: (device id, name) of everyone, me included
+) {
+    val isGroup get() = members != null
+}
+
+/** An SOS alarm someone nearby sent. [alarm] stays the same on every repeat; [active] turns false when they stop it. */
+data class SosAlert(
+    val alarm: String,
+    val from: String,
+    val name: String,
+    val note: String?,
+    val lat: Double?, val lon: Double?, val accuracy: Int?,
+    val hops: Int,
+    val timeMs: Long,
+    val active: Boolean = true,
 )

@@ -4,6 +4,9 @@ import android.Manifest
 import android.app.Application
 import android.content.Context
 import android.content.pm.PackageManager
+import android.location.Location
+import android.location.LocationListener
+import android.location.LocationManager
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
@@ -21,7 +24,9 @@ import org.json.JSONObject
 import java.io.File
 import java.security.SecureRandom
 import java.util.Base64
+import java.util.Locale
 import java.util.UUID
+import kotlin.math.roundToInt
 
 /**
  * UI-facing state. On a real phone it is driven by [BleTransport] + [MeshRouter]; emulators have no Bluetooth,
@@ -51,6 +56,9 @@ class ChatStore private constructor(private val app: Application) {
     var verified by mutableStateOf(setOf<String>()); private set
     var nicknames by mutableStateOf(mapOf<String, String>()); private set   // fingerprint -> name you gave them
     var blocked by mutableStateOf(setOf<String>()); private set             // peer ids whose messages are dropped
+    private var leftGroups = setOf<String>()                                 // group ids we left: their messages are dropped
+    private val groupPending = HashMap<String, MutableSet<String>>()         // group message id -> members not sent to yet (memory only)
+    private val groupAcks = HashMap<String, MutableSet<String>>()            // group message id -> members who confirmed
     var lastVerified by mutableStateOf<String?>(null)                       // who just confirmed our QR (shown on the QR screen)
     private val myCodes = HashSet<String>()                                  // one-time codes shown in our QR this session
     private val pendingVerify = HashMap<String, Pair<String, ByteArray>>()   // peer id -> (their code, their key), sent when reachable
@@ -60,11 +68,23 @@ class ChatStore private constructor(private val app: Application) {
     var peerCountListener: ((Int) -> Unit)? = null   // the foreground service keeps its notification up to date
 
     val simulated = isEmulator()
-    private var deviceId = prefs.getString("deviceID", null) ?: newDeviceId()
+    var deviceId = prefs.getString("deviceID", null) ?: newDeviceId(); private set
     private var transport: BleTransport? = null
     private var router: MeshRouter? = null
     private val inflight = HashSet<String>()
     private val tick = object : Runnable { override fun run() { router?.tick(); main.postDelayed(this, 8000) } }
+
+    // SOS (declared before init: the emulator demo data fills [alerts])
+    var alerts by mutableStateOf(listOf<SosAlert>()); private set     // received alarms, newest first (not saved)
+    var mySos by mutableStateOf<String?>(null); private set              // our alarm id while SOS is on
+    var sosNote by mutableStateOf("")
+    var shareLocation by mutableStateOf(prefs.getBoolean("sosLocation", false)); private set
+    var myLocation by mutableStateOf<Location?>(null); private set
+    private var locationUsers = 0
+    private val locationListener = LocationListener { myLocation = it }
+    private val sosRepeat = object : Runnable {
+        override fun run() { mySos?.let { router?.sendSos(it, sosNote, sharedLocation()) }; main.postDelayed(this, 15_000) }
+    }
 
     val relayedCount get() = peers.count { it.hops > 1 }
     val unreadTotal get() = conversations.sumOf { it.unread }
@@ -104,6 +124,9 @@ class ChatStore private constructor(private val app: Application) {
             r.onPublic = { from, name, text, id -> receivePublic(from, name, text, id) }
             r.onVerify = { from, fp, code -> confirmVerify(from, fp, code) }
             r.onDelivered = { markDelivered(it) }
+            r.onGroup = { from, name, g, gn, members, text, hops, id -> receiveGroup(from, name, g, gn, members, text, hops, id) }
+            r.onSos = { from, name, alarm, note, loc, hops -> receiveSos(from, name, alarm, note, loc, hops) }
+            r.onSosEnd = { from, alarm -> alerts = alerts.map { if (it.alarm == alarm && it.from == from) it.copy(active = false) else it } }
             t.onNeighbor = { link, id, name, pk -> r.neighborConnected(link, id, name, pk) }
             t.onLost = { r.neighborLost(it) }
             t.onPacket = { data, link -> r.receive(data, link) }
@@ -152,13 +175,14 @@ class ChatStore private constructor(private val app: Application) {
 
     /** Panic wipe: forget every message, key and setting. The phone gets a brand-new identity. */
     fun wipeAll() {
+        stopSos()
         main.removeCallbacks(tick)
         transport?.stop(); transport = null; router = null; inflight.clear()
         keys.wipe(); file.delete()
         prefs.edit().clear().apply()
         deviceId = newDeviceId()
         verified = emptySet(); peers = emptyList(); conversations = emptyList()
-        nicknames = emptyMap(); blocked = emptySet(); myCodes.clear(); pendingVerify.clear(); lastVerified = null
+        nicknames = emptyMap(); blocked = emptySet(); leftGroups = emptySet(); groupPending.clear(); groupAcks.clear(); myCodes.clear(); pendingVerify.clear(); lastVerified = null; alerts = emptyList()
         nickname = "anon-${(1000..9999).random()}"
         if (!simulated) myFingerprint = ""
         ensurePublicChannel()
@@ -278,6 +302,10 @@ class ChatStore private constructor(private val app: Application) {
                 delay(600); update(m.id, id, Delivery.Sent)
                 delay(900); update(m.id, id, Delivery.Delivered)
             }
+            id.startsWith("g:") -> {
+                groupPending[m.id] = groupTargets(id).toMutableSet()
+                flushGroup(m, id)
+            }
             id == PUBLIC_CHANNEL_ID -> router?.sendPublic(text, m.id) { update(m.id, id, if (it == SendOutcome.Sent) Delivery.Sent else Delivery.Failed) }
                 ?: update(m.id, id, Delivery.Failed)
             else -> trySend(m, id)
@@ -290,6 +318,7 @@ class ChatStore private constructor(private val app: Application) {
                 if (it.id == messageId) it.copy(state = Delivery.Sending, timeMs = System.currentTimeMillis()) else it
             })
         }
+        if (id.startsWith("g:")) groupPending[messageId] = groupTargets(id).toMutableSet()
         flushOutbox()
     }
 
@@ -306,11 +335,70 @@ class ChatStore private constructor(private val app: Application) {
         }
     }
 
+    // ---- groups
+
+    fun createGroup(name: String, people: List<Peer>): String {
+        val id = "g:" + UUID.randomUUID()
+        val members = listOf(deviceId to nickname) + people.map { it.id to it.name }
+        conversations = conversations + Conversation(id, Peer(id, name.trim(), 1, -50), emptyList(), members = members)
+        save()
+        return id
+    }
+
+    fun leaveGroup(id: String) {
+        conversations = conversations.filter { it.id != id }
+        leftGroups = leftGroups + id
+        save()
+    }
+
+    private fun groupTargets(id: String) = conversations.firstOrNull { it.id == id }?.members.orEmpty().map { it.first }.filter { it != deviceId }
+
+    /** Sends the copies of [m] whose member is reachable now; the rest wait in [groupPending]. */
+    private fun flushGroup(m: Message, gid: String) {
+        val r = router ?: return
+        val c = conversations.firstOrNull { it.id == gid } ?: return
+        val pending = groupPending[m.id] ?: return
+        val members = c.members.orEmpty().map { if (it.first == deviceId) it.first to nickname else it }
+        for (member in pending.toList()) {
+            if (peers.none { it.id == member } || !inflight.add("${m.id}.$member")) continue
+            r.sendGroup(m.text, gid, c.peer.name, members, member, m.id) { outcome ->
+                inflight.remove("${m.id}.$member")
+                if (outcome != SendOutcome.Unreachable) pending.remove(member)
+                if (outcome == SendOutcome.Sent) update(m.id, gid, Delivery.Sent)
+                else if (outcome == SendOutcome.Failed && pending.isEmpty() && m.state == Delivery.Sending) update(m.id, gid, Delivery.Failed)
+            }
+        }
+    }
+
+    private fun receiveGroup(from: String, sentName: String, gid: String, gname: String, members: List<Pair<String, String>>, text: String, hops: Int, id: String) {
+        if (from in blocked || gid in leftGroups || members.none { it.first == deviceId }) return
+        val name = peers.firstOrNull { it.id == from }?.name ?: sentName
+        if (conversations.none { it.id == gid }) conversations = conversations + Conversation(gid, Peer(gid, gname, 1, -50), emptyList(), members = members)
+        if (conversations.first { it.id == gid }.messages.any { it.id == id }) return
+        val m = Message(text, System.currentTimeMillis(), false, id = id, hops = hops, sender = name)
+        conversations = conversations.map {
+            if (it.id == gid) it.copy(peer = it.peer.copy(name = gname), members = members, messages = it.messages + m,
+                unread = if (activeConversation == gid) it.unread else it.unread + 1) else it
+        }
+        Notifier.notify(app, "$gname · $name", text)
+        Notifier.tap(app)
+        save()
+    }
+
     /** Sends queued messages whose recipient is now reachable; gives up after 10 minutes. */
     private fun flushOutbox() {
         if (simulated) return
         for (c in conversations) {
             if (c.id == PUBLIC_CHANNEL_ID) continue
+            if (c.isGroup) {
+                for (m in c.messages) if (m.mine && groupPending[m.id]?.isNotEmpty() == true) {
+                    if (System.currentTimeMillis() - m.timeMs > 600_000) {
+                        groupPending.remove(m.id)
+                        if (m.state == Delivery.Sending) update(m.id, c.id, Delivery.Failed)
+                    } else flushGroup(m, c.id)
+                }
+                continue
+            }
             for (m in c.messages) {
                 if (!m.mine || m.state != Delivery.Sending) continue
                 if (System.currentTimeMillis() - m.timeMs > 600_000) update(m.id, c.id, Delivery.Failed)
@@ -355,7 +443,67 @@ class ChatStore private constructor(private val app: Application) {
         save()
     }
 
+    // ---- SOS
+
+    val activeAlerts get() = alerts.count { it.active }
+
+    fun shareLocationOn(on: Boolean) { shareLocation = on; prefs.edit().putBoolean("sosLocation", on).apply() }
+
+    fun hasLocationPermission() = ContextCompat.checkSelfPermission(app, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
+        ContextCompat.checkSelfPermission(app, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+
+    /** Repeats every 15 s while on, so phones that come into range later still get it (the mesh keeps nothing). */
+    fun startSos() {
+        if (mySos != null) return
+        mySos = UUID.randomUUID().toString()
+        useLocation(true)
+        Notifier.tap(app, 300)
+        main.post(sosRepeat)
+    }
+
+    fun stopSos() {
+        val alarm = mySos ?: return
+        mySos = null
+        main.removeCallbacks(sosRepeat)
+        router?.sendSos(alarm, null, null, end = true)
+        useLocation(false)
+    }
+
+    private fun sharedLocation(): String? = myLocation?.takeIf { shareLocation }
+        ?.let { "%.5f,%.5f,%d".format(Locale.US, it.latitude, it.longitude, it.accuracy.roundToInt()) }
+
+    /** The SOS screen (for distances) and an active alarm each hold a "use"; GPS runs only while someone needs it. */
+    @android.annotation.SuppressLint("MissingPermission")
+    fun useLocation(on: Boolean) {
+        locationUsers = (locationUsers + if (on) 1 else -1).coerceAtLeast(0)
+        val lm = app.getSystemService(LocationManager::class.java) ?: return
+        lm.removeUpdates(locationListener)
+        if (locationUsers == 0 || !hasLocationPermission()) return
+        for (provider in listOf(LocationManager.GPS_PROVIDER, LocationManager.NETWORK_PROVIDER)) {
+            if (!lm.isProviderEnabled(provider)) continue
+            lm.getLastKnownLocation(provider)?.let { if (myLocation == null || it.accuracy < myLocation!!.accuracy) myLocation = it }
+            lm.requestLocationUpdates(provider, 5_000L, 0f, locationListener, Looper.getMainLooper())
+        }
+    }
+
+    private fun receiveSos(from: String, sentName: String, alarm: String, note: String?, loc: String?, hops: Int) {
+        if (from in blocked) return
+        val parts = loc?.split(",")?.mapNotNull { it.trim().toDoubleOrNull() }?.takeIf { it.size == 3 }
+        val name = peers.firstOrNull { it.id == from }?.name ?: sentName
+        val old = alerts.firstOrNull { it.alarm == alarm && it.from == from }
+        val a = SosAlert(alarm, from, name, note, parts?.get(0), parts?.get(1), parts?.get(2)?.roundToInt(), hops, System.currentTimeMillis())
+        alerts = if (old == null) listOf(a) + alerts else alerts.map { if (it === old) a else it }
+        if (old == null || !old.active) Notifier.alarm(app, "SOS · $name", note ?: "")
+    }
+
     private fun markDelivered(id: String) {
+        if ('.' in id) {   // a group copy: "<message id>.<member>"; delivered once every member confirmed
+            val mid = id.substringBefore('.')
+            val c = conversations.firstOrNull { cv -> cv.messages.any { it.id == mid } } ?: return
+            val acks = groupAcks.getOrPut(mid) { mutableSetOf() }.apply { add(id.substringAfter('.')) }
+            if (acks.containsAll(groupTargets(c.id))) { update(mid, c.id, Delivery.Delivered); groupAcks.remove(mid) }
+            return
+        }
         conversations.filter { c -> c.messages.any { it.id == id } }.forEach { update(id, it.id, Delivery.Delivered) }
     }
 
@@ -379,9 +527,11 @@ class ChatStore private constructor(private val app: Application) {
     private fun save() {
         if (simulated) return
         val o = JSONObject().put("verified", JSONArray(verified.toList())).put("nicknames", JSONObject(nicknames)).put("blocked", JSONArray(blocked.toList()))
+            .put("leftGroups", JSONArray(leftGroups.toList()))
         o.put("conversations", JSONArray(conversations.map { c ->
             JSONObject().put("id", c.id).put("unread", c.unread)
                 .put("peer", JSONObject().put("id", c.peer.id).put("name", c.peer.name).put("hops", c.peer.hops).put("rssi", c.peer.rssi).put("fp", c.peer.fingerprint))
+                .apply { c.members?.let { ms -> put("members", JSONArray(ms.map { JSONObject().put("id", it.first).put("n", it.second) })) } }
                 .put("messages", JSONArray(c.messages.map { m ->
                     JSONObject().put("id", m.id).put("text", m.text).put("t", m.timeMs).put("mine", m.mine)
                         .put("state", m.state.name).put("hops", m.hops).apply { m.sender?.let { put("sender", it) } }
@@ -396,6 +546,7 @@ class ChatStore private constructor(private val app: Application) {
             verified = (0 until o.getJSONArray("verified").length()).map { o.getJSONArray("verified").getString(it) }.toSet()
             o.optJSONObject("nicknames")?.let { n -> nicknames = n.keys().asSequence().associateWith { n.getString(it) } }
             o.optJSONArray("blocked")?.let { b -> blocked = (0 until b.length()).map { b.getString(it) }.toSet() }
+            o.optJSONArray("leftGroups")?.let { b -> leftGroups = (0 until b.length()).map { b.getString(it) }.toSet() }
             val cs = o.getJSONArray("conversations")
             conversations = (0 until cs.length()).map { i ->
                 val c = cs.getJSONObject(i); val p = c.getJSONObject("peer"); val ms = c.getJSONArray("messages")
@@ -404,7 +555,8 @@ class ChatStore private constructor(private val app: Application) {
                         val m = ms.getJSONObject(j)
                         Message(m.getString("text"), m.getLong("t"), m.getBoolean("mine"), Delivery.valueOf(m.getString("state")),
                             m.getString("id"), m.getInt("hops"), if (m.has("sender")) m.getString("sender") else null)
-                    }, c.getInt("unread"))
+                    }, c.getInt("unread"),
+                    c.optJSONArray("members")?.let { ms -> (0 until ms.length()).map { ms.getJSONObject(it).let { m -> m.getString("id") to m.getString("n") } } })
             }
         }
         // Messages still marked "sending" stay queued; they are retried when the person is next in range.
@@ -427,7 +579,14 @@ class ChatStore private constructor(private val app: Application) {
                 Message("Yes, by the water stand", now - 840_000, true),
                 Message("Coming now 👋", now - 60_000, false)), unread = 1),
             Conversation("c", peers[2], listOf(Message("Relayed through Erik, nice range", now - 7_200_000, false, hops = 2))),
+            Conversation("g:demo", Peer("g:demo", "Festival crew", 1, -50), listOf(
+                Message("Meet at the food trucks at 8?", now - 1_500_000, false, sender = "Maja"),
+                Message("Works for me", now - 1_400_000, false, sender = "Erik", hops = 2),
+                Message("See you there", now - 1_300_000, true)),
+                members = listOf(deviceId to nickname, "a" to "Maja", "b" to "Erik")),
         )
+        // Near the emulator's default position, so the SOS tab shows a distance and direction.
+        alerts = listOf(SosAlert("demo-sos", "c", "Noor", "Twisted ankle by the lake path", 37.4252, -122.0815, 9, 2, now - 120_000))
     }
 
     private fun drift() {

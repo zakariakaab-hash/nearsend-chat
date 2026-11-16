@@ -45,6 +45,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import androidx.compose.ui.draw.alpha
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -83,59 +84,6 @@ val LANGUAGES = listOf(
     "en" to "English", "sv" to "Svenska", "es" to "Español", "fr" to "Français", "de" to "Deutsch", "pt" to "Português",
     "it" to "Italiano", "ar" to "العربية", "tr" to "Türkçe", "ru" to "Русский", "zh-CN" to "简体中文", "ja" to "日本語",
 )
-
-// ───────────────────────── Onboarding ─────────────────────────
-
-private class OnboardPage(val icon: ImageVector, @StringRes val title: Int, @StringRes val body: Int)
-
-@Composable
-fun OnboardingScreen(onDone: () -> Unit) {
-    val pages = remember {
-        listOf(
-            OnboardPage(Icons.Filled.Sensors, R.string.ob1_title, R.string.ob1_body),
-            OnboardPage(Icons.Filled.Hub, R.string.ob2_title, R.string.ob2_body),
-            OnboardPage(Icons.Filled.Lock, R.string.ob3_title, R.string.ob3_body),
-        )
-    }
-    val pager = rememberPagerState { pages.size }
-    val scope = rememberCoroutineScope()
-    val pulse by rememberInfiniteTransition(label = "pulse").animateFloat(
-        0.95f, 1.1f, infiniteRepeatable(tween(2200, easing = FastOutSlowInEasing), RepeatMode.Reverse), label = "p",
-    )
-    Column(Modifier.fillMaxSize().systemBarsPadding().padding(bottom = 24.dp)) {
-        Row(Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text("NEARSEND", fontFamily = Anton, fontSize = 22.sp, color = Color.White)
-            Spacer(Modifier.weight(1f))
-            Text(stringResource(R.string.early_dev), color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Medium,
-                modifier = Modifier.background(SkyPillColor, CircleShape).padding(horizontal = 14.dp, vertical = 8.dp))
-        }
-        HorizontalPager(pager, Modifier.weight(1f)) { i ->
-            val pg = pages[i]
-            Column(Modifier.fillMaxSize().padding(horizontal = 24.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-                Box(Modifier.height(270.dp), contentAlignment = Alignment.Center) {
-                    for (r in 0 until 3) {
-                        val d = (130 + r * 56).dp
-                        Canvas(Modifier.size(d * pulse)) { drawCircle(Color.White.copy(alpha = 0.5f - r * 0.14f), style = Stroke(1.dp.toPx())) }
-                    }
-                    Box(Modifier.size(112.dp).glass(56.dp), contentAlignment = Alignment.Center) {
-                        Icon(pg.icon, null, tint = ActionBlue, modifier = Modifier.size(46.dp))
-                    }
-                }
-                Spacer(Modifier.height(28.dp))
-                Text(upper(stringResource(pg.title)), fontFamily = Anton, fontSize = 40.sp, color = Color.White, textAlign = TextAlign.Center, lineHeight = 44.sp)
-                Spacer(Modifier.height(16.dp))
-                SkyPill { Text(stringResource(pg.body), color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Medium, textAlign = TextAlign.Center) }
-            }
-        }
-        Row(Modifier.fillMaxWidth().padding(vertical = 12.dp), horizontalArrangement = Arrangement.Center) {
-            for (i in pages.indices) Box(Modifier.padding(4.dp).size(8.dp).background(Color.White.copy(alpha = if (i == pager.currentPage) 1f else 0.4f), CircleShape))
-        }
-        val last = pager.currentPage == pages.size - 1
-        PrimaryButton(stringResource(if (last) R.string.ob_allow else R.string.ob_continue), Modifier.padding(horizontal = 24.dp)) {
-            if (last) onDone() else scope.launch { pager.animateScrollToPage(pager.currentPage + 1) }
-        }
-    }
-}
 
 // ───────────────────────── Nearby + radar ─────────────────────────
 
@@ -259,6 +207,7 @@ fun ChatsScreen(store: ChatStore, startAdd: Boolean = false, onOpen: (String) ->
     val p = LocalPalette.current
     var adding by remember { mutableStateOf(startAdd) }
     var writing by remember { mutableStateOf(false) }
+    var grouping by remember { mutableStateOf(false) }
     val sorted = store.conversations.sortedWith(compareBy<Conversation> { it.id != PUBLIC_CHANNEL_ID }
         .thenByDescending { it.messages.lastOrNull()?.timeMs ?: 0L })
     LazyColumn(Modifier.fillMaxSize().statusBarsPadding(), contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -283,7 +232,7 @@ fun ChatsScreen(store: ChatStore, startAdd: Boolean = false, onOpen: (String) ->
             val isPublic = c.id == PUBLIC_CHANNEL_ID
             Card(Modifier.clickable { onOpen(c.id) }, padding = 12.dp) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Avatar(if (isPublic) "#" else c.peer.name, 52.dp, online = !isPublic && c.peer.hops == 1)
+                    Avatar(if (isPublic) "#" else c.peer.name, 52.dp, online = !isPublic && !c.isGroup && c.peer.hops == 1)
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Row {
                             Text(if (isPublic) stringResource(R.string.nearby_channel) else c.peer.name, color = p.ink, fontSize = 17.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
@@ -305,7 +254,8 @@ fun ChatsScreen(store: ChatStore, startAdd: Boolean = false, onOpen: (String) ->
         }
     }
     if (adding) AddOrVerifyDialog(store) { adding = false }
-    if (writing) WriteToDialog(store, onPick = { writing = false; onOpenPeer(it) }) { writing = false }
+    if (writing) WriteToDialog(store, onPick = { writing = false; onOpenPeer(it) }, onNewGroup = { writing = false; grouping = true }) { writing = false }
+    if (grouping) NewGroupDialog(store, onCreated = { grouping = false; onOpen(it) }) { grouping = false }
 }
 
 @Composable
@@ -321,7 +271,9 @@ private fun RoundIconButton(icon: ImageVector, label: String, onClick: () -> Uni
 fun ThreadScreen(store: ChatStore, conversationId: String, peer: Peer, startInfo: Boolean, onBack: () -> Unit) {
     val p = LocalPalette.current
     val isPublic = conversationId == PUBLIC_CHANNEL_ID
-    val messages = store.conversations.firstOrNull { it.id == conversationId }?.messages ?: emptyList()
+    val conv = store.conversations.firstOrNull { it.id == conversationId }
+    val messages = conv?.messages ?: emptyList()
+    val members = conv?.members
     val livePeer = store.peers.firstOrNull { it.id == conversationId } ?: peer
     val online = isPublic || store.peers.any { it.id == conversationId }
     val encrypted = store.simulated || livePeer.fingerprint.isNotEmpty()
@@ -345,10 +297,11 @@ fun ThreadScreen(store: ChatStore, conversationId: String, peer: Peer, startInfo
                     Text(if (isPublic) stringResource(R.string.nearby_channel) else livePeer.name, color = p.ink, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
                     Text(when {
                         isPublic -> stringResource(R.string.public_channel)
+                        members != null -> stringResource(R.string.group_members, members.size)
                         !online -> stringResource(R.string.out_of_range)
                         livePeer.hops == 1 -> stringResource(R.string.direct_link)
                         else -> stringResource(R.string.n_hops, livePeer.hops)
-                    }, color = if (online) p.secure else p.inkSecondary, fontSize = 11.sp)
+                    }, color = if (online || members != null) p.secure else p.inkSecondary, fontSize = 11.sp)
                 }
                 if (isPublic) Spacer(Modifier.width(40.dp))
                 else Icon(Icons.Filled.Info, stringResource(R.string.contact_info), tint = p.link, modifier = Modifier.clickable { showInfo = true }.padding(8.dp))
@@ -358,11 +311,11 @@ fun ThreadScreen(store: ChatStore, conversationId: String, peer: Peer, startInfo
                     Box(Modifier.fillMaxWidth().padding(vertical = 10.dp), contentAlignment = Alignment.Center) {
                         SkyPill { Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                             Icon(if (isPublic) Icons.Filled.Campaign else Icons.Filled.Lock, null, tint = Color.White, modifier = Modifier.size(13.dp))
-                            Text(stringResource(if (isPublic) R.string.public_hint else if (encrypted) R.string.e2e else R.string.waiting_keys), color = Color.White, fontSize = 12.sp)
+                            Text(stringResource(if (isPublic) R.string.public_hint else if (members != null) R.string.group_e2e else if (encrypted) R.string.e2e else R.string.waiting_keys), color = Color.White, fontSize = 12.sp)
                         } }
                     }
                 }
-                items(messages, key = { it.id }) { m -> Bubble(m, isPublic) { store.retry(m.id, conversationId) } }
+                items(messages, key = { it.id }) { m -> Bubble(m, isPublic || members != null) { store.retry(m.id, conversationId) } }
             }
             Row(Modifier.fillMaxWidth().glass(0.dp).navigationBarsPadding().padding(12.dp, 8.dp), verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 Box(Modifier.weight(1f).glass(16.dp).padding(horizontal = 16.dp, vertical = 12.dp)) {
@@ -376,7 +329,8 @@ fun ThreadScreen(store: ChatStore, conversationId: String, peer: Peer, startInfo
                 }
             }
         }
-        if (showInfo) PeerInfo(livePeer, store, onClose = { showInfo = false }, onRemoved = { showInfo = false; onBack() })
+        if (showInfo && members != null) GroupInfo(livePeer.name, members, store, onClose = { showInfo = false }, onLeave = { store.leaveGroup(conversationId); onBack() })
+        else if (showInfo) PeerInfo(livePeer, store, onClose = { showInfo = false }, onRemoved = { showInfo = false; onBack() })
     }
 }
 
@@ -533,10 +487,10 @@ fun AddOrVerifyDialog(store: ChatStore, onClose: () -> Unit) {
 
 /** Pick who to write to: people in range first, then saved contacts (their messages wait until they're in range). */
 @Composable
-fun WriteToDialog(store: ChatStore, onPick: (Peer) -> Unit, onClose: () -> Unit) {
+fun WriteToDialog(store: ChatStore, onPick: (Peer) -> Unit, onNewGroup: () -> Unit, onClose: () -> Unit) {
     val p = LocalPalette.current
     val inRange = store.peers.filter { it.id !in store.blocked }
-    val saved = store.conversations.map { it.peer }.filter { c -> c.id != PUBLIC_CHANNEL_ID && inRange.none { it.id == c.id } }
+    val saved = store.conversations.filter { !it.isGroup }.map { it.peer }.filter { c -> c.id != PUBLIC_CHANNEL_ID && inRange.none { it.id == c.id } }
     var adding by remember { mutableStateOf(false) }
     Dialog(onDismissRequest = onClose) {
         Column(Modifier.widthIn(max = 420.dp).fillMaxWidth().glass(24.dp, solid = true).verticalScroll(rememberScrollState()).padding(20.dp),
@@ -544,6 +498,13 @@ fun WriteToDialog(store: ChatStore, onPick: (Peer) -> Unit, onClose: () -> Unit)
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(stringResource(R.string.write_to), color = p.ink, fontSize = 20.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
                 Text(stringResource(R.string.close), color = p.link, fontSize = 15.sp, modifier = Modifier.clickable(onClick = onClose).padding(8.dp))
+            }
+            Row(Modifier.fillMaxWidth().clickable(onClick = onNewGroup).padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Box(Modifier.size(40.dp).background(ActionBlue, CircleShape), contentAlignment = Alignment.Center) {
+                    Icon(Icons.Filled.Groups, null, tint = Color.White, modifier = Modifier.size(22.dp))
+                }
+                Text(stringResource(R.string.new_group), color = p.link, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
             }
             if (inRange.isEmpty() && saved.isEmpty()) {
                 Text(stringResource(R.string.write_to_empty), color = p.inkSecondary, fontSize = 14.sp)
@@ -563,6 +524,78 @@ fun WriteToDialog(store: ChatStore, onPick: (Peer) -> Unit, onClose: () -> Unit)
         }
     }
     if (adding) AddOrVerifyDialog(store) { adding = false }
+}
+
+/** Name a group and tick who is in it: people in range and saved contacts. */
+@Composable
+private fun NewGroupDialog(store: ChatStore, onCreated: (String) -> Unit, onClose: () -> Unit) {
+    val p = LocalPalette.current
+    val inRange = store.peers.filter { it.id !in store.blocked }
+    val people = inRange + store.conversations.filter { !it.isGroup && it.id != PUBLIC_CHANNEL_ID && it.id !in store.blocked }
+        .map { it.peer }.filter { c -> inRange.none { it.id == c.id } }
+    var name by remember { mutableStateOf("") }
+    var picked by remember { mutableStateOf(setOf<String>()) }
+    Dialog(onDismissRequest = onClose) {
+        Column(Modifier.widthIn(max = 420.dp).fillMaxWidth().glass(24.dp, solid = true).verticalScroll(rememberScrollState()).padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(stringResource(R.string.new_group), color = p.ink, fontSize = 20.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                Text(stringResource(R.string.cancel), color = p.link, fontSize = 15.sp, modifier = Modifier.clickable(onClick = onClose).padding(8.dp))
+            }
+            Box(Modifier.fillMaxWidth().glass(12.dp).padding(horizontal = 16.dp, vertical = 12.dp)) {
+                if (name.isEmpty()) Text(stringResource(R.string.group_name), color = p.inkSecondary, fontSize = 16.sp)
+                BasicTextField(name, { name = it.take(40) }, Modifier.fillMaxWidth(), singleLine = true, textStyle = TextStyle(color = p.ink, fontSize = 16.sp),
+                    cursorBrush = SolidColor(ActionBlue))
+            }
+            Text(stringResource(R.string.group_pick), color = p.inkSecondary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+            if (people.isEmpty()) Text(stringResource(R.string.group_none), color = p.inkSecondary, fontSize = 14.sp)
+            people.forEach { peer ->
+                val on = peer.id in picked
+                Row(Modifier.fillMaxWidth().clickable { picked = if (on) picked - peer.id else picked + peer.id }.padding(vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Avatar(peer.name, 40.dp, online = inRange.any { it.id == peer.id } && peer.hops == 1)
+                    Text(peer.name, color = p.ink, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                    Checkbox(on, { picked = if (on) picked - peer.id else picked + peer.id }, colors = CheckboxDefaults.colors(checkedColor = ActionBlue))
+                }
+            }
+            val ok = name.isNotBlank() && picked.isNotEmpty()
+            Box(Modifier.alpha(if (ok) 1f else 0.4f)) {
+                PrimaryButton(stringResource(R.string.group_create)) { if (ok) onCreated(store.createGroup(name, people.filter { it.id in picked })) }
+            }
+        }
+    }
+}
+
+/** Group members and leaving. Leaving only affects this phone. */
+@Composable
+private fun GroupInfo(name: String, members: List<Pair<String, String>>, store: ChatStore, onClose: () -> Unit, onLeave: () -> Unit) {
+    val p = LocalPalette.current
+    var confirm by remember { mutableStateOf(false) }
+    Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.45f)).clickable(onClick = onClose), contentAlignment = Alignment.BottomCenter) {
+        Column(Modifier.fillMaxWidth().glass(24.dp).clickable(enabled = false) {}.verticalScroll(rememberScrollState()).navigationBarsPadding().padding(20.dp),
+            horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Avatar(name, 72.dp)
+            Text(name, color = p.ink, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
+            Text(stringResource(R.string.group_members, members.size), color = p.inkSecondary, fontSize = 13.sp)
+            members.forEach { (id, n) ->
+                val me = id == store.deviceId
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Avatar(if (me) store.nickname else n, 36.dp, online = !me && store.peers.any { it.id == id && it.hops == 1 })
+                    Text(if (me) store.nickname + " (" + stringResource(R.string.lbl_you) + ")" else store.peers.firstOrNull { it.id == id }?.name ?: n,
+                        color = p.ink, fontSize = 15.sp, modifier = Modifier.weight(1f))
+                }
+            }
+            GlassButton(stringResource(R.string.group_leave), Color(0xFFD93025)) { confirm = true }
+            Text(stringResource(R.string.close), color = p.link, fontSize = 15.sp, modifier = Modifier.clickable(onClick = onClose).padding(8.dp))
+        }
+    }
+    if (confirm) AlertDialog(
+        onDismissRequest = { confirm = false },
+        title = { Text(stringResource(R.string.group_leave)) },
+        text = { Text(stringResource(R.string.group_leave_body)) },
+        confirmButton = { TextButton({ confirm = false; onLeave() }) { Text(stringResource(R.string.group_leave), color = Color(0xFFD93025)) } },
+        dismissButton = { TextButton({ confirm = false }) { Text(stringResource(R.string.cancel)) } },
+    )
 }
 
 private fun qrBitmap(text: String, size: Int = 600): ImageBitmap {
