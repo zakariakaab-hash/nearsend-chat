@@ -133,5 +133,15 @@ do { // expiry and link loss
     n[0].router.neighborLost(link: "in:B")
     check(n[0].peers.isEmpty, "neighbour removed when all its links are lost")
 }
+do {   // QR verification: the code only opens with the key that was in the scanned QR
+    let net = Net(); let n = ["A", "B", "C"].map { net.add($0) }
+    var got: [(String, String, String)] = []
+    n[2].router.onVerify = { got.append(($0, $1, $2)) }
+    net.connect("A", "B"); net.connect("B", "C"); net.settle()
+    n[0].router.sendVerify("c0de", to: "C", pk: n[2].crypto.publicKey) { _ in }
+    check(got.count == 1 && got[0].0 == "A" && got[0].1 == MeshCrypto.fingerprint(n[0].crypto.publicKey) && got[0].2 == "c0de", "QR verify code reaches the scanned phone")
+    n[0].router.sendVerify("bad", to: "C", pk: n[1].crypto.publicKey) { _ in }
+    check(got.count == 1, "QR verify sealed to the wrong key is ignored")
+}
 print(failures == 0 ? "ALL PASSED" : "\(failures) FAILED")
 exit(failures == 0 ? 0 : 1)

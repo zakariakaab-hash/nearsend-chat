@@ -34,6 +34,7 @@ dependencies {
     implementation("androidx.core:core-ktx:1.13.1")
     implementation("androidx.appcompat:appcompat:1.7.0")
     implementation("com.google.crypto.tink:tink-android:1.14.1")
+    implementation("com.journeyapps:zxing-android-embedded:4.3.0")   // QR scanner + generator (Apache-2.0)
 
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.json:json:20240303")   // android.jar's org.json is stubbed in JVM unit tests

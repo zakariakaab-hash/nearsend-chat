@@ -40,6 +40,8 @@ final class MeshRouter {
     var onText: ((_ from: String, _ name: String, _ text: String, _ hops: Int, _ msgID: String) -> Void)?
     var onPublic: ((_ from: String, _ name: String, _ text: String, _ id: String) -> Void)?
     var onDelivered: ((_ msgID: String) -> Void)?
+    /// QR verification arrived: `from` proved it holds the key we know for it (`fingerprint`) and echoed `code`.
+    var onVerify: ((_ from: String, _ fingerprint: String, _ code: String) -> Void)?
 
     private var links: [String: String] = [:]      // link id -> peer id (direct neighbours; possibly two links per peer)
     private var peers: [String: PeerInfo] = [:]
@@ -127,6 +129,16 @@ final class MeshRouter {
         route(p, except: nil, completion: completion)
     }
 
+    /// After scanning `dst`'s QR code: send back its one-time `code`, sealed to the key `pk` taken from the QR.
+    func sendVerify(_ code: String, to dst: String, pk: Data, completion: @escaping (SendOutcome) -> Void) {
+        let id = UUID().uuidString
+        guard let ct = try? crypto.seal(code, peerPK: pk, myID: myID, peerID: dst, aad: id) else { completion(.failed); return }
+        var p = Packet(t: "vfy", id: id, src: myID, dst: dst, ttl: Self.startTTL, ts: ms())
+        p.n = myName; p.ct = ct.base64EncodedString()
+        remember(id)
+        route(p, except: nil, completion: completion)
+    }
+
     // MARK: receiving
 
     func receive(_ data: Data, from link: String?) {
@@ -158,6 +170,12 @@ final class MeshRouter {
             forward(p, from: link)
         case "ack":
             if p.dst == myID, let ref = p.ref { onDelivered?(ref) } else { forward(p, from: link) }
+        case "vfy":
+            if p.dst == myID {
+                guard let info = peers[p.src], let s = p.ct, let ct = Data(base64Encoded: s),
+                      let code = try? crypto.open(ct, peerPK: info.pk, myID: myID, peerID: p.src, aad: p.id) else { return }
+                onVerify?(p.src, MeshCrypto.fingerprint(info.pk), code)
+            } else { forward(p, from: link) }
         default: break
         }
     }

@@ -88,6 +88,17 @@ class ProtocolTest {
         fun settle() { repeat(3) { nodes.values.forEach { it.router.tick() } } }
     }
 
+    @Test fun qrVerifyOnlyOpensWithTheRightKey() {
+        val net = Net(); val n = listOf("A", "B", "C").map { net.add(it) }
+        val got = mutableListOf<Pair<String, String>>()
+        n[2].router.onVerify = { f, fp, code -> assertEquals(MeshCrypto.fingerprint(n[0].crypto.publicKey), fp); got += f to code }
+        net.connect("A", "B"); net.connect("B", "C"); net.settle()
+        n[0].router.sendVerify("c0de", "C", n[2].crypto.publicKey) { }
+        assertEquals(listOf("A" to "c0de"), got)
+        n[0].router.sendVerify("bad", "C", n[1].crypto.publicKey) { }   // sealed to the wrong key: C cannot open it
+        assertEquals(1, got.size)
+    }
+
     @Test fun lineOfFourDeliversEncryptedAcrossThreeHops() {
         val net = Net(); val n = listOf("A", "B", "C", "D").map { net.add(it) }
         net.connect("A", "B"); net.connect("B", "C"); net.connect("C", "D"); net.settle()

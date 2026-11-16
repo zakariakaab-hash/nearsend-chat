@@ -1,6 +1,29 @@
 package app.nearsend.chat
 
+import android.content.Intent
+import android.graphics.Bitmap
+import androidx.compose.ui.platform.LocalClipboardManager
+import android.util.Patterns
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.annotation.StringRes
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.graphics.FilterQuality
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.LinkAnnotation
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextLinkStyles
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.window.Dialog
+import com.google.zxing.BarcodeFormat
+import com.google.zxing.EncodeHintType
+import com.google.zxing.qrcode.QRCodeWriter
+import com.journeyapps.barcodescanner.ScanContract
+import com.journeyapps.barcodescanner.ScanOptions
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
@@ -232,18 +255,27 @@ fun Radar(peers: List<Peer>, modifier: Modifier = Modifier) {
 // ───────────────────────── Chats ─────────────────────────
 
 @Composable
-fun ChatsScreen(store: ChatStore, onOpen: (String) -> Unit) {
+fun ChatsScreen(store: ChatStore, startAdd: Boolean = false, onOpen: (String) -> Unit, onOpenPeer: (Peer) -> Unit) {
     val p = LocalPalette.current
+    var adding by remember { mutableStateOf(startAdd) }
+    var writing by remember { mutableStateOf(false) }
     val sorted = store.conversations.sortedWith(compareBy<Conversation> { it.id != PUBLIC_CHANNEL_ID }
         .thenByDescending { it.messages.lastOrNull()?.timeMs ?: 0L })
     LazyColumn(Modifier.fillMaxSize().statusBarsPadding(), contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        item { PageTitle(R.string.tab_chats) }
+        item {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                PageTitle(R.string.tab_chats, Modifier.weight(1f))
+                RoundIconButton(Icons.Filled.QrCode, stringResource(R.string.add_verify)) { adding = true }
+                RoundIconButton(Icons.Filled.Edit, stringResource(R.string.write_to)) { writing = true }
+            }
+        }
         if (store.conversations.size <= 1) item {
             Card {
                 Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Icon(Icons.Filled.Forum, null, tint = ActionBlue, modifier = Modifier.size(30.dp))
                     Text(stringResource(R.string.no_chats), color = p.ink, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
                     Text(stringResource(R.string.no_chats_hint), color = p.inkSecondary, fontSize = 13.sp, textAlign = TextAlign.Center)
+                    PrimaryButton(stringResource(R.string.add_verify)) { adding = true }
                 }
             }
         }
@@ -271,6 +303,15 @@ fun ChatsScreen(store: ChatStore, onOpen: (String) -> Unit) {
                 }
             }
         }
+    }
+    if (adding) AddOrVerifyDialog(store) { adding = false }
+    if (writing) WriteToDialog(store, onPick = { writing = false; onOpenPeer(it) }) { writing = false }
+}
+
+@Composable
+private fun RoundIconButton(icon: ImageVector, label: String, onClick: () -> Unit) {
+    Box(Modifier.size(44.dp).glass(22.dp).clickable(onClick = onClick), contentAlignment = Alignment.Center) {
+        Icon(icon, label, tint = LocalPalette.current.link, modifier = Modifier.size(22.dp))
     }
 }
 
@@ -335,7 +376,7 @@ fun ThreadScreen(store: ChatStore, conversationId: String, peer: Peer, startInfo
                 }
             }
         }
-        if (showInfo) PeerInfo(livePeer, store) { showInfo = false }
+        if (showInfo) PeerInfo(livePeer, store, onClose = { showInfo = false }, onRemoved = { showInfo = false; onBack() })
     }
 }
 
@@ -350,7 +391,7 @@ private fun Bubble(m: Message, showSender: Boolean, onRetry: () -> Unit) {
         Column(horizontalAlignment = if (m.mine) Alignment.End else Alignment.Start, modifier = Modifier.widthIn(max = 300.dp)) {
             if (showSender && !m.mine && m.sender != null)
                 Text(m.sender, color = Color.White.copy(alpha = 0.9f), fontSize = 11.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(start = 6.dp))
-            Text(m.text, color = if (m.mine) Color.White else p.ink, fontSize = 16.sp,
+            Text(linkify(m.text, if (m.mine) Color.White else p.link), color = if (m.mine) Color.White else p.ink, fontSize = 16.sp,
                 modifier = (if (m.mine) Modifier.background(ActionBlue, RoundedCornerShape(20.dp)) else Modifier.glass(20.dp)).padding(horizontal = 14.dp, vertical = 10.dp))
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.padding(top = 3.dp)) {
                 Text(timeOf(m.timeMs), color = Color.White.copy(alpha = 0.85f), fontSize = 11.sp)
@@ -368,14 +409,26 @@ private fun Bubble(m: Message, showSender: Boolean, onRetry: () -> Unit) {
     }
 }
 
-/** Fingerprint comparison: two people read their digits to each other in person to rule out an impostor. */
+/** Contact info: nickname, QR or fingerprint verification, block and remove. */
 @Composable
-private fun PeerInfo(peer: Peer, store: ChatStore, onClose: () -> Unit) {
+private fun PeerInfo(peer: Peer, store: ChatStore, onClose: () -> Unit, onRemoved: () -> Unit) {
     val p = LocalPalette.current
-    Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.45f)).clickable(onClick = onClose), contentAlignment = Alignment.BottomCenter) {
-        Column(Modifier.fillMaxWidth().glass(24.dp).clickable(enabled = false) {}.navigationBarsPadding().padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(14.dp)) {
+    var nick by remember { mutableStateOf(store.nicknames[peer.fingerprint] ?: "") }
+    var confirmRemove by remember { mutableStateOf(false) }
+    val isBlocked = peer.id in store.blocked
+    val close = { if (nick != (store.nicknames[peer.fingerprint] ?: "")) store.setNickname(peer, nick); onClose() }
+    Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.45f)).clickable(onClick = close), contentAlignment = Alignment.BottomCenter) {
+        Column(Modifier.fillMaxWidth().glass(24.dp).clickable(enabled = false) {}.verticalScroll(rememberScrollState()).navigationBarsPadding().padding(20.dp),
+            horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Avatar(peer.name, 72.dp)
             Text(peer.name, color = p.ink, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
+            if (isBlocked) StatusPill(stringResource(R.string.blocked_hint), Color(0xFFD93025))
+            if (peer.fingerprint.isNotEmpty()) Box(Modifier.fillMaxWidth().glass(12.dp).padding(horizontal = 16.dp, vertical = 12.dp)) {
+                if (nick.isEmpty()) Text(stringResource(R.string.nickname), color = p.inkSecondary, fontSize = 16.sp)
+                BasicTextField(nick, { nick = it }, Modifier.fillMaxWidth(), singleLine = true, textStyle = TextStyle(color = p.ink, fontSize = 16.sp),
+                    cursorBrush = SolidColor(ActionBlue), keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                    keyboardActions = KeyboardActions(onDone = { store.setNickname(peer, nick) }))
+            }
             Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     Icon(Icons.Filled.Key, null, tint = p.ink, modifier = Modifier.size(16.dp))
@@ -384,17 +437,156 @@ private fun PeerInfo(peer: Peer, store: ChatStore, onClose: () -> Unit) {
                 Text(peer.fingerprint.ifEmpty { "—" }, color = p.link, fontFamily = FontFamily.Monospace, fontSize = 18.sp)
                 Text(stringResource(R.string.their_fp_hint), color = p.inkSecondary, fontSize = 13.sp)
             }
-            PrimaryButton(stringResource(if (peer.verified) R.string.remove_verif else R.string.mark_verif)) { store.toggleVerified(peer); onClose() }
+            ScanQrButton(store, onDone = close)
+            GlassButton(stringResource(if (peer.verified) R.string.remove_verif else R.string.mark_verif), p.link) { store.toggleVerified(peer); close() }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                GlassButton(stringResource(if (isBlocked) R.string.unblock else R.string.block), p.link, Modifier.weight(1f)) { store.toggleBlocked(peer.id) }
+                GlassButton(stringResource(R.string.remove_contact), Color(0xFFD93025), Modifier.weight(1f)) { confirmRemove = true }
+            }
+            Text(stringResource(R.string.close), color = p.link, fontSize = 15.sp, modifier = Modifier.clickable(onClick = close).padding(8.dp))
+        }
+    }
+    if (confirmRemove) AlertDialog(
+        onDismissRequest = { confirmRemove = false },
+        title = { Text(stringResource(R.string.remove_confirm)) },
+        text = { Text(stringResource(R.string.remove_confirm_body)) },
+        confirmButton = { TextButton({ confirmRemove = false; store.removeContact(peer); onRemoved() }) { Text(stringResource(R.string.remove), color = Color(0xFFD93025)) } },
+        dismissButton = { TextButton({ confirmRemove = false }) { Text(stringResource(R.string.cancel)) } },
+    )
+}
+
+@Composable
+private fun GlassButton(title: String, color: Color, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    Box(modifier.fillMaxWidth().glass(12.dp).clickable(onClick = onClick).padding(vertical = 14.dp), contentAlignment = Alignment.Center) {
+        Text(title, color = color, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
+    }
+}
+
+/** Opens the camera scanner; shows whether the scanned person is now verified. */
+@Composable
+fun ScanQrButton(store: ChatStore, secondary: Boolean = false, onDone: () -> Unit = {}) {
+    var result by remember { mutableStateOf<Pair<ChatStore.ScanResult, String>?>(null) }
+    val launcher = rememberLauncherForActivityResult(ScanContract()) { r -> if (r.contents != null) result = store.applyScan(r.contents) }
+    val title = stringResource(R.string.scan_qr)
+    val scan = { launcher.launch(ScanOptions().setDesiredBarcodeFormats(ScanOptions.QR_CODE).setPrompt(title).setBeepEnabled(false).setOrientationLocked(false)) }
+    if (secondary) GlassButton(title, LocalPalette.current.link) { scan() } else PrimaryButton(title) { scan() }
+    result?.let { (kind, name) -> ScanResultDialog(kind, name) { result = null; onDone() } }
+}
+
+/** Outcome of scanning a QR code or pasting a contact code. */
+@Composable
+private fun ScanResultDialog(kind: ChatStore.ScanResult, name: String, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(when (kind) {
+            ChatStore.ScanResult.Verified -> R.string.verified
+            ChatStore.ScanResult.Mismatch -> R.string.qr_mismatch
+            ChatStore.ScanResult.Invalid -> R.string.qr_invalid
+            ChatStore.ScanResult.Added -> R.string.contact_added
+        })) },
+        text = if (kind == ChatStore.ScanResult.Invalid) null else {
+            { Text(name + "\n\n" + stringResource(when (kind) {
+                ChatStore.ScanResult.Verified -> R.string.qr_verified_body
+                ChatStore.ScanResult.Added -> R.string.contact_added_body
+                else -> R.string.qr_mismatch_body
+            })) }
+        },
+        confirmButton = { TextButton(onDismiss) { Text(stringResource(R.string.close)) } },
+    )
+}
+
+/** One place to connect with someone: our QR (id, name, key, one-time code), scan theirs, or swap codes as text (unverified). */
+@Composable
+fun AddOrVerifyDialog(store: ChatStore, onClose: () -> Unit) {
+    val p = LocalPalette.current
+    val ctx = LocalContext.current
+    val clipboard = LocalClipboardManager.current
+    val qr = remember { qrBitmap(store.myQr()) }
+    var pasted by remember { mutableStateOf<Pair<ChatStore.ScanResult, String>?>(null) }
+    val shareTitle = stringResource(R.string.share_text)
+    val shareMessage = stringResource(R.string.share_message)
+    LaunchedEffect(Unit) { store.lastVerified = null }
+    Dialog(onDismissRequest = onClose) {
+        Column(Modifier.widthIn(max = 420.dp).fillMaxWidth().glass(24.dp, solid = true).verticalScroll(rememberScrollState()).padding(20.dp),
+            horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            Text(stringResource(R.string.add_verify), color = p.ink, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
+            Text(stringResource(R.string.add_verify_hint), color = p.inkSecondary, fontSize = 13.sp, textAlign = TextAlign.Center)
+            Image(qr, stringResource(R.string.my_qr), Modifier.fillMaxWidth().aspectRatio(1f).background(Color.White, RoundedCornerShape(16.dp)).padding(14.dp),
+                filterQuality = FilterQuality.None)
+            Text(store.nickname, color = p.ink, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+            Text(store.myFingerprint, color = p.inkSecondary, fontFamily = FontFamily.Monospace, fontSize = 12.sp, textAlign = TextAlign.Center)
+            store.lastVerified?.let { StatusPill("✓ " + stringResource(R.string.verified) + " · " + it) }
+            ScanQrButton(store)
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                GlassButton(shareTitle, p.link, Modifier.weight(1f)) {
+                    val send = Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, shareMessage + "\n\n" + store.myTextCode())
+                    ctx.startActivity(Intent.createChooser(send, shareTitle))
+                }
+                GlassButton(stringResource(R.string.paste_code), p.link, Modifier.weight(1f)) { pasted = store.applyText(clipboard.getText()?.text) }
+            }
+            Text(stringResource(R.string.text_code_note), color = p.inkSecondary, fontSize = 12.sp, textAlign = TextAlign.Center)
             Text(stringResource(R.string.close), color = p.link, fontSize = 15.sp, modifier = Modifier.clickable(onClick = onClose).padding(8.dp))
         }
+    }
+    pasted?.let { (kind, name) -> ScanResultDialog(kind, name) { pasted = null } }
+}
+
+/** Pick who to write to: people in range first, then saved contacts (their messages wait until they're in range). */
+@Composable
+fun WriteToDialog(store: ChatStore, onPick: (Peer) -> Unit, onClose: () -> Unit) {
+    val p = LocalPalette.current
+    val inRange = store.peers.filter { it.id !in store.blocked }
+    val saved = store.conversations.map { it.peer }.filter { c -> c.id != PUBLIC_CHANNEL_ID && inRange.none { it.id == c.id } }
+    var adding by remember { mutableStateOf(false) }
+    Dialog(onDismissRequest = onClose) {
+        Column(Modifier.widthIn(max = 420.dp).fillMaxWidth().glass(24.dp, solid = true).verticalScroll(rememberScrollState()).padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(stringResource(R.string.write_to), color = p.ink, fontSize = 20.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                Text(stringResource(R.string.close), color = p.link, fontSize = 15.sp, modifier = Modifier.clickable(onClick = onClose).padding(8.dp))
+            }
+            if (inRange.isEmpty() && saved.isEmpty()) {
+                Text(stringResource(R.string.write_to_empty), color = p.inkSecondary, fontSize = 14.sp)
+                PrimaryButton(stringResource(R.string.add_verify)) { adding = true }
+            }
+            listOf(R.string.in_range to inRange, R.string.contacts to saved).forEach { (label, people) ->
+                if (people.isNotEmpty()) Text(stringResource(label), color = p.inkSecondary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                people.forEach { peer ->
+                    Row(Modifier.fillMaxWidth().clickable { onPick(peer) }.padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Avatar(peer.name, 40.dp, online = label == R.string.in_range && peer.hops == 1)
+                        Text(peer.name, color = p.ink, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                        if (peer.verified) Icon(Icons.Filled.Verified, stringResource(R.string.verified), tint = ActionBlue, modifier = Modifier.size(16.dp))
+                    }
+                }
+            }
+        }
+    }
+    if (adding) AddOrVerifyDialog(store) { adding = false }
+}
+
+private fun qrBitmap(text: String, size: Int = 600): ImageBitmap {
+    val m = QRCodeWriter().encode(text, BarcodeFormat.QR_CODE, size, size, mapOf(EncodeHintType.MARGIN to 0))
+    val px = IntArray(size * size) { if (m[it % size, it / size]) 0xFF1B2A4A.toInt() else 0xFFFFFFFF.toInt() }
+    return Bitmap.createBitmap(px, size, size, Bitmap.Config.ARGB_8888).asImageBitmap()
+}
+
+/** Web addresses in a message become tappable links. */
+private fun linkify(text: String, color: Color): AnnotatedString = buildAnnotatedString {
+    append(text)
+    val m = Patterns.WEB_URL.matcher(text)
+    while (m.find()) {
+        val url = m.group().let { if (it.contains("://")) it else "https://$it" }
+        addLink(LinkAnnotation.Url(url, TextLinkStyles(SpanStyle(color = color, textDecoration = TextDecoration.Underline))), m.start(), m.end())
     }
 }
 
 // ───────────────────────── You ─────────────────────────
 
 @Composable
-fun IdentityScreen(store: ChatStore) {
+fun IdentityScreen(store: ChatStore, startQr: Boolean = false) {
     val p = LocalPalette.current
+    var showQr by remember { mutableStateOf(startQr) }
     var confirmWipe by remember { mutableStateOf(false) }
     var langMenu by remember { mutableStateOf(false) }
     var taps by remember { mutableIntStateOf(0) }
@@ -431,6 +623,8 @@ fun IdentityScreen(store: ChatStore) {
                     }
                     Text(store.myFingerprint.ifEmpty { "—" }, color = p.link, fontFamily = FontFamily.Monospace, fontSize = 15.sp)
                     Text(stringResource(R.string.your_fp_hint), color = p.inkSecondary, fontSize = 13.sp)
+                    PrimaryButton(stringResource(R.string.add_verify)) { showQr = true }
+                    ScanQrButton(store, secondary = true)
                 }
             }
         }
@@ -485,6 +679,7 @@ fun IdentityScreen(store: ChatStore) {
             }
         }
     }
+    if (showQr) AddOrVerifyDialog(store) { showQr = false }
     if (confirmWipe) AlertDialog(
         onDismissRequest = { confirmWipe = false },
         title = { Text(stringResource(R.string.erase_confirm)) },

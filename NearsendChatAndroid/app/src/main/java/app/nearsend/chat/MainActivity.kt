@@ -58,8 +58,9 @@ class MainActivity : AppCompatActivity() {
         val tab = intent.getIntExtra("tab", 0)
         val thread = intent.getStringExtra("thread")
         val info = intent.getBooleanExtra("info", false)   // open the contact info sheet of `thread`
+        val qr = intent.getBooleanExtra("qr", false)       // open "my QR code" on the You tab
         setContent {
-            NearsendApp(store, onboarded, tab, thread, info) {
+            NearsendApp(store, onboarded, tab, thread, info, qr) {
                 prefs.edit().putBoolean("onboarded", true).apply()
                 requestPermissions()
             }
@@ -84,7 +85,7 @@ class MainActivity : AppCompatActivity() {
 }
 
 @Composable
-fun NearsendApp(store: ChatStore, startOnboarded: Boolean, startTab: Int, startThread: String?, startInfo: Boolean, onOnboardingDone: () -> Unit) {
+fun NearsendApp(store: ChatStore, startOnboarded: Boolean, startTab: Int, startThread: String?, startInfo: Boolean, startQr: Boolean, onOnboardingDone: () -> Unit) {
     val night = isSystemInDarkTheme()
     var onboarded by remember { mutableStateOf(startOnboarded) }
     var tab by remember { mutableIntStateOf(startTab) }
@@ -106,8 +107,10 @@ fun NearsendApp(store: ChatStore, startOnboarded: Boolean, startTab: Int, startT
                     Box(Modifier.weight(1f)) {
                         when (tab) {
                             0 -> NearbyScreen(store) { peer -> store.ensureConversation(peer); threadPeer = peer; thread = peer.id }
-                            1 -> ChatsScreen(store) { id -> threadPeer = null; thread = id }
-                            else -> IdentityScreen(store)
+                            1 -> ChatsScreen(store, startAdd = startQr && startTab == 1,
+                                onOpen = { id -> threadPeer = null; thread = id },
+                                onOpenPeer = { peer -> store.ensureConversation(peer); threadPeer = peer; thread = peer.id })
+                            else -> IdentityScreen(store, startQr)
                         }
                     }
                     TabBar(tab, store.unreadTotal) { tab = it }

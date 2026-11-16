@@ -75,6 +75,8 @@ class MeshRouter(val myId: String, var myName: String, private val crypto: MeshC
     var onText: ((from: String, name: String, text: String, hops: Int, msgId: String) -> Unit)? = null
     var onPublic: ((from: String, name: String, text: String, id: String) -> Unit)? = null
     var onDelivered: ((msgId: String) -> Unit)? = null
+    /** QR verification arrived: [from] proved it holds the key we know for it ([fingerprint]) and echoed [code]. */
+    var onVerify: ((from: String, fingerprint: String, code: String) -> Unit)? = null
 
     private val links = LinkedHashMap<String, String>()      // link id -> peer id (direct neighbours; possibly two links per peer)
     private val peers = HashMap<String, PeerInfo>()
@@ -149,6 +151,15 @@ class MeshRouter(val myId: String, var myName: String, private val crypto: MeshC
         route(p, null, completion)
     }
 
+    /** After scanning [dst]'s QR code: send back its one-time [code], sealed to the key [pk] taken from the QR. */
+    fun sendVerify(code: String, dst: String, pk: ByteArray, completion: (SendOutcome) -> Unit) {
+        val id = UUID.randomUUID().toString()
+        val ct = runCatching { crypto.seal(code, pk, myId, dst, id) }.getOrNull() ?: return completion(SendOutcome.Failed)
+        val p = Packet("vfy", id, myId, dst, START_TTL, now(), n = myName, ct = b64.encodeToString(ct))
+        remember(id)
+        route(p, null, completion)
+    }
+
     // ---- receiving
 
     fun receive(data: ByteArray, from: String?) {
@@ -181,6 +192,12 @@ class MeshRouter(val myId: String, var myName: String, private val crypto: MeshC
             } else forward(p, from)
             "pub" -> { p.tx?.let { onPublic?.invoke(p.src, p.n ?: "?", it, p.id) }; forward(p, from) }
             "ack" -> if (p.dst == myId && p.ref != null) onDelivered?.invoke(p.ref) else forward(p, from)
+            "vfy" -> if (p.dst == myId) {
+                val info = peers[p.src] ?: return
+                val ct = runCatching { unb64.decode(p.ct ?: return) }.getOrNull() ?: return
+                val code = runCatching { crypto.open(ct, info.pk, myId, p.src, p.id) }.getOrNull() ?: return
+                onVerify?.invoke(p.src, MeshCrypto.fingerprint(info.pk), code)
+            } else forward(p, from)
         }
     }
 

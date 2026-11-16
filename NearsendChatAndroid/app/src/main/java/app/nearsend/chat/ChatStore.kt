@@ -19,6 +19,8 @@ import kotlinx.coroutines.launch
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
+import java.security.SecureRandom
+import java.util.Base64
 import java.util.UUID
 
 /**
@@ -47,6 +49,11 @@ class ChatStore private constructor(private val app: Application) {
     var bluetoothState by mutableStateOf("starting"); private set   // starting | ready | off | unauthorized | unsupported
     var myFingerprint by mutableStateOf("A3F1 9C02 7BD4 E58A\n11C0 4F6E 92AB 3D77"); private set
     var verified by mutableStateOf(setOf<String>()); private set
+    var nicknames by mutableStateOf(mapOf<String, String>()); private set   // fingerprint -> name you gave them
+    var blocked by mutableStateOf(setOf<String>()); private set             // peer ids whose messages are dropped
+    var lastVerified by mutableStateOf<String?>(null)                       // who just confirmed our QR (shown on the QR screen)
+    private val myCodes = HashSet<String>()                                  // one-time codes shown in our QR this session
+    private val pendingVerify = HashMap<String, Pair<String, ByteArray>>()   // peer id -> (their code, their key), sent when reachable
     var activeConversation: String? = null
     var wipeCount by mutableStateOf(0); private set   // UI returns to onboarding when this changes
     var backgroundEnabled by mutableStateOf(prefs.getBoolean("background", true)); private set
@@ -94,7 +101,8 @@ class ChatStore private constructor(private val app: Application) {
             r.transmit = { link, data, done -> t.write(link, data, done) }
             r.onPeers = { applyPeers(it) }
             r.onText = { from, name, text, hops, id -> receiveText(from, name, text, hops, id) }
-            r.onPublic = { _, name, text, id -> receivePublic(name, text, id) }
+            r.onPublic = { from, name, text, id -> receivePublic(from, name, text, id) }
+            r.onVerify = { from, fp, code -> confirmVerify(from, fp, code) }
             r.onDelivered = { markDelivered(it) }
             t.onNeighbor = { link, id, name, pk -> r.neighborConnected(link, id, name, pk) }
             t.onLost = { r.neighborLost(it) }
@@ -150,6 +158,7 @@ class ChatStore private constructor(private val app: Application) {
         prefs.edit().clear().apply()
         deviceId = newDeviceId()
         verified = emptySet(); peers = emptyList(); conversations = emptyList()
+        nicknames = emptyMap(); blocked = emptySet(); myCodes.clear(); pendingVerify.clear(); lastVerified = null
         nickname = "anon-${(1000..9999).random()}"
         if (!simulated) myFingerprint = ""
         ensurePublicChannel()
@@ -172,6 +181,90 @@ class ChatStore private constructor(private val app: Application) {
     fun toggleVerified(peer: Peer) {
         if (peer.fingerprint.isEmpty()) return
         verified = if (peer.fingerprint in verified) verified - peer.fingerprint else verified + peer.fingerprint
+        peers = peers.map { it.copy(verified = it.fingerprint in verified) }
+        save()
+    }
+
+    // ---- QR verification and contacts
+
+    enum class ScanResult { Verified, Mismatch, Invalid, Added }
+
+    /** Our contact card to send as text. No one-time code: a code that can be forwarded must never verify anyone. */
+    fun myTextCode(): String = JSONObject().put("nearsend", 1).put("id", deviceId).put("n", nickname)
+        .put("pk", Base64.getEncoder().encodeToString(keys.loadOrCreate().publicKey)).toString()
+
+    /** A pasted contact card (from a message, or a QR copied as text): adds an UNVERIFIED contact, ignoring any one-time code. */
+    fun applyText(text: String?): Pair<ScanResult, String> {
+        val s = text.orEmpty(); val start = s.indexOf('{'); val end = s.lastIndexOf('}')
+        if (start < 0 || end < start) return ScanResult.Invalid to ""
+        val o = runCatching { JSONObject(s.substring(start, end + 1)) }.getOrNull() ?: return ScanResult.Invalid to ""
+        val id = o.optString("id"); val name = o.optString("n").ifEmpty { "?" }
+        val pk = runCatching { Base64.getDecoder().decode(o.optString("pk")) }.getOrNull()
+        if (o.optInt("nearsend") != 1 || id.isEmpty() || id == deviceId || pk?.size != 32) return ScanResult.Invalid to ""
+        val fp = MeshCrypto.fingerprint(pk)
+        val seen = peers.firstOrNull { it.id == id }
+        if (seen != null && seen.fingerprint != fp) return ScanResult.Mismatch to seen.name
+        ensureConversation(seen ?: Peer(id, name, 1, -80, fp in verified, fp)); save()
+        return ScanResult.Added to (seen?.name ?: name)
+    }
+
+    /** Contents of our QR code. The one-time code proves to us that the scanner really saw this screen. */
+    fun myQr(): String {
+        val code = ByteArray(8).also { SecureRandom().nextBytes(it) }.joinToString("") { "%02x".format(it) }
+        myCodes += code
+        return JSONObject().put("nearsend", 1).put("id", deviceId).put("n", nickname)
+            .put("pk", Base64.getEncoder().encodeToString(keys.loadOrCreate().publicKey)).put("c", code).toString()
+    }
+
+    /** We scanned someone's QR: their key is verified, and they get our proof so they can verify us too. */
+    fun applyScan(text: String?): Pair<ScanResult, String> {
+        val o = runCatching { JSONObject(text ?: "") }.getOrNull() ?: return ScanResult.Invalid to ""
+        val id = o.optString("id"); val code = o.optString("c"); val name = o.optString("n").ifEmpty { "?" }
+        val pk = runCatching { Base64.getDecoder().decode(o.optString("pk")) }.getOrNull()
+        if (o.optInt("nearsend") != 1 || id.isEmpty() || id == deviceId || code.isEmpty() || pk?.size != 32) return ScanResult.Invalid to ""
+        val fp = MeshCrypto.fingerprint(pk)
+        val seen = peers.firstOrNull { it.id == id }
+        verified = verified + fp
+        peers = peers.map { it.copy(verified = it.fingerprint in verified) }
+        ensureConversation(seen ?: Peer(id, name, 1, -80, true, fp))
+        pendingVerify[id] = code to pk
+        flushVerify(); save()
+        return (if (seen != null && seen.fingerprint != fp) ScanResult.Mismatch else ScanResult.Verified) to (seen?.name ?: name)
+    }
+
+    private fun flushVerify() {
+        val r = router ?: return
+        for ((id, v) in pendingVerify.toList()) if (peers.any { it.id == id }) {
+            pendingVerify.remove(id)
+            r.sendVerify(v.first, id, v.second) { if (it == SendOutcome.Unreachable) pendingVerify[id] = v }
+        }
+    }
+
+    /** Someone scanned our QR and proved it with the key we already know for them. */
+    private fun confirmVerify(from: String, fp: String, code: String) {
+        if (code !in myCodes) return
+        verified = verified + fp
+        peers = peers.map { it.copy(verified = it.fingerprint in verified) }
+        peers.firstOrNull { it.id == from }?.let { ensureConversation(it); lastVerified = it.name }
+        Notifier.tap(app); save()
+    }
+
+    fun setNickname(peer: Peer, name: String) {
+        if (peer.fingerprint.isEmpty()) return
+        nicknames = if (name.isBlank()) nicknames - peer.fingerprint else nicknames + (peer.fingerprint to name.trim())
+        if (name.isNotBlank()) {
+            peers = peers.map { if (it.fingerprint == peer.fingerprint) it.copy(name = name.trim()) else it }
+            conversations = conversations.map { if (it.peer.fingerprint == peer.fingerprint) it.copy(peer = it.peer.copy(name = name.trim())) else it }
+        }
+        save()
+    }
+
+    fun toggleBlocked(id: String) { blocked = if (id in blocked) blocked - id else blocked + id; save() }
+
+    /** Deletes the chat, nickname and verification. Blocking (if any) stays. */
+    fun removeContact(peer: Peer) {
+        conversations = conversations.filter { it.id != peer.id }
+        verified = verified - peer.fingerprint; nicknames = nicknames - peer.fingerprint
         peers = peers.map { it.copy(verified = it.fingerprint in verified) }
         save()
     }
@@ -228,15 +321,17 @@ class ChatStore private constructor(private val app: Application) {
 
     private fun applyPeers(list: List<Peer>) {
         val known = peers.map { it.id }.toSet()
-        val mapped = list.map { it.copy(verified = it.fingerprint in verified) }.sortedWith(compareBy<Peer> { it.hops }.thenByDescending { it.rssi })
+        val mapped = list.map { it.copy(verified = it.fingerprint in verified, name = nicknames[it.fingerprint] ?: it.name) }.sortedWith(compareBy<Peer> { it.hops }.thenByDescending { it.rssi })
         if (mapped.any { it.id !in known }) Notifier.tap(app, 15)
         peers = mapped
         peerCountListener?.invoke(mapped.size)
         conversations = conversations.map { c -> mapped.firstOrNull { it.id == c.id }?.let { c.copy(peer = it) } ?: c }
-        flushOutbox()
+        flushOutbox(); flushVerify()
     }
 
-    private fun receiveText(from: String, name: String, text: String, hops: Int, id: String) {
+    private fun receiveText(from: String, sentName: String, text: String, hops: Int, id: String) {
+        if (from in blocked) return
+        val name = peers.firstOrNull { it.id == from }?.name ?: sentName
         ensureConversation(peers.firstOrNull { it.id == from } ?: Peer(from, name, hops, -80))
         if (conversations.firstOrNull { it.id == from }?.messages?.any { it.id == id } == true) return
         val m = Message(text, System.currentTimeMillis(), false, id = id, hops = hops)
@@ -248,7 +343,9 @@ class ChatStore private constructor(private val app: Application) {
         save()
     }
 
-    private fun receivePublic(name: String, text: String, id: String) {
+    private fun receivePublic(from: String, sentName: String, text: String, id: String) {
+        if (from in blocked) return
+        val name = peers.firstOrNull { it.id == from }?.name ?: sentName
         if (conversations.firstOrNull { it.id == PUBLIC_CHANNEL_ID }?.messages?.any { it.id == id } == true) return
         val m = Message(text, System.currentTimeMillis(), false, id = id, sender = name)
         conversations = conversations.map {
@@ -281,7 +378,7 @@ class ChatStore private constructor(private val app: Application) {
 
     private fun save() {
         if (simulated) return
-        val o = JSONObject().put("verified", JSONArray(verified.toList()))
+        val o = JSONObject().put("verified", JSONArray(verified.toList())).put("nicknames", JSONObject(nicknames)).put("blocked", JSONArray(blocked.toList()))
         o.put("conversations", JSONArray(conversations.map { c ->
             JSONObject().put("id", c.id).put("unread", c.unread)
                 .put("peer", JSONObject().put("id", c.peer.id).put("name", c.peer.name).put("hops", c.peer.hops).put("rssi", c.peer.rssi).put("fp", c.peer.fingerprint))
@@ -297,6 +394,8 @@ class ChatStore private constructor(private val app: Application) {
         runCatching {
             val o = JSONObject(file.readText())
             verified = (0 until o.getJSONArray("verified").length()).map { o.getJSONArray("verified").getString(it) }.toSet()
+            o.optJSONObject("nicknames")?.let { n -> nicknames = n.keys().asSequence().associateWith { n.getString(it) } }
+            o.optJSONArray("blocked")?.let { b -> blocked = (0 until b.length()).map { b.getString(it) }.toSet() }
             val cs = o.getJSONArray("conversations")
             conversations = (0 until cs.length()).map { i ->
                 val c = cs.getJSONObject(i); val p = c.getJSONObject("peer"); val ms = c.getJSONArray("messages")

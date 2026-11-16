@@ -23,6 +23,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.text.TextStyle
@@ -98,11 +99,13 @@ private fun DrawScope.cloud(cx: Float, cy: Float, w: Float, h: Float) {
     }
 }
 
-fun Modifier.glass(radius: Dp = 24.dp): Modifier = composed {
+/** `solid` = same glass colour flattened onto the sky tone, for dialogs that float over other text. */
+fun Modifier.glass(radius: Dp = 24.dp, solid: Boolean = false): Modifier = composed {
     val p = LocalPalette.current
     val shape = RoundedCornerShape(radius)
+    val fill = if (solid) p.glassFill.compositeOver(if (p.night) Color(0xFF0A1C47) else Color(0xFFDCE7F7)) else p.glassFill
     this.shadow(8.dp, shape, ambientColor = p.glassShadow, spotColor = p.glassShadow)
-        .background(p.glassFill, shape).border(1.dp, p.glassEdge, shape)
+        .background(fill, shape).border(1.dp, p.glassEdge, shape)
 }
 
 @Composable

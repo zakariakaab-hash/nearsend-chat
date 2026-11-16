@@ -39,15 +39,15 @@ JSON object, optional fields omitted when absent.
 | field | meaning |
 |---|---|
 | `v` | protocol version, `2` |
-| `t` | `hi` (link hello, never forwarded: `ttl` 1, carries `n` and `pk`) · `ann` (announce) · `msg` (direct message) · `pub` (public channel) · `ack` (delivery receipt) |
+| `t` | `hi` (link hello, never forwarded: `ttl` 1, carries `n` and `pk`) · `ann` (announce) · `msg` (direct message) · `pub` (public channel) · `ack` (delivery receipt) · `vfy` (QR verification proof, section 4) |
 | `id` | unique packet id (for `msg`: the message id) |
 | `src` | sender device id |
-| `dst` | destination device id (`msg`, `ack`); absent for broadcasts |
+| `dst` | destination device id (`msg`, `ack`, `vfy`); absent for broadcasts |
 | `ttl` | remaining hops; the sender starts at **5** |
 | `ts` | sender clock, ms since epoch (informational) |
 | `n` | sender nickname |
 | `pk` | `ann`: base64 public key |
-| `ct` | `msg`: base64 sealed text (section 4) |
+| `ct` | `msg`: base64 sealed text · `vfy`: base64 sealed one-time code (section 4) |
 | `tx` | `pub`: plain text |
 | `ref` | `ack`: id of the acknowledged message |
 
@@ -70,6 +70,7 @@ At most 255 fragments. Shared test vector: the bytes `00 01 … 09` with `seq` 7
 - `ann` creates/refreshes a peer entry (name, key, hops). Relayed peers not heard from for **40 s** are dropped; direct
   neighbours are dropped when the link is lost. Reach is therefore at most **5 hops**.
 - `msg` for me: decrypt, show, reply with an `ack`. `pub`: show. `ack` for me: mark the message delivered.
+  `vfy` for me: handled as in section 4 (no `ack`). `msg`, `ack` and `vfy` for someone else are forwarded like any packet.
 - Messages to a peer that is not currently known stay queued in the app and are sent when the peer appears (give up after 10 min).
 
 ## 4. Direct-message encryption
@@ -82,7 +83,28 @@ sealed = nonce(12 random bytes) || ChaCha20-Poly1305(key, nonce, plaintext = UTF
 `ct` is `base64(sealed)`. The message id is authenticated, so a ciphertext cannot be replayed under another id.
 
 **Fingerprint** = first 16 bytes of `SHA-256(public key)`, shown as 8 groups of 4 hex digits in two lines
-(`AAA8 FFF7 03B5 0B22` / `97F4 F6E1 3508 F724`). People compare fingerprints in person and tap "Mark as verified".
+(`AAA8 FFF7 03B5 0B22` / `97F4 F6E1 3508 F724`). People compare fingerprints in person and tap "Mark as verified",
+or scan each other's QR code (below).
+
+### QR verification (`vfy`)
+
+The QR code is the JSON `{"nearsend":1,"id":<device id>,"n":<nickname>,"pk":<base64 public key>,"c":<one-time code>}`.
+`c` is 8 random bytes as 16 hex digits, freshly made each time the QR is shown and kept in memory only (forgotten on restart).
+
+1. **B scans A's QR.** B marks the fingerprint of the `pk` *from the QR* as verified (it saw it in person). If B already
+   knows a different key for that id, B shows a warning instead.
+2. B sends A a `vfy` packet: `dst` = A, `ct` = `base64(seal(c))` using the normal sealing above with **the key from the QR**
+   and the `vfy` packet id as aad. If A is not reachable yet, B keeps it queued until A appears.
+3. **A** opens it with the key it already knows for B (from `ann`/`hi`). A accepts only if it decrypts *and* `c` is one of
+   the codes A itself showed; then A marks B's fingerprint as verified. One scan therefore verifies both directions.
+
+A `vfy` sealed to any other key does not open at A and is dropped, so a relay or an impostor cannot fake it.
+
+### Contact codes sent as text
+
+"Share as text" sends the same JSON **without `c`**. Pasting it only adds an **unverified** contact (a name and id to
+write to; encryption still uses the key learned over Bluetooth). Any `c` in pasted text is ignored, because text can be
+forwarded and must never verify anyone.
 
 ### Test vector (generated with Python `cryptography`)
 
@@ -107,5 +129,7 @@ fingerprint A  AAA8 FFF7 03B5 0B22 / 97F4 F6E1 3508 F724
 - **No forward secrecy:** keys are long-lived; stealing a phone's key exposes recorded traffic to/from it.
 - **Metadata is visible** to anyone in range and to relays: sender id/nickname, destination id, packet sizes and timing.
 - **Public channel** messages are plain text and can be spoofed (no signatures).
+- **QR codes can be photographed.** Someone who films your QR (with its one-time code) and gets their `vfy` to you before
+  your friend does could be marked verified. Show the QR only to the person in front of you; codes die when the app restarts.
 - No replay protection beyond the id cache; no rate limiting or spam control; relays can drop or delay packets.
 - Bluetooth advertising reveals that a phone runs Nearsend Chat.
