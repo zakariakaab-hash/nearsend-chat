@@ -1,2 +1,3 @@
 "NSBluetoothAlwaysUsageDescription" = "Nearsend Chat uses Bluetooth to find and message people near you without internet.";
 "NSLocalNetworkUsageDescription" = "Nearsend Chat uses the local network to reach nearby devices.";
+"NSLocationWhenInUseUsageDescription" = "Only used when you send an SOS with your location, so people nearby can find you.";

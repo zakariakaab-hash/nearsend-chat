@@ -7,9 +7,11 @@ struct ThreadView: View {
     @State private var draft = ""
     @State private var showInfo = UserDefaults.standard.bool(forKey: "showInfo")   // `-showInfo YES` launch argument (screenshots)
     @FocusState private var focused: Bool
+    @Environment(\.dismiss) private var dismiss
 
     private var isPublic: Bool { conversationID == publicChannelID }
     private var messages: [Message] { store.conversations.first { $0.id == conversationID }?.messages ?? [] }
+    private var members: [Member]? { store.conversations.first { $0.id == conversationID }?.members }
     private var livePeer: Peer { store.peers.first { $0.id == conversationID } ?? peer }
     private var online: Bool { isPublic || store.peers.contains { $0.id == conversationID } }
     private var encrypted: Bool { store.simulated || !livePeer.fingerprint.isEmpty }
@@ -23,11 +25,12 @@ struct ThreadView: View {
                         LazyVStack(spacing: 6) {
                             SkyPill {
                                 Label(isPublic ? "Public · anyone in range can read this"
+                                      : members != nil ? "Encrypted separately for each member"
                                       : (encrypted ? "End-to-end encrypted" : "Waiting for encryption keys"),
                                       systemImage: isPublic ? "megaphone.fill" : "lock.fill").font(.caption)
                             }.scaleEffect(0.92).padding(.vertical, 10)
                             ForEach(messages) { m in
-                                Bubble(message: m, showSender: isPublic) { store.retry(m.id, in: conversationID) }.id(m.id)
+                                Bubble(message: m, showSender: isPublic || members != nil) { store.retry(m.id, in: conversationID) }.id(m.id)
                             }
                         }.padding(.horizontal, 16).padding(.top, 8)
                     }
@@ -50,20 +53,28 @@ struct ThreadView: View {
                 VStack(spacing: 1) {
                     if isPublic { Text("Nearby channel").font(.headline).foregroundStyle(Theme.ink) }
                     else { Text(verbatim: livePeer.name).font(.headline).foregroundStyle(Theme.ink) }
-                    subtitle.font(.caption2).foregroundStyle(online ? Theme.secure : Theme.inkSecondary)
+                    subtitle.font(.caption2).foregroundStyle(online || members != nil ? Theme.secure : Theme.inkSecondary)
                 }
             }
             if !isPublic {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button { showInfo = true } label: { Image(systemName: "info.circle") }.accessibilityLabel("Contact info")
+                    Button { showInfo = true } label: { Image(systemName: "info.circle") }
+                        .accessibilityLabel(Text(LocalizedStringKey(members != nil ? "Group info" : "Contact info")))
                 }
             }
         }
-        .sheet(isPresented: $showInfo) { PeerInfoSheet(peer: livePeer).environmentObject(store) }
+        .sheet(isPresented: $showInfo) {
+            if let members {
+                GroupInfoSheet(name: livePeer.name, members: members) {
+                    showInfo = false; store.leaveGroup(conversationID); dismiss()
+                }.environmentObject(store)
+            } else { PeerInfoSheet(peer: livePeer).environmentObject(store) }
+        }
     }
 
     @ViewBuilder private var subtitle: some View {
         if isPublic { Text("Public channel") }
+        else if let members { Text("\(members.count) members") }
         else if !online { Text("Out of range · will send when nearby") }
         else if livePeer.hops == 1 { Text("Direct link") }
         else { Text("\(livePeer.hops) hops") }

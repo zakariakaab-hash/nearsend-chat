@@ -95,7 +95,7 @@ Taken from the Nearsend web app's `DESIGN.md`:
 1. Test on real phones (see `RELEASING.md` section 0) and fix what breaks.
 2. Test the Android foreground service on real phones (including battery-saver behaviour). Test iOS state restoration on a real iPhone.
 3. Independent security review; signatures for announcements and public messages; forward secrecy.
-4. Store-and-forward for people who are away, group chats, small images.
+4. Store-and-forward for people who are away, small images. Test groups and SOS between real phones (both apps have them; the iOS SOS repeat timer stops while the app is suspended).
 5. Native-speaker review of the translations; TestFlight / Play internal testing.
 6. Decide on Bitchat protocol compatibility (currently none).
 

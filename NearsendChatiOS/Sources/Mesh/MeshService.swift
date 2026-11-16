@@ -1,3 +1,4 @@
+import CoreLocation
 import Foundation
 import SwiftUI
 
@@ -5,6 +6,7 @@ private struct SavedState: Codable {
     var nickname: String
     var conversations: [Conversation]
     var verified: [String]
+    var leftGroups: [String]?
 }
 
 /// UI-facing state. On a real iPhone it is driven by `BLETransport` + `MeshRouter`; the iOS Simulator has no
@@ -37,6 +39,22 @@ final class ChatStore: ObservableObject {
     private var started = false
     private var timer: Timer?
     private var inflight = Set<String>()
+    private var leftGroups = Set<String>()                  // group ids we left: their messages are dropped
+    private var groupPending: [String: Set<String>] = [:]   // group message id -> members not sent to yet
+    private var groupAcks: [String: Set<String>] = [:]      // group message id -> members who confirmed
+
+    // SOS
+    @Published private(set) var alerts: [SosAlert] = []    // alarms heard, newest first (not saved)
+    @Published private(set) var mySos: String?             // our alarm id while SOS is on
+    @Published var sosNote = ""
+    @Published var shareLocation = UserDefaults.standard.bool(forKey: "sosLocation") {
+        didSet { UserDefaults.standard.set(shareLocation, forKey: "sosLocation") }
+    }
+    @Published private(set) var myLocation: CLLocation?
+    @Published private(set) var locationStatus: CLAuthorizationStatus = .notDetermined
+    private let location = LocationFeed()
+    private var locationUsers = 0
+    private var sosTimer: Timer?
 
     init() {
         let d = UserDefaults.standard
@@ -51,6 +69,9 @@ final class ChatStore: ObservableObject {
         load()
         #endif
         ensurePublicChannel()
+        locationStatus = location.status
+        location.onUpdate = { [weak self] l in Task { @MainActor in self?.myLocation = l } }
+        location.onStatus = { [weak self] s in Task { @MainActor in self?.locationChanged(s) } }
     }
 
     var relayedCount: Int { peers.filter { $0.hops > 1 }.count }
@@ -72,6 +93,14 @@ final class ChatStore: ObservableObject {
         r.onText = { [weak self] from, name, text, hops, id in Task { @MainActor in self?.receiveText(from: from, name: name, text: text, hops: hops, id: id) } }
         r.onPublic = { [weak self] from, name, text, id in Task { @MainActor in self?.receivePublic(from: from, name: name, text: text, id: id) } }
         r.onDelivered = { [weak self] id in Task { @MainActor in self?.markDelivered(id) } }
+        r.onGroup = { [weak self] from, name, g, gn, ms, text, hops, id in
+            let members = ms.map { Member(id: $0.id, name: $0.name) }
+            Task { @MainActor in self?.receiveGroup(from: from, name: name, group: g, groupName: gn, members: members, text: text, hops: hops, id: id) }
+        }
+        r.onSos = { [weak self] from, name, alarm, note, loc, hops in
+            Task { @MainActor in self?.receiveSos(from: from, name: name, alarm: alarm, note: note, loc: loc, hops: hops) }
+        }
+        r.onSosEnd = { [weak self] from, alarm in Task { @MainActor in self?.endSos(from: from, alarm: alarm) } }
         t.onNeighbor = { link, id, name, pk in r.neighborConnected(link: link, id: id, name: name, pk: pk) }
         t.onLost = { r.neighborLost(link: $0) }
         t.onPacket = { data, link in r.receive(data, from: link) }
@@ -89,6 +118,8 @@ final class ChatStore: ObservableObject {
 
     /// Panic wipe: forget every message, key and setting. The phone gets a brand-new identity.
     func wipeAll() {
+        stopSos()
+        leftGroups = []; groupPending = [:]; groupAcks = [:]; alerts = []
         transport?.stop(); timer?.invalidate()
         router = nil; transport = nil; started = false; inflight = []
         KeyStore.wipe()
@@ -132,6 +163,9 @@ final class ChatStore: ObservableObject {
                 try? await Task.sleep(for: .milliseconds(600)); update(m.id, in: id, .sent)
                 try? await Task.sleep(for: .milliseconds(900)); update(m.id, in: id, .delivered)
             }
+        } else if id.hasPrefix("g:") {
+            groupPending[m.id] = Set(groupTargets(id))
+            flushGroup(m, in: id)
         } else if id == publicChannelID {
             if let router {
                 router.sendPublic(text, msgID: m.id) { [weak self] outcome in
@@ -147,6 +181,7 @@ final class ChatStore: ObservableObject {
         guard let i = index(id), let j = conversations[i].messages.firstIndex(where: { $0.id == messageID }) else { return }
         conversations[i].messages[j].state = .sending
         conversations[i].messages[j].date = .now
+        if id.hasPrefix("g:") { groupPending[messageID] = Set(groupTargets(id)).subtracting(groupAcks[messageID] ?? []) }
         flushOutbox()
     }
 
@@ -170,6 +205,15 @@ final class ChatStore: ObservableObject {
     private func flushOutbox() {
         guard !simulated else { return }
         for c in conversations where c.id != publicChannelID {
+            if c.isGroup {
+                for m in c.messages where m.mine && !(groupPending[m.id]?.isEmpty ?? true) {
+                    if Date().timeIntervalSince(m.date) > 600 {
+                        groupPending[m.id] = nil
+                        if m.state == .sending { update(m.id, in: c.id, .failed) }
+                    } else { flushGroup(m, in: c.id) }
+                }
+                continue
+            }
             for m in c.messages where m.mine && m.state == .sending {
                 if Date().timeIntervalSince(m.date) > 600 { update(m.id, in: c.id, .failed) }
                 else if peers.contains(where: { $0.id == c.id }) { trySend(m, to: c.id) }
@@ -207,6 +251,13 @@ final class ChatStore: ObservableObject {
     }
 
     private func markDelivered(_ id: String) {
+        if id.contains(".") {   // a group copy "<message id>.<member>": delivered once every member confirmed
+            let parts = id.split(separator: ".", maxSplits: 1).map(String.init)
+            guard parts.count == 2, let c = conversations.first(where: { $0.messages.contains { $0.id == parts[0] } }) else { return }
+            groupAcks[parts[0], default: []].insert(parts[1])
+            if Set(groupTargets(c.id)).isSubset(of: groupAcks[parts[0]] ?? []) { update(parts[0], in: c.id, .delivered); groupAcks[parts[0]] = nil }
+            return
+        }
         for c in conversations where c.messages.contains(where: { $0.id == id }) { update(id, in: c.id, .delivered) }
     }
 
@@ -215,6 +266,132 @@ final class ChatStore: ObservableObject {
         if conversations[i].messages[j].state == .delivered && s != .delivered { return }   // never downgrade
         conversations[i].messages[j].state = s
         save()
+    }
+
+    // MARK: groups
+
+    func createGroup(name: String, people: [Peer]) -> String {
+        let id = "g:" + UUID().uuidString
+        let members = [Member(id: deviceID, name: nickname)] + people.map { Member(id: $0.id, name: $0.name) }
+        let title = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        conversations.append(Conversation(id: id, peer: Peer(id: id, name: title, hops: 1, rssi: -50), messages: [], members: members))
+        save()
+        return id
+    }
+
+    /// Local only: this phone forgets the group and ignores its new messages. The others are not told.
+    func leaveGroup(_ id: String) {
+        conversations.removeAll { $0.id == id }
+        leftGroups.insert(id)
+        save()
+    }
+
+    func isMe(_ id: String) -> Bool { id == deviceID }
+
+    private func groupTargets(_ id: String) -> [String] {
+        (conversations.first { $0.id == id }?.members ?? []).map(\.id).filter { $0 != deviceID }
+    }
+
+    /// Sends the copies of `m` whose member is in range now; the rest wait in `groupPending`.
+    private func flushGroup(_ m: Message, in gid: String) {
+        guard let router, let c = conversations.first(where: { $0.id == gid }), let pending = groupPending[m.id] else { return }
+        let members = (c.members ?? []).map { (id: $0.id, name: $0.id == deviceID ? nickname : $0.name) }
+        for member in pending where peers.contains(where: { $0.id == member }) {
+            let key = "\(m.id).\(member)"
+            guard !inflight.contains(key) else { continue }
+            inflight.insert(key)
+            router.sendGroup(m.text, group: gid, groupName: c.peer.name, members: members, to: member, msgID: m.id) { [weak self] outcome in
+                Task { @MainActor in
+                    guard let self else { return }
+                    self.inflight.remove(key)
+                    if outcome != .unreachable { self.groupPending[m.id]?.remove(member) }
+                    let sending = self.conversations.first { $0.id == gid }?.messages.first { $0.id == m.id }?.state == .sending
+                    if outcome == .sent { self.update(m.id, in: gid, .sent) }
+                    else if outcome == .failed, sending, self.groupPending[m.id]?.isEmpty ?? true { self.update(m.id, in: gid, .failed) }
+                }
+            }
+        }
+    }
+
+    private func receiveGroup(from: String, name sent: String, group gid: String, groupName: String, members: [Member], text: String, hops: Int, id: String) {
+        guard !leftGroups.contains(gid), members.contains(where: { $0.id == deviceID }) else { return }
+        let name = peers.first { $0.id == from }?.name ?? sent
+        if index(gid) == nil {
+            conversations.append(Conversation(id: gid, peer: Peer(id: gid, name: groupName, hops: 1, rssi: -50), messages: [], members: members))
+        }
+        guard let i = index(gid), !conversations[i].messages.contains(where: { $0.id == id }) else { return }
+        conversations[i].peer.name = groupName
+        conversations[i].members = members
+        conversations[i].messages.append(Message(id: id, text: text, date: .now, mine: false, hops: hops, sender: name))
+        if activeConversation != gid { conversations[i].unread += 1 }
+        Notifier.notify(title: "\(groupName) · \(name)", body: text)
+        Notifier.messageHaptic()
+        save()
+    }
+
+    // MARK: SOS
+
+    var activeAlerts: Int { alerts.filter(\.active).count }
+    var hasLocationPermission: Bool { locationStatus == .authorizedWhenInUse || locationStatus == .authorizedAlways }
+    func requestLocation() { location.request() }
+
+    func startSos() {
+        guard mySos == nil else { return }
+        mySos = UUID().uuidString
+        useLocation(true)
+        sendSosNow()
+        sosTimer = Timer.scheduledTimer(withTimeInterval: 15, repeats: true) { [weak self] _ in Task { @MainActor in self?.sendSosNow() } }
+    }
+
+    func stopSos() {
+        guard let alarm = mySos else { return }
+        mySos = nil
+        sosTimer?.invalidate(); sosTimer = nil
+        router?.sendSos(alarm: alarm, note: nil, loc: nil, end: true)
+        useLocation(false)
+    }
+
+    private func sendSosNow() {
+        guard let alarm = mySos else { return }
+        router?.sendSos(alarm: alarm, note: sosNote, loc: sharedLocation)
+    }
+
+    /// "lat,lon,accuracy" when the user chose to attach it and we have a fix.
+    private var sharedLocation: String? {
+        guard shareLocation, let l = myLocation else { return nil }
+        return String(format: "%.5f,%.5f,%ld", locale: Locale(identifier: "en_US_POSIX"),
+                      l.coordinate.latitude, l.coordinate.longitude, Int(l.horizontalAccuracy.rounded()))
+    }
+
+    /// The SOS screen (for distances) and an active alarm each hold a "use"; GPS runs only while someone needs it.
+    func useLocation(_ on: Bool) {
+        locationUsers = max(0, locationUsers + (on ? 1 : -1))
+        if locationUsers > 0 && hasLocationPermission { location.start() } else { location.stop() }
+    }
+
+    private func locationChanged(_ s: CLAuthorizationStatus) {
+        locationStatus = s
+        if locationUsers > 0 && hasLocationPermission { location.start() }
+    }
+
+    private func receiveSos(from: String, name sent: String, alarm: String, note: String?, loc: String?, hops: Int) {
+        let parts = loc?.split(separator: ",").compactMap { Double($0.trimmingCharacters(in: .whitespaces)) }
+        let p = parts?.count == 3 ? parts : nil
+        let name = peers.first { $0.id == from }?.name ?? sent
+        let a = SosAlert(alarm: alarm, from: from, name: name, note: note, lat: p?[0], lon: p?[1], accuracy: p.map { Int($0[2].rounded()) },
+                         hops: hops, date: .now)
+        if let i = alerts.firstIndex(where: { $0.alarm == alarm && $0.from == from }) {
+            let wasActive = alerts[i].active
+            alerts[i] = a
+            if !wasActive { Notifier.alarm(title: "SOS · \(name)", body: note ?? "") }
+        } else {
+            alerts.insert(a, at: 0)
+            Notifier.alarm(title: "SOS · \(name)", body: note ?? "")
+        }
+    }
+
+    private func endSos(from: String, alarm: String) {
+        for i in alerts.indices where alerts[i].from == from && alerts[i].alarm == alarm { alerts[i].active = false }
     }
 
     private func ensurePublicChannel() {
@@ -233,7 +410,7 @@ final class ChatStore: ObservableObject {
 
     private func save() {
         guard !simulated else { return }
-        let state = SavedState(nickname: nickname, conversations: conversations, verified: Array(verified))
+        let state = SavedState(nickname: nickname, conversations: conversations, verified: Array(verified), leftGroups: Array(leftGroups))
         if let data = try? JSONEncoder().encode(state) {
             try? data.write(to: Self.fileURL, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
         }
@@ -243,6 +420,11 @@ final class ChatStore: ObservableObject {
         guard let data = try? Data(contentsOf: Self.fileURL), let s = try? JSONDecoder().decode(SavedState.self, from: data) else { return }
         conversations = s.conversations
         verified = Set(s.verified)
+        leftGroups = Set(s.leftGroups ?? [])
+        // Group messages still "sending" go to every member again (who is pending is not saved).
+        for c in conversations where c.isGroup {
+            for m in c.messages where m.mine && m.state == .sending { groupPending[m.id] = Set(groupTargets(c.id)) }
+        }
         // Messages still marked "sending" stay queued; they are retried when the person is next in range.
     }
 
@@ -267,7 +449,16 @@ final class ChatStore: ObservableObject {
                 Message(text: "Coming now 👋", date: now.addingTimeInterval(-60), mine: false)], unread: 1),
             Conversation(id: "c", peer: peers[2], messages: [
                 Message(text: "Relayed through Erik, nice range", date: now.addingTimeInterval(-7200), mine: false, hops: 2)]),
+            Conversation(id: "g:demo", peer: Peer(id: "g:demo", name: "Festival crew", hops: 1, rssi: -50), messages: [
+                Message(text: "Meet at the food trucks at 8?", date: now.addingTimeInterval(-1500), mine: false, sender: "Maja"),
+                Message(text: "Works for me", date: now.addingTimeInterval(-1400), mine: false, hops: 2, sender: "Erik"),
+                Message(text: "See you there", date: now.addingTimeInterval(-1300), mine: true)],
+                members: [Member(id: deviceID, name: nickname), Member(id: "a", name: "Maja"), Member(id: "b", name: "Erik")]),
         ]
+        // Near the simulator's default position (Apple Park), so the SOS tab shows a distance and direction.
+        myLocation = CLLocation(latitude: 37.3349, longitude: -122.0090)
+        alerts = [SosAlert(alarm: "demo-sos", from: "c", name: "Noor", note: "Twisted ankle by the lake path",
+                           lat: 37.3372, lon: -122.0071, accuracy: 9, hops: 2, date: now.addingTimeInterval(-120))]
     }
 
     private func drift() {

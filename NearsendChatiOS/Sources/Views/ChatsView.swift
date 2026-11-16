@@ -3,6 +3,7 @@ import SwiftUI
 struct ChatsView: View {
     @EnvironmentObject var store: ChatStore
     @State private var path: [String] = UserDefaults.standard.bool(forKey: "openThread") ? [UserDefaults.standard.string(forKey: "threadID") ?? "a"] : []
+    @State private var newGroup = false
 
     private var sorted: [Conversation] {
         store.conversations.sorted {
@@ -18,7 +19,13 @@ struct ChatsView: View {
                 SkyBackground()
                 ScrollView {
                     VStack(spacing: 12) {
-                        PageTitle(text: "Chats").padding(.top, 8)
+                        HStack {
+                            PageTitle(text: "Chats")
+                            Button { newGroup = true } label: {
+                                Image(systemName: "person.3.fill").font(.system(size: 17)).foregroundStyle(Theme.link)
+                                    .frame(width: 44, height: 44).glass(radius: 22)
+                            }.accessibilityLabel("New group")
+                        }.padding(.top, 8)
                         if store.conversations.count <= 1 {
                             Card {
                                 VStack(spacing: 8) {
@@ -38,6 +45,9 @@ struct ChatsView: View {
             .navigationDestination(for: String.self) { id in
                 if let c = store.conversations.first(where: { $0.id == id }) { ThreadView(conversationID: c.id, peer: c.peer) }
             }
+            .sheet(isPresented: $newGroup) {
+                NewGroupSheet { id in newGroup = false; path = [id] }.environmentObject(store)
+            }
         }
     }
 
@@ -45,7 +55,7 @@ struct ChatsView: View {
         let isPublic = c.id == publicChannelID
         return Card(padding: 12) {
             HStack(spacing: 12) {
-                Avatar(name: isPublic ? "#" : c.peer.name, size: 52, online: !isPublic && c.peer.hops == 1).accessibilityHidden(true)
+                Avatar(name: isPublic ? "#" : c.peer.name, size: 52, online: !isPublic && !c.isGroup && c.peer.hops == 1).accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 4) {
                     HStack {
                         if isPublic { Text("Nearby channel").font(.headline) } else { Text(verbatim: c.peer.name).font(.headline) }

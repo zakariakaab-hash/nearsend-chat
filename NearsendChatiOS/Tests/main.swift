@@ -143,5 +143,32 @@ do {   // QR verification: the code only opens with the key that was in the scan
     n[0].router.sendVerify("bad", to: "C", pk: n[1].crypto.publicKey) { _ in }
     check(got.count == 1, "QR verify sealed to the wrong key is ignored")
 }
+do {   // SOS: public flood with location; the end packet reaches everyone too
+    let net = Net(); let n = ["A", "B", "C"].map { net.add($0) }
+    var got: [(String, String, String?, String?, Int)] = []; var ended: [String] = []
+    n[2].router.onSos = { from, _, alarm, note, loc, hops in got.append((from, alarm, note, loc, hops)) }
+    n[2].router.onSosEnd = { _, alarm in ended.append(alarm) }
+    net.connect("A", "B"); net.connect("B", "C"); net.settle()
+    n[0].router.sendSos(alarm: "al-1", note: "hurt leg", loc: "59.32930,18.06860,12")
+    n[0].router.sendSos(alarm: "al-1", note: nil, loc: nil)
+    check(got.count == 2 && got[0].0 == "A" && got[0].1 == "al-1" && got[0].2 == "hurt leg" && got[0].3 == "59.32930,18.06860,12" && got[0].4 == 2,
+          "SOS reaches C over 2 hops with note and location; repeats arrive as new packets")
+    n[0].router.sendSos(alarm: "al-1", note: "x", loc: "1,2,3", end: true)
+    check(ended == ["al-1"], "SOS end reaches C")
+}
+do {   // groups: one sealed copy per member, each acked with its own id; relays cannot read it
+    let net = Net(); let n = ["A", "B", "C", "D"].map { net.add($0) }
+    var got: [String: [(String, String, String, [String], String)]] = [:]
+    for x in n { let id = x.id; x.router.onGroup = { from, _, g, gn, ms, text, _, mid in got[id, default: []].append((from, g + "|" + gn, text, ms.map { $0.id }, mid)) } }
+    net.connect("A", "B"); net.connect("B", "C"); net.connect("C", "D"); net.settle()
+    let members = [(id: "A", name: "A"), (id: "B", name: "B"), (id: "D", name: "D")]
+    var outcomes: [SendOutcome] = []
+    for m in ["B", "D"] { n[0].router.sendGroup("hej gruppen", group: "g:1", groupName: "Crew", members: members, to: m, msgID: "gm-1") { outcomes.append($0) } }
+    check(outcomes == [.sent, .sent], "group copies report sent")
+    check(got["B"]?.count == 1 && got["D"]?.count == 1 && got["B"]?[0].1 == "g:1|Crew" && got["D"]?[0].2 == "hej gruppen", "each member opens its copy")
+    check(got["D"]?[0].3 == ["A", "B", "D"] && got["D"]?[0].4 == "gm-1" && got["D"]?[0].0 == "A", "member list and message id survive")
+    check(got["C"] == nil, "a relay that is not a member reads nothing")
+    check(Set(n[0].delivered) == ["gm-1.B", "gm-1.D"], "each copy is acked with its own id")
+}
 print(failures == 0 ? "ALL PASSED" : "\(failures) FAILED")
 exit(failures == 0 ? 0 : 1)

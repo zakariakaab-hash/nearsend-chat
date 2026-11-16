@@ -54,6 +54,8 @@ jobs:
           shot 3-chats -onboarded YES -tab 1
           shot 4-thread -onboarded YES -tab 1 -openThread YES -threadID a
           shot 5-you -onboarded YES -tab 2
+          shot 18-sos -onboarded YES -tab 3
+          shot 19-group -onboarded YES -tab 1 -openThread YES -threadID g:demo
           shot 9-public-channel -onboarded YES -tab 1 -openThread YES -threadID public
           shot 17-contact-info -onboarded YES -tab 1 -openThread YES -threadID a -showInfo YES
           shot 10-nearby-sv -onboarded YES -tab 0 -AppleLanguages "(sv)" -AppleLocale sv_SE

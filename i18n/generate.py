@@ -48,6 +48,7 @@ for r in rows(os.path.join(root, "plist.txt")):
     d = os.path.join(ios_res, IOS_DIR.get(lang, lang) + ".lproj"); os.makedirs(d, exist_ok=True)
     with open(os.path.join(d, "InfoPlist.strings"), "w", encoding="utf-8") as f:
         f.write(f'"NSBluetoothAlwaysUsageDescription" = "{ios_str(r[1])}";\n"NSLocalNetworkUsageDescription" = "{ios_str(r[2])}";\n')
+        f.write(f'"NSLocationWhenInUseUsageDescription" = "{ios_str(r[3])}";\n')
 
 os.makedirs(os.path.join(and_res, "xml"), exist_ok=True)
 with open(os.path.join(and_res, "xml/locales_config.xml"), "w", encoding="utf-8") as f:

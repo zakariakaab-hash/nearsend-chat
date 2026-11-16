@@ -5,7 +5,7 @@ enum SendOutcome { case sent, unreachable, failed }
 /// Wire packet (JSON). See PROTOCOL.md. Optional fields are omitted when nil.
 struct Packet: Codable {
     var v: Int = 2
-    var t: String            // "ann" | "msg" | "pub" | "ack"
+    var t: String            // "hi" | "ann" | "msg" | "gm" | "pub" | "sos" | "sosx" | "ack" | "vfy"
     var id: String
     var src: String
     var dst: String? = nil
@@ -15,7 +15,17 @@ struct Packet: Codable {
     var pk: String? = nil    // ann: base64 X25519 public key
     var ct: String? = nil    // msg: base64 sealed text
     var tx: String? = nil    // pub: plain text
-    var ref: String? = nil   // ack: id of the message being acknowledged
+    var ref: String? = nil   // ack: id of the message being acknowledged; sos/sosx: alarm id
+    var loc: String? = nil   // sos: "lat,lon,accuracyMeters"
+}
+
+/// Sealed body of a "gm" packet: group id ("g:..."), group name, members (id + name, sender included) and the text.
+struct GroupBody: Codable {
+    struct Member: Codable { var id: String; var n: String }
+    var g: String
+    var gn: String?
+    var m: [Member]?
+    var tx: String
 }
 
 /// Multi-hop relay. Transport independent: the BLE layer (or a test harness) feeds packets in and
@@ -42,6 +52,10 @@ final class MeshRouter {
     var onDelivered: ((_ msgID: String) -> Void)?
     /// QR verification arrived: `from` proved it holds the key we know for it (`fingerprint`) and echoed `code`.
     var onVerify: ((_ from: String, _ fingerprint: String, _ code: String) -> Void)?
+    var onGroup: ((_ from: String, _ name: String, _ group: String, _ groupName: String, _ members: [(id: String, name: String)],
+                   _ text: String, _ hops: Int, _ msgID: String) -> Void)?
+    var onSos: ((_ from: String, _ name: String, _ alarm: String, _ note: String?, _ loc: String?, _ hops: Int) -> Void)?
+    var onSosEnd: ((_ from: String, _ alarm: String) -> Void)?
 
     private var links: [String: String] = [:]      // link id -> peer id (direct neighbours; possibly two links per peer)
     private var peers: [String: PeerInfo] = [:]
@@ -139,6 +153,30 @@ final class MeshRouter {
         route(p, except: nil, completion: completion)
     }
 
+    /// One sealed copy of a group message for member `dst`; the packet id is "<msgID>.<dst>" so each copy is acked on its own.
+    func sendGroup(_ text: String, group: String, groupName: String, members: [(id: String, name: String)], to dst: String,
+                   msgID: String, completion: @escaping (SendOutcome) -> Void) {
+        guard let info = peers[dst] else { completion(.unreachable); return }
+        let id = "\(msgID).\(dst)"
+        let body = GroupBody(g: group, gn: groupName, m: members.map { GroupBody.Member(id: $0.id, n: $0.name) }, tx: Self.clip(text))
+        guard let json = try? encoder.encode(body), let str = String(data: json, encoding: .utf8),
+              let ct = try? crypto.seal(str, peerPK: info.pk, myID: myID, peerID: dst, aad: id) else { completion(.failed); return }
+        var p = Packet(t: "gm", id: id, src: myID, dst: dst, ttl: Self.startTTL, ts: ms())
+        p.n = myName; p.ct = ct.base64EncodedString()
+        remember(id)
+        route(p, except: nil, completion: completion)
+    }
+
+    /// SOS goes to everyone, unencrypted, like "pub". The app repeats it while the alarm is on; `alarm` ties repeats together.
+    func sendSos(alarm: String, note: String?, loc: String?, end: Bool = false) {
+        var p = Packet(t: end ? "sosx" : "sos", id: UUID().uuidString, src: myID, ttl: Self.startTTL, ts: ms())
+        p.n = myName; p.ref = alarm
+        if !end, let note, !note.trimmingCharacters(in: .whitespaces).isEmpty { p.tx = Self.clip(note) }
+        if !end { p.loc = loc }
+        remember(p.id)
+        route(p, except: nil, completion: nil)
+    }
+
     // MARK: receiving
 
     func receive(_ data: Data, from link: String?) {
@@ -165,8 +203,28 @@ final class MeshRouter {
                 remember(ack.id)
                 route(ack, except: nil) { _ in }
             } else { forward(p, from: link) }
+        case "gm":
+            if p.dst == myID {
+                guard let info = peers[p.src], let s = p.ct, let ct = Data(base64Encoded: s),
+                      let str = try? crypto.open(ct, peerPK: info.pk, myID: myID, peerID: p.src, aad: p.id),
+                      let body = try? decoder.decode(GroupBody.self, from: Data(str.utf8)),
+                      body.g.hasPrefix("g:"), !body.tx.isEmpty else { return }
+                let members = (body.m ?? []).filter { !$0.id.isEmpty }.map { (id: $0.id, name: $0.n) }
+                let gn = body.gn.flatMap { $0.isEmpty ? nil : $0 } ?? "?"
+                onGroup?(p.src, p.n ?? info.name, body.g, gn, members, body.tx, hops, String(p.id.split(separator: ".").first ?? ""))
+                var ack = Packet(t: "ack", id: UUID().uuidString, src: myID, dst: p.src, ttl: Self.startTTL, ts: ms())
+                ack.ref = p.id
+                remember(ack.id)
+                route(ack, except: nil) { _ in }
+            } else { forward(p, from: link) }
         case "pub":
             if let tx = p.tx { onPublic?(p.src, p.n ?? "?", tx, p.id) }
+            forward(p, from: link)
+        case "sos":
+            if let alarm = p.ref { onSos?(p.src, p.n ?? "?", alarm, p.tx, p.loc, hops) }
+            forward(p, from: link)
+        case "sosx":
+            if let alarm = p.ref { onSosEnd?(p.src, alarm) }
             forward(p, from: link)
         case "ack":
             if p.dst == myID, let ref = p.ref { onDelivered?(ref) } else { forward(p, from: link) }
