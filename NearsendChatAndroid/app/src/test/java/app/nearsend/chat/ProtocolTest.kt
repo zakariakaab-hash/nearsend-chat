@@ -195,6 +195,71 @@ class ProtocolTest {
         assertEquals(setOf("m1.B", "m1.D"), n[0].delivered.toSet())     // one ack per member copy
     }
 
+    @Test fun messageForSomeoneAwayIsCarriedAndDeliveredLater() {
+        val net = Net(); val (a, b, c) = listOf("A", "B", "C").map { net.add(it) }
+        // A and C met before (C is a saved contact of A, and A of C); C is away now.
+        a.router.savedKey = { if (it == "C") c.crypto.publicKey else null }
+        c.router.savedKey = { if (it == "A") a.crypto.publicKey else null }
+        net.connect("A", "B"); net.settle()
+        var outcome: SendOutcome? = null
+        a.router.sendText("see you later", "C", "sf-1") { outcome = it }
+        assertEquals(SendOutcome.Carried, outcome)
+        assertTrue(c.texts.isEmpty())
+        net.connect("B", "C")                                  // B walks over to C
+        assertEquals(listOf("see you later"), c.texts.map { it.second })
+        assertEquals(listOf("sf-1"), a.delivered)              // C's ack travelled back through B
+        var none: SendOutcome? = null
+        Net().add("X").router.sendText("hi", "nobody", "x-1") { none = it }
+        assertEquals(SendOutcome.Unreachable, none)            // no key: nothing to carry
+    }
+
+    @Test fun heldMessageLeavesWithTheSenderWhenNobodyIsAround() {
+        val net = Net(); val (a, b) = listOf("A", "B").map { net.add(it) }
+        a.router.savedKey = { if (it == "B") b.crypto.publicKey else null }
+        b.router.savedKey = { if (it == "A") a.crypto.publicKey else null }
+        var outcome: SendOutcome? = null
+        a.router.sendText("waiting", "B", "h-1") { outcome = it }
+        assertEquals(SendOutcome.Held, outcome)
+        net.connect("A", "B")
+        assertEquals(listOf("waiting"), b.texts.map { it.second })
+        assertEquals(listOf("h-1"), a.delivered)
+    }
+
+    @Test fun announcementsReachLateArrivalsAndExpire() {
+        val net = Net(); val (a, b, c) = listOf("A", "B", "C").map { net.add(it) }
+        val got = mutableMapOf<String, MutableList<String>>()
+        listOf(a, b, c).forEach { n -> n.router.onPost = { _, _, _, text, _, _ -> got.getOrPut(n.id) { mutableListOf() } += text } }
+        net.connect("A", "B"); net.settle()
+        var t = System.currentTimeMillis(); listOf(a, b, c).forEach { n -> n.router.now = { t } }
+        a.router.sendPost("Lost dog near gate 3", "post-1", t + 3_600_000)
+        assertEquals(listOf("Lost dog near gate 3"), got["B"])
+        net.connect("B", "C")                                  // C arrives later and is shown it once
+        assertEquals(listOf("Lost dog near gate 3"), got["C"])
+        net.connect("C", "A")
+        assertEquals(1, got["C"]!!.size)
+        t += 2 * 3_600_000; b.router.tick()
+        val d = net.add("D"); d.router.onPost = { _, _, _, text, _, _ -> got.getOrPut("D") { mutableListOf() } += text }
+        net.connect("B", "D")
+        assertTrue(got["D"] == null)                           // expired posts are not shared
+    }
+
+    @Test fun relayOffNeitherForwardsNorCarries() {
+        val net = Net(); val (a, b, c) = listOf("A", "B", "C").map { net.add(it) }
+        b.router.relay = false
+        net.connect("A", "B"); net.connect("B", "C"); net.settle()
+        assertTrue(a.peers.none { it.id == "C" })
+        a.router.sendPublic("anyone?", "p-1") { }
+        assertEquals(listOf("anyone?"), b.pubs)
+        assertTrue(c.pubs.isEmpty())
+    }
+
+    @Test fun relayedPeersKnowWhichNeighbourTheyCameThrough() {
+        val net = Net(); val n = listOf("A", "B", "C").map { net.add(it) }
+        net.connect("A", "B"); net.connect("B", "C"); net.settle()
+        assertEquals("B", n[0].peers.first { it.id == "C" }.via)
+        assertEquals(null, n[0].peers.first { it.id == "B" }.via)
+    }
+
     @Test fun packetsInteroperateWithIosJson() {
         // A packet exactly as the iOS JSONEncoder writes it (keys in a different order, optional fields absent).
         val json = """{"ts":1700000000000,"ttl":4,"t":"pub","src":"IOS-1","v":2,"id":"p-1","tx":"hej","n":"Ios"}"""

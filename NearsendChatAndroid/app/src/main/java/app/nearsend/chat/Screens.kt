@@ -53,6 +53,11 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.selected
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -112,6 +117,9 @@ fun NearbyScreen(store: ChatStore, onOpenChat: (Peer) -> Unit) {
         else -> null
     }
     val switchLabel = stringResource(R.string.mesh_switch)
+    var network by remember { mutableStateOf(false) }
+    var newPost by remember { mutableStateOf(false) }
+    if (newPost) NewPostDialog(store) { newPost = false }
     LazyColumn(Modifier.fillMaxSize().statusBarsPadding(), contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         item { PageTitle(R.string.tab_nearby) }
         item {
@@ -130,7 +138,23 @@ fun NearbyScreen(store: ChatStore, onOpenChat: (Peer) -> Unit) {
                 }
             }
         }
-        item { Card(padding = 12.dp) { Radar(store.peers, Modifier.fillMaxWidth().height(320.dp)) } }
+        item {
+            Card(padding = 12.dp) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                    Chip(stringResource(R.string.net_view), network) { network = !network }
+                }
+                Radar(store.peers, Modifier.fillMaxWidth().height(320.dp), network)
+            }
+        }
+        item {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(stringResource(R.string.posts_title), color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f).semantics { heading() })
+                Text("+ " + stringResource(R.string.post_new), color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.clickable { newPost = true }.padding(8.dp))
+            }
+        }
+        if (store.posts.isEmpty()) item { Card { Text(stringResource(R.string.posts_empty), color = p.inkSecondary, fontSize = 14.sp) } }
+        items(store.posts, key = { "post-" + it.id }) { PostCard(it) }
         items(store.peers, key = { it.id }) { peer ->
             Card(Modifier.clickable { onOpenChat(peer) }, padding = 12.dp) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -159,7 +183,7 @@ private fun angleFor(p: Peer): Float {
 }
 
 @Composable
-fun Radar(peers: List<Peer>, modifier: Modifier = Modifier) {
+fun Radar(peers: List<Peer>, modifier: Modifier = Modifier, network: Boolean = false) {
     val p = LocalPalette.current
     val rot by rememberInfiniteTransition(label = "sweep").animateFloat(
         0f, 360f, infiniteRepeatable(tween(4000, easing = LinearEasing)), label = "r",
@@ -185,6 +209,20 @@ fun Radar(peers: List<Peer>, modifier: Modifier = Modifier) {
                     r, c)
                 drawLine(ActionBlue, c, Offset(c.x + r, c.y), strokeWidth = 2.dp.toPx())
             }
+            if (network) {
+                // Lines show how each person is reached: straight from us, or through the person who passed them on.
+                val box2 = box.toPx() / 2
+                fun spot(peer: Peer): Offset {
+                    val a = angleFor(peer); val rr = radiusFor(peer) * box2
+                    return Offset(c.x + cos(a) * rr, c.y + sin(a) * rr - 7.dp.toPx())   // dot sits ~7 dp above the label column's centre
+                }
+                val dash = PathEffect.dashPathEffect(floatArrayOf(6.dp.toPx(), 5.dp.toPx()))
+                peers.forEach { peer ->
+                    val from = if (peer.hops == 1) null else peers.firstOrNull { it.id == peer.via }
+                    drawLine(ActionBlue.copy(alpha = if (peer.hops == 1) 0.7f else 0.5f), from?.let(::spot) ?: c, spot(peer),
+                        strokeWidth = 2.dp.toPx(), pathEffect = if (peer.hops == 1) null else dash)
+                }
+            }
             drawCircle(ActionBlue.copy(alpha = 0.25f), 12.dp.toPx(), c)
             drawCircle(Color.White, 8.dp.toPx(), c)
             drawCircle(ActionBlue, 6.dp.toPx(), c)
@@ -195,6 +233,62 @@ fun Radar(peers: List<Peer>, modifier: Modifier = Modifier) {
             Column(Modifier.offset(x = (cos(a) * rr).dp, y = (sin(a) * rr).dp), horizontalAlignment = Alignment.CenterHorizontally) {
                 Box(Modifier.size(13.dp).background(if (peer.hops == 1) ActionBlue else Color.White, CircleShape).border(2.dp, ActionBlue, CircleShape))
                 Text(peer.name, color = p.ink, fontSize = 11.sp, fontWeight = FontWeight.Medium)
+            }
+        }
+    }
+}
+
+@Composable
+private fun Chip(label: String, on: Boolean, onClick: () -> Unit) {
+    val p = LocalPalette.current
+    Text(label, color = if (on) Color.White else p.link, fontSize = 13.sp, fontWeight = FontWeight.SemiBold,
+        modifier = Modifier.clip(CircleShape).background(if (on) ActionBlue else p.ink.copy(alpha = 0.06f))
+            .clickable(onClick = onClick).semantics { selected = on }.padding(horizontal = 12.dp, vertical = 6.dp))
+}
+
+@Composable
+private fun PostCard(post: Post) {
+    val p = LocalPalette.current
+    val left = post.expMs - System.currentTimeMillis()
+    Card(padding = 14.dp) {
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Icon(Icons.Filled.Campaign, null, tint = ActionBlue, modifier = Modifier.size(22.dp))
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(if (post.mine) post.name + " (" + stringResource(R.string.lbl_you) + ")" else post.name, color = p.ink, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+                Text(post.text, color = p.ink, fontSize = 15.sp)
+                Text(buildString {
+                    append(if (left >= 3_600_000) stringResource(R.string.post_left_h, (left / 3_600_000).toInt())
+                        else stringResource(R.string.post_left_min, maxOf(1, (left / 60_000).toInt())))
+                    if (post.hops > 1) append(" · ").append(stringResource(R.string.n_hops, post.hops))
+                }, color = p.inkSecondary, fontSize = 12.sp)
+            }
+        }
+    }
+}
+
+@Composable
+private fun NewPostDialog(store: ChatStore, onClose: () -> Unit) {
+    val p = LocalPalette.current
+    var text by remember { mutableStateOf("") }
+    var hours by remember { mutableIntStateOf(6) }
+    Dialog(onDismissRequest = onClose) {
+        Column(Modifier.widthIn(max = 420.dp).fillMaxWidth().glass(24.dp, solid = true).padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(stringResource(R.string.posts_title), color = p.ink, fontSize = 20.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                Text(stringResource(R.string.cancel), color = p.link, fontSize = 15.sp, modifier = Modifier.clickable(onClick = onClose).padding(8.dp))
+            }
+            Box(Modifier.fillMaxWidth().glass(12.dp).padding(horizontal = 16.dp, vertical = 12.dp)) {
+                if (text.isEmpty()) Text(stringResource(R.string.post_hint), color = p.inkSecondary, fontSize = 16.sp)
+                BasicTextField(text, { text = it.take(500) }, Modifier.fillMaxWidth().heightIn(min = 72.dp), textStyle = TextStyle(color = p.ink, fontSize = 16.sp), cursorBrush = SolidColor(ActionBlue))
+            }
+            Text(stringResource(R.string.post_for), color = p.inkSecondary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf(1, 6, 24).forEach { h -> Chip(stringResource(R.string.post_hours, h), hours == h) { hours = h } }
+            }
+            Text(stringResource(R.string.post_public), color = p.inkSecondary, fontSize = 12.sp)
+            val ok = text.isNotBlank()
+            Box(Modifier.alpha(if (ok) 1f else 0.4f)) {
+                PrimaryButton(stringResource(R.string.post_send)) { if (ok) { store.post(text, hours); onClose() } }
             }
         }
     }
@@ -298,10 +392,11 @@ fun ThreadScreen(store: ChatStore, conversationId: String, peer: Peer, startInfo
                     Text(when {
                         isPublic -> stringResource(R.string.public_channel)
                         members != null -> stringResource(R.string.group_members, members.size)
+                        !online && store.canCarryTo(conversationId) -> stringResource(R.string.carry_hint)
                         !online -> stringResource(R.string.out_of_range)
                         livePeer.hops == 1 -> stringResource(R.string.direct_link)
                         else -> stringResource(R.string.n_hops, livePeer.hops)
-                    }, color = if (online || members != null) p.secure else p.inkSecondary, fontSize = 11.sp)
+                    }, color = if (online || members != null) p.secure else p.inkSecondary, fontSize = 11.sp, textAlign = TextAlign.Center)
                 }
                 if (isPublic) Spacer(Modifier.width(40.dp))
                 else Icon(Icons.Filled.Info, stringResource(R.string.contact_info), tint = p.link, modifier = Modifier.clickable { showInfo = true }.padding(8.dp))
@@ -694,6 +789,26 @@ fun IdentityScreen(store: ChatStore, startQr: Boolean = false) {
             }
         }
         item {
+            Card {
+                Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Icon(Icons.Filled.Lock, null, tint = p.ink, modifier = Modifier.size(16.dp))
+                        Text(stringResource(R.string.privacy), color = p.ink, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                    }
+                    SettingSwitch(R.string.priv_relay, R.string.priv_relay_body, store.relayOthers) { store.changeRelay(it) }
+                    SettingSwitch(R.string.priv_receipts, R.string.priv_receipts_body, store.receipts) { store.changeReceipts(it) }
+                    SettingSwitch(R.string.priv_previews, R.string.priv_previews_body, store.hidePreviews) { store.changeHidePreviews(it) }
+                    Text(stringResource(R.string.priv_autodelete), color = p.ink, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                    Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        listOf(0, 1, 7, 30).forEach { d ->
+                            Chip(when (d) { 0 -> stringResource(R.string.priv_never); 1 -> stringResource(R.string.priv_1day); else -> stringResource(R.string.priv_days, d) },
+                                store.autoDeleteDays == d) { store.changeAutoDelete(d) }
+                        }
+                    }
+                }
+            }
+        }
+        item {
             Box(Modifier.fillMaxWidth().glass(12.dp).clickable { confirmWipe = true }.padding(vertical = 14.dp), contentAlignment = Alignment.Center) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     Icon(Icons.Filled.Delete, null, tint = Color(0xFFD93025), modifier = Modifier.size(16.dp))
@@ -720,4 +835,19 @@ fun IdentityScreen(store: ChatStore, startQr: Boolean = false) {
         confirmButton = { TextButton({ confirmWipe = false; store.wipeAll() }) { Text(stringResource(R.string.erase), color = Color(0xFFD93025)) } },
         dismissButton = { TextButton({ confirmWipe = false }) { Text(stringResource(R.string.cancel)) } },
     )
+}
+
+@Composable
+private fun SettingSwitch(@StringRes title: Int, @StringRes body: Int, on: Boolean, onChange: (Boolean) -> Unit) {
+    val p = LocalPalette.current
+    val label = stringResource(title)
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(label, color = p.ink, fontSize = 15.sp)
+            Text(stringResource(body), color = p.inkSecondary, fontSize = 12.sp)
+        }
+        Spacer(Modifier.width(12.dp))
+        Switch(on, onChange, Modifier.semantics { contentDescription = label },
+            colors = SwitchDefaults.colors(checkedTrackColor = ActionBlue, checkedThumbColor = Color.White))
+    }
 }

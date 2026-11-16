@@ -39,7 +39,7 @@ JSON object, optional fields omitted when absent.
 | field | meaning |
 |---|---|
 | `v` | protocol version, `2` |
-| `t` | `hi` (link hello, never forwarded: `ttl` 1, carries `n` and `pk`) · `ann` (announce) · `msg` (direct message) · `pub` (public channel) · `ack` (delivery receipt) · `vfy` (QR verification proof, section 4) · `gm` (group message, section 5) · `sos` / `sosx` (SOS alarm on / off, section 6) |
+| `t` | `hi` (link hello, never forwarded: `ttl` 1, carries `n` and `pk`) · `ann` (announce) · `msg` (direct message) · `pub` (public channel) · `ack` (delivery receipt) · `vfy` (QR verification proof, section 4) · `gm` (group message, section 5) · `sos` / `sosx` (SOS alarm on / off, section 6) · `post` (announcement, section 8) |
 | `id` | unique packet id (for `msg`: the message id) |
 | `src` | sender device id |
 | `dst` | destination device id (`msg`, `ack`, `vfy`, `gm`); absent for broadcasts |
@@ -48,9 +48,10 @@ JSON object, optional fields omitted when absent.
 | `n` | sender nickname |
 | `pk` | `ann`: base64 public key |
 | `ct` | `msg`: base64 sealed text · `vfy`: base64 sealed one-time code (section 4) · `gm`: base64 sealed group JSON (section 5) |
-| `tx` | `pub`: plain text · `sos`: optional plain note |
-| `ref` | `ack`: id of the acknowledged packet · `sos`/`sosx`: alarm id (the same on every repeat) |
+| `tx` | `pub`, `post`: plain text · `sos`: optional plain note |
+| `ref` | `ack`: id of the acknowledged packet · `sos`/`sosx`: alarm id (the same on every repeat) · `post`: announcement id |
 | `loc` | `sos`: `"lat,lon,accuracyMetres"` (decimal degrees, WGS84) when the sender shares a position; absent otherwise |
+| `exp` | `post`: expiry, ms since epoch; receivers cap it at their own clock + 24 h |
 
 Text is limited to **180 UTF-8 bytes** (cut on a character boundary).
 
@@ -72,8 +73,26 @@ At most 255 fragments. Shared test vector: the bytes `00 01 … 09` with `seq` 7
   neighbours are dropped when the link is lost. Reach is therefore at most **5 hops**.
 - `msg` for me: decrypt, show, reply with an `ack`. `pub`: show. `ack` for me: mark the message delivered.
   `vfy` for me: handled as in section 4 (no `ack`). `gm` for me: section 5 (with `ack`). `sos`/`sosx`: section 6.
-  `msg`, `ack`, `vfy` and `gm` for someone else are forwarded like any packet. Unknown types are ignored (not forwarded).
-- Messages to a peer that is not currently known stay queued in the app and are sent when the peer appears (give up after 10 min).
+  `msg`, `ack`, `vfy` and `gm` for someone else are forwarded like any packet (and carried, below). Unknown types are ignored
+  (not forwarded). `post`: section 8.
+- Messages to a peer whose key we do not have stay queued in the app and are sent when the peer appears (give up after 10 min).
+
+### Store-and-forward (carrying messages to people who are away)
+- A sender can encrypt to someone who is not in range if it has their key from earlier (a contact, a QR scan, or a group
+  member it has heard from). It keeps a copy and also hands the packet to its neighbours. The app shows "relayed" if a
+  neighbour took it, otherwise "sending".
+- Every phone **holds** `msg`, `gm`, `ack` and `vfy` packets addressed to someone it does not currently know: at most **200**,
+  each until `min(ts, now) + 24 h`; the oldest is dropped first. Held copies live in memory only (lost when the app restarts).
+- When a neighbour connects, a phone sends it (a) the held packets addressed to that neighbour, then (b) all other held
+  packets with `ttl` 5, so the neighbour carries them on. When an `ann` from a previously unknown id arrives, held packets
+  for that id are sent towards it.
+- A copy is dropped once it was sent over a direct link to its destination, when an `ack` for it passes through, or when it expires.
+  Duplicates are harmless: receivers drop ids they have seen.
+
+### Settings that change relaying
+- **Pass on messages for others** off: the phone neither forwards nor holds other people's packets (it still sends,
+  receives and carries its own). Other phones cannot tell.
+- **Delivery receipts** off: the phone sends no `ack` for `msg` or `gm`. Senders keep showing "sent"/"relayed".
 
 ## 4. Direct-message encryption
 
@@ -163,3 +182,18 @@ phones that are not contacts.
   alarm under any name. The alarm only reaches phones within 5 hops; it does not contact emergency services.
 - **Group membership is not authenticated.** Any member can send a member list; there is no admin. Members learn each
   other's device ids and names. Each copy is end-to-end encrypted, but a group of N people costs N packets per message.
+- **Carried messages stay readable as metadata.** Phones that carry a message see who it is from and to and when, for up to
+  24 h. They cannot read the text. Anyone can fill the 200-slot store with junk and push real messages out.
+- **Announcements are public, unauthenticated and stored.** Phones keep them until they expire and show them to people who
+  arrive later; anyone can post under any name.
+
+## 8. Announcements (`post`)
+
+A public, unencrypted notice that stays around for a while (like a note on a board).
+
+- Fields: `ref` = announcement id, `tx` (clipped to 180 bytes), `n`, `exp`. Flooded like `pub` (ttl 5).
+- Every phone keeps up to **50** unexpired announcements (dropping the one that expires first) in memory and, when a
+  neighbour connects, sends it a copy of each with a fresh packet `id` and `ttl` 1, so people who arrive later see them.
+  With "Pass on messages for others" off, a phone only shares its own.
+- Receivers group by `ref`, show each announcement once, and hide it after `exp` (capped at their clock + 24 h).
+  The app offers 1, 6 or 24 h.

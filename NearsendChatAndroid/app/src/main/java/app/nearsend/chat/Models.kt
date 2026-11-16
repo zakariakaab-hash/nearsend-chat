@@ -11,6 +11,7 @@ data class Peer(
     val rssi: Int,          // dBm, used for radar distance
     val verified: Boolean = false,
     val fingerprint: String = "",
+    val via: String? = null,   // relayed peers: the neighbour their announcement came through (network view)
 )
 
 enum class Delivery { Sending, Sent, Relayed, Delivered, Failed }
@@ -34,6 +35,9 @@ data class Conversation(
 ) {
     val isGroup get() = members != null
 }
+
+/** A public announcement, kept by phones nearby until [expMs]. */
+data class Post(val id: String, val from: String, val name: String, val text: String, val expMs: Long, val mine: Boolean, val hops: Int = 1)
 
 /** An SOS alarm someone nearby sent. [alarm] stays the same on every repeat; [active] turns false when they stop it. */
 data class SosAlert(

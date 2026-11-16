@@ -5,11 +5,12 @@ import org.json.JSONObject
 import java.util.Base64
 import java.util.UUID
 
-enum class SendOutcome { Sent, Unreachable, Failed }
+/** Carried: the recipient is away; a phone nearby took a copy to pass on. Held: nobody nearby yet; this phone keeps it. */
+enum class SendOutcome { Sent, Unreachable, Failed, Carried, Held }
 
 /** Wire packet (JSON). See PROTOCOL.md. Optional fields are omitted when null. */
 class Packet(
-    val t: String,               // "hi" | "ann" | "msg" | "pub" | "ack" | "vfy" | "sos" | "sosx"
+    val t: String,               // "hi" | "ann" | "msg" | "gm" | "pub" | "post" | "ack" | "vfy" | "sos" | "sosx"
     val id: String,
     val src: String,
     val dst: String?,
@@ -21,17 +22,18 @@ class Packet(
     val tx: String? = null,      // pub: plain text
     val ref: String? = null,     // ack: id of the message being acknowledged; sos/sosx: alarm id (same on every repeat)
     val loc: String? = null,     // sos: "lat,lon,accuracyMetres" when the sender shared a position
+    val exp: Long? = null,       // post: expiry, ms since epoch
 ) {
     fun toBytes(): ByteArray {
         val o = JSONObject().put("v", 2).put("t", t).put("id", id).put("src", src)
         dst?.let { o.put("dst", it) }
         o.put("ttl", ttl).put("ts", ts)
         n?.let { o.put("n", it) }; pk?.let { o.put("pk", it) }; ct?.let { o.put("ct", it) }
-        tx?.let { o.put("tx", it) }; ref?.let { o.put("ref", it) }; loc?.let { o.put("loc", it) }
+        tx?.let { o.put("tx", it) }; ref?.let { o.put("ref", it) }; loc?.let { o.put("loc", it) }; exp?.let { o.put("exp", it) }
         return o.toString().toByteArray()
     }
 
-    fun withTtl(newTtl: Int) = Packet(t, id, src, dst, newTtl, ts, n, pk, ct, tx, ref, loc)
+    fun withTtl(newTtl: Int) = Packet(t, id, src, dst, newTtl, ts, n, pk, ct, tx, ref, loc, exp)
 
     companion object {
         fun parse(bytes: ByteArray): Packet? = runCatching {
@@ -39,7 +41,7 @@ class Packet(
             if (o.getInt("v") != 2) return null
             fun opt(k: String) = if (o.has(k)) o.getString(k) else null
             Packet(o.getString("t"), o.getString("id"), o.getString("src"), opt("dst"), o.getInt("ttl"), o.getLong("ts"),
-                opt("n"), opt("pk"), opt("ct"), opt("tx"), opt("ref"), opt("loc"))
+                opt("n"), opt("pk"), opt("ct"), opt("tx"), opt("ref"), opt("loc"), if (o.has("exp")) o.getLong("exp") else null)
         }.getOrNull()
     }
 }
@@ -54,6 +56,9 @@ class MeshRouter(val myId: String, var myName: String, private val crypto: MeshC
         const val START_TTL = 5
         const val MAX_TEXT_BYTES = 180
         const val PEER_TIMEOUT_MS = 40_000L
+        const val HOLD_MS = 24 * 3_600_000L    // store-and-forward copies and announcements live at most a day
+        const val MAX_HELD = 200
+        const val MAX_POSTS = 50
 
         fun clip(s: String): String {
             val sb = StringBuilder(); var n = 0
@@ -67,7 +72,8 @@ class MeshRouter(val myId: String, var myName: String, private val crypto: MeshC
         }
     }
 
-    private class PeerInfo(val name: String, val pk: ByteArray, val hops: Int, val lastSeen: Long, val direct: Boolean)
+    /** [via]: the neighbour a relayed peer's announcement came through (for the network view). */
+    private class PeerInfo(val name: String, val pk: ByteArray, val hops: Int, val lastSeen: Long, val direct: Boolean, val via: String? = null)
 
     var now: () -> Long = { System.currentTimeMillis() }
     /** Link ids are "out:<id>" (we connected to that phone and can write to it) or "in:<id>" (it connected to us and we reply
@@ -84,6 +90,16 @@ class MeshRouter(val myId: String, var myName: String, private val crypto: MeshC
     var onSosEnd: ((from: String, alarm: String) -> Unit)? = null
     /** Group message [msgId] for group [group] ("g:" + uuid); [members] = (id, name) of everyone in it, sender included. */
     var onGroup: ((from: String, name: String, group: String, groupName: String, members: List<Pair<String, String>>, text: String, hops: Int, msgId: String) -> Unit)? = null
+    /** Announcement [post] (stable id) from [from], shown until [exp]. Called once per post. */
+    var onPost: ((from: String, name: String, post: String, text: String, exp: Long, hops: Int) -> Unit)? = null
+    /** Keys of people met before who are not in range now (saved contacts): to seal to them and to open what they sent
+     *  through a carrier. */
+    var savedKey: ((id: String) -> ByteArray?)? = null
+    /** A peer's key was seen (direct or announced); the app saves it for contacts. */
+    var onKey: ((id: String, pk: ByteArray) -> Unit)? = null
+    /** Privacy settings: pass on and carry other people's packets; confirm messages we receive. */
+    var relay = true
+    var sendAcks = true
 
     private val links = LinkedHashMap<String, String>()      // link id -> peer id (direct neighbours; possibly two links per peer)
     private val peers = HashMap<String, PeerInfo>()
@@ -92,6 +108,8 @@ class MeshRouter(val myId: String, var myName: String, private val crypto: MeshC
     private val seenOrder = ArrayDeque<String>()
     private val b64 = Base64.getEncoder()
     private val unb64 = Base64.getDecoder()
+    private val held = LinkedHashMap<String, Pair<Packet, Long>>()   // packet id -> (packet for someone away, keep until)
+    private val posts = LinkedHashMap<String, Packet>()               // post id -> announcement
 
     // ---- neighbours
 
@@ -101,10 +119,48 @@ class MeshRouter(val myId: String, var myName: String, private val crypto: MeshC
         if (id == myId || pk.size != 32) return
         links[link] = id
         peers[id] = PeerInfo(name, pk, 1, now(), true)
+        onKey?.invoke(id, pk)
         emitPeers()
         if (sayHello) sendHello(link)
         sendAnnounce(listOf(link))
+        shareStored(link, id)
     }
+
+    /** A phone came into range: deliver what we carry for it, give it a copy of the rest to carry too, and show it the
+     *  announcements it may have missed. */
+    private fun shareStored(link: String, id: String) {
+        expire()
+        deliverHeld(id)
+        for ((p, _) in held.values.toList()) if (p.dst != id && (relay || p.src == myId)) transmit?.invoke(link, p.withTtl(START_TTL).toBytes()) { }
+        for (p in posts.values.toList()) if (relay || p.src == myId) {
+            val copy = Packet("post", UUID.randomUUID().toString(), p.src, null, 1, p.ts, p.n, tx = p.tx, ref = p.ref, exp = p.exp)
+            remember(copy.id)
+            transmit?.invoke(link, copy.toBytes()) { }
+        }
+    }
+
+    /** [id] became reachable: send what we hold for it. Copies handed straight to it are done; flooded ones stay until acked. */
+    private fun deliverHeld(id: String) {
+        for ((p, _) in held.values.toList()) if (p.dst == id) {
+            val direct = bestLink(id) != null
+            route(p.withTtl(START_TTL), null) { if (it == SendOutcome.Sent && direct) held.remove(p.id) }
+        }
+    }
+
+    private fun hold(p: Packet) {
+        if (p.dst == null || p.dst == myId) return
+        held.remove(p.id)
+        held[p.id] = p to minOf(p.ts, now()) + HOLD_MS     // a sender clock in the future cannot keep it longer
+        while (held.size > MAX_HELD) held.remove(held.keys.first())
+    }
+
+    private fun expire() {
+        val t = now()
+        held.values.removeIf { it.second < t }
+        posts.values.removeIf { (it.exp ?: 0) <= t }
+    }
+
+    private fun keyOf(id: String): ByteArray? = peers[id]?.pk ?: savedKey?.invoke(id)?.takeIf { it.size == 32 }
 
     private fun sendHello(link: String) {
         val p = Packet("hi", UUID.randomUUID().toString(), myId, null, 1, now(), n = myName, pk = b64.encodeToString(crypto.publicKey))
@@ -132,6 +188,7 @@ class MeshRouter(val myId: String, var myName: String, private val crypto: MeshC
         val before = peers.size
         peers.entries.removeIf { !it.value.direct && it.value.lastSeen <= cutoff }
         if (peers.size != before) emitPeers()
+        expire()
         sendAnnounce(allBestLinks(null))
     }
 
@@ -144,12 +201,32 @@ class MeshRouter(val myId: String, var myName: String, private val crypto: MeshC
 
     // ---- sending
 
+    /** Sends now if [dst] is reachable. If not, but we know its key (a contact), the message is stored and carried:
+     *  Carried when a phone nearby took a copy, Held when nobody is around yet. Unreachable only without a key. */
     fun sendText(text: String, dst: String, msgId: String, completion: (SendOutcome) -> Unit) {
-        val info = peers[dst] ?: return completion(SendOutcome.Unreachable)
-        val ct = runCatching { crypto.seal(clip(text), info.pk, myId, dst, msgId) }.getOrNull() ?: return completion(SendOutcome.Failed)
-        val p = Packet("msg", msgId, myId, dst, START_TTL, now(), n = myName, ct = b64.encodeToString(ct))
-        remember(msgId)
-        route(p, null, completion)
+        val pk = keyOf(dst) ?: return completion(SendOutcome.Unreachable)
+        val ct = runCatching { crypto.seal(clip(text), pk, myId, dst, msgId) }.getOrNull() ?: return completion(SendOutcome.Failed)
+        sendOrCarry(Packet("msg", msgId, myId, dst, START_TTL, now(), n = myName, ct = b64.encodeToString(ct)), completion)
+    }
+
+    private fun sendOrCarry(p: Packet, completion: (SendOutcome) -> Unit) {
+        remember(p.id)
+        if (p.dst in peers) return route(p, null, completion)
+        hold(p)
+        route(p, null) { completion(if (it == SendOutcome.Sent) SendOutcome.Carried else SendOutcome.Held) }
+    }
+
+    /** Public announcement, kept by every phone until [exp] (at most a day) and shown to phones that arrive later. */
+    fun sendPost(text: String, postId: String, exp: Long) {
+        val p = Packet("post", UUID.randomUUID().toString(), myId, null, START_TTL, now(), n = myName, tx = clip(text), ref = postId,
+            exp = minOf(exp, now() + HOLD_MS))
+        remember(p.id); keepPost(p)
+        route(p, null, null)
+    }
+
+    private fun keepPost(p: Packet) {
+        posts[p.ref ?: return] = p
+        while (posts.size > MAX_POSTS) posts.remove(posts.values.minByOrNull { it.exp ?: 0 }!!.ref)
     }
 
     fun sendPublic(text: String, msgId: String, completion: (SendOutcome) -> Unit) {
@@ -171,14 +248,12 @@ class MeshRouter(val myId: String, var myName: String, private val crypto: MeshC
      *  copy has its own aad and its own ack. Returns Unreachable while [dst] is not known (the app queues it). */
     fun sendGroup(text: String, group: String, groupName: String, members: List<Pair<String, String>>, dst: String, msgId: String,
                   completion: (SendOutcome) -> Unit) {
-        val info = peers[dst] ?: return completion(SendOutcome.Unreachable)
+        val pk = keyOf(dst) ?: return completion(SendOutcome.Unreachable)
         val id = "$msgId.$dst"
         val json = JSONObject().put("g", group).put("gn", groupName).put("tx", clip(text))
             .put("m", JSONArray(members.map { JSONObject().put("id", it.first).put("n", it.second) })).toString()
-        val ct = runCatching { crypto.seal(json, info.pk, myId, dst, id) }.getOrNull() ?: return completion(SendOutcome.Failed)
-        val p = Packet("gm", id, myId, dst, START_TTL, now(), n = myName, ct = b64.encodeToString(ct))
-        remember(id)
-        route(p, null, completion)
+        val ct = runCatching { crypto.seal(json, pk, myId, dst, id) }.getOrNull() ?: return completion(SendOutcome.Failed)
+        sendOrCarry(Packet("gm", id, myId, dst, START_TTL, now(), n = myName, ct = b64.encodeToString(ct)), completion)
     }
 
     /** SOS goes to everyone, unencrypted, like "pub". The app repeats it while the alarm is on; [alarm] ties repeats together. */
@@ -206,49 +281,73 @@ class MeshRouter(val myId: String, var myName: String, private val crypto: MeshC
                 val pk = runCatching { unb64.decode(p.pk ?: return) }.getOrNull() ?: return
                 if (pk.size != 32) return
                 val direct = peers[p.src]?.direct ?: false
-                peers[p.src] = PeerInfo(p.n ?: "?", pk, if (direct) 1 else hops, now(), direct)
+                val wasKnown = p.src in peers
+                peers[p.src] = PeerInfo(p.n ?: "?", pk, if (direct) 1 else hops, now(), direct, if (direct) null else from?.let { links[it] })
+                onKey?.invoke(p.src, pk)
                 emitPeers()
+                if (!wasKnown) deliverHeld(p.src)
                 forward(p, from)
             }
             "msg" -> if (p.dst == myId) {
-                val info = peers[p.src] ?: return
+                val pk = keyOf(p.src) ?: return
                 val ct = runCatching { unb64.decode(p.ct ?: return) }.getOrNull() ?: return
-                val text = runCatching { crypto.open(ct, info.pk, myId, p.src, p.id) }.getOrNull() ?: return
-                onText?.invoke(p.src, p.n ?: info.name, text, hops, p.id)
-                val ack = Packet("ack", UUID.randomUUID().toString(), myId, p.src, START_TTL, now(), ref = p.id)
-                remember(ack.id)
-                route(ack, null) { }
-            } else forward(p, from)
+                val text = runCatching { crypto.open(ct, pk, myId, p.src, p.id) }.getOrNull() ?: return
+                onText?.invoke(p.src, p.n ?: peers[p.src]?.name ?: "?", text, hops, p.id)
+                ack(p)
+            } else passOn(p, from)
             "pub" -> { p.tx?.let { onPublic?.invoke(p.src, p.n ?: "?", it, p.id) }; forward(p, from) }
+            "post" -> {
+                val ref = p.ref ?: return; val tx = p.tx ?: return; val exp = minOf(p.exp ?: return, now() + HOLD_MS)
+                if (exp <= now()) return
+                val fresh = ref !in posts
+                keepPost(Packet(p.t, p.id, p.src, null, p.ttl, p.ts, p.n, tx = tx, ref = ref, exp = exp))
+                if (fresh) onPost?.invoke(p.src, p.n ?: "?", ref, tx, exp, hops)
+                forward(p, from)
+            }
             "gm" -> if (p.dst == myId) {
-                val info = peers[p.src] ?: return
+                val pk = keyOf(p.src) ?: return
                 val ct = runCatching { unb64.decode(p.ct ?: return) }.getOrNull() ?: return
-                val o = runCatching { JSONObject(crypto.open(ct, info.pk, myId, p.src, p.id)) }.getOrNull() ?: return
+                val o = runCatching { JSONObject(crypto.open(ct, pk, myId, p.src, p.id)) }.getOrNull() ?: return
                 val group = o.optString("g"); val text = o.optString("tx")
                 if (!group.startsWith("g:") || text.isEmpty()) return
                 val ms = o.optJSONArray("m") ?: JSONArray()
                 val members = (0 until ms.length()).mapNotNull { ms.optJSONObject(it) }.map { it.optString("id") to it.optString("n") }.filter { it.first.isNotEmpty() }
-                onGroup?.invoke(p.src, p.n ?: info.name, group, o.optString("gn").ifEmpty { "?" }, members, text, hops, p.id.substringBefore('.'))
-                val ack = Packet("ack", UUID.randomUUID().toString(), myId, p.src, START_TTL, now(), ref = p.id)
-                remember(ack.id)
-                route(ack, null) { }
-            } else forward(p, from)
+                onGroup?.invoke(p.src, p.n ?: peers[p.src]?.name ?: "?", group, o.optString("gn").ifEmpty { "?" }, members, text, hops, p.id.substringBefore('.'))
+                ack(p)
+            } else passOn(p, from)
             "sos" -> { p.ref?.let { onSos?.invoke(p.src, p.n ?: "?", it, p.tx, p.loc, hops) }; forward(p, from) }
             "sosx" -> { p.ref?.let { onSosEnd?.invoke(p.src, it) }; forward(p, from) }
-            "ack" -> if (p.dst == myId && p.ref != null) onDelivered?.invoke(p.ref) else forward(p, from)
+            "ack" -> {
+                p.ref?.let { held.remove(it) }            // delivered: carriers drop their copy as the ack passes
+                if (p.dst == myId && p.ref != null) onDelivered?.invoke(p.ref) else passOn(p, from)
+            }
             "vfy" -> if (p.dst == myId) {
                 val info = peers[p.src] ?: return
                 val ct = runCatching { unb64.decode(p.ct ?: return) }.getOrNull() ?: return
                 val code = runCatching { crypto.open(ct, info.pk, myId, p.src, p.id) }.getOrNull() ?: return
                 onVerify?.invoke(p.src, MeshCrypto.fingerprint(info.pk), code)
-            } else forward(p, from)
+            } else passOn(p, from)
         }
     }
 
     // ---- internals
 
+    private fun ack(p: Packet) {
+        if (!sendAcks) return
+        val ack = Packet("ack", UUID.randomUUID().toString(), myId, p.src, START_TTL, now(), ref = p.id)
+        remember(ack.id)
+        sendOrCarry(ack) { }
+    }
+
+    /** A packet for someone else: pass it on, and keep a copy to carry if that person is not reachable now. */
+    private fun passOn(p: Packet, from: String?) {
+        if (!relay) return
+        if (p.dst !in peers) hold(p)
+        forward(p, from)
+    }
+
     private fun forward(p: Packet, from: String?) {
-        if (p.ttl <= 1) return
+        if (!relay || p.ttl <= 1) return
         route(p.withTtl(p.ttl - 1), from, null)
     }
 
@@ -280,7 +379,7 @@ class MeshRouter(val myId: String, var myName: String, private val crypto: MeshC
     private fun emitPeers() {
         onPeers?.invoke(peers.map { (id, i) ->
             val r = if (i.direct) (rssi[id] ?: -80) else -70 - 8 * i.hops
-            Peer(id, i.name, i.hops, r.coerceIn(-95, -40), false, MeshCrypto.fingerprint(i.pk))
+            Peer(id, i.name, i.hops, r.coerceIn(-95, -40), false, MeshCrypto.fingerprint(i.pk), i.via)
         }.sortedBy { it.id })
     }
 

@@ -59,6 +59,15 @@ class ChatStore private constructor(private val app: Application) {
     private var leftGroups = setOf<String>()                                 // group ids we left: their messages are dropped
     private val groupPending = HashMap<String, MutableSet<String>>()         // group message id -> members not sent to yet (memory only)
     private val groupAcks = HashMap<String, MutableSet<String>>()            // group message id -> members who confirmed
+    private var contactKeys = mapOf<String, String>()                       // contact / group member id -> base64 key (saved)
+    private val seenKeys = HashMap<String, ByteArray>()                      // every key seen this session
+    private val handed = HashSet<String>()                                   // message ids the router stores/carries this session
+    var posts by mutableStateOf(listOf<Post>()); private set                 // announcements, newest first (not saved)
+    // Privacy settings
+    var relayOthers by mutableStateOf(prefs.getBoolean("relay", true)); private set
+    var receipts by mutableStateOf(prefs.getBoolean("receipts", true)); private set
+    var hidePreviews by mutableStateOf(prefs.getBoolean("hidePreviews", false)); private set
+    var autoDeleteDays by mutableStateOf(prefs.getInt("autoDelete", 0)); private set   // 0 = never
     var lastVerified by mutableStateOf<String?>(null)                       // who just confirmed our QR (shown on the QR screen)
     private val myCodes = HashSet<String>()                                  // one-time codes shown in our QR this session
     private val pendingVerify = HashMap<String, Pair<String, ByteArray>>()   // peer id -> (their code, their key), sent when reachable
@@ -72,7 +81,7 @@ class ChatStore private constructor(private val app: Application) {
     private var transport: BleTransport? = null
     private var router: MeshRouter? = null
     private val inflight = HashSet<String>()
-    private val tick = object : Runnable { override fun run() { router?.tick(); main.postDelayed(this, 8000) } }
+    private val tick = object : Runnable { override fun run() { router?.tick(); prune(); main.postDelayed(this, 8000) } }
 
     // SOS (declared before init: the emulator demo data fills [alerts])
     var alerts by mutableStateOf(listOf<SosAlert>()); private set     // received alarms, newest first (not saved)
@@ -127,6 +136,10 @@ class ChatStore private constructor(private val app: Application) {
             r.onGroup = { from, name, g, gn, members, text, hops, id -> receiveGroup(from, name, g, gn, members, text, hops, id) }
             r.onSos = { from, name, alarm, note, loc, hops -> receiveSos(from, name, alarm, note, loc, hops) }
             r.onSosEnd = { from, alarm -> alerts = alerts.map { if (it.alarm == alarm && it.from == from) it.copy(active = false) else it } }
+            r.onPost = { from, name, post, text, exp, hops -> receivePost(from, name, post, text, exp, hops) }
+            r.onKey = { id, pk -> learnKey(id, pk) }
+            r.savedKey = { id -> keyFor(id) }
+            r.relay = relayOthers; r.sendAcks = receipts
             t.onNeighbor = { link, id, name, pk -> r.neighborConnected(link, id, name, pk) }
             t.onLost = { r.neighborLost(it) }
             t.onPacket = { data, link -> r.receive(data, link) }
@@ -183,6 +196,8 @@ class ChatStore private constructor(private val app: Application) {
         deviceId = newDeviceId()
         verified = emptySet(); peers = emptyList(); conversations = emptyList()
         nicknames = emptyMap(); blocked = emptySet(); leftGroups = emptySet(); groupPending.clear(); groupAcks.clear(); myCodes.clear(); pendingVerify.clear(); lastVerified = null; alerts = emptyList()
+        contactKeys = emptyMap(); seenKeys.clear(); handed.clear(); posts = emptyList()
+        relayOthers = true; receipts = true; hidePreviews = false; autoDeleteDays = 0
         nickname = "anon-${(1000..9999).random()}"
         if (!simulated) myFingerprint = ""
         ensurePublicChannel()
@@ -228,7 +243,8 @@ class ChatStore private constructor(private val app: Application) {
         val fp = MeshCrypto.fingerprint(pk)
         val seen = peers.firstOrNull { it.id == id }
         if (seen != null && seen.fingerprint != fp) return ScanResult.Mismatch to seen.name
-        ensureConversation(seen ?: Peer(id, name, 1, -80, fp in verified, fp)); save()
+        ensureConversation(seen ?: Peer(id, name, 1, -80, fp in verified, fp))
+        contactKeys = contactKeys + (id to Base64.getEncoder().encodeToString(pk)); save()
         return ScanResult.Added to (seen?.name ?: name)
     }
 
@@ -251,6 +267,7 @@ class ChatStore private constructor(private val app: Application) {
         verified = verified + fp
         peers = peers.map { it.copy(verified = it.fingerprint in verified) }
         ensureConversation(seen ?: Peer(id, name, 1, -80, true, fp))
+        contactKeys = contactKeys + (id to Base64.getEncoder().encodeToString(pk))
         pendingVerify[id] = code to pk
         flushVerify(); save()
         return (if (seen != null && seen.fingerprint != fp) ScanResult.Mismatch else ScanResult.Verified) to (seen?.name ?: name)
@@ -288,6 +305,7 @@ class ChatStore private constructor(private val app: Application) {
     /** Deletes the chat, nickname and verification. Blocking (if any) stays. */
     fun removeContact(peer: Peer) {
         conversations = conversations.filter { it.id != peer.id }
+        contactKeys = contactKeys - peer.id
         verified = verified - peer.fingerprint; nicknames = nicknames - peer.fingerprint
         peers = peers.map { it.copy(verified = it.fingerprint in verified) }
         save()
@@ -330,7 +348,9 @@ class ChatStore private constructor(private val app: Application) {
             when (outcome) {
                 SendOutcome.Sent -> update(m.id, id, Delivery.Sent)
                 SendOutcome.Failed -> update(m.id, id, Delivery.Failed)
-                SendOutcome.Unreachable -> {}      // stays queued until the person comes into range
+                SendOutcome.Carried -> { handed += m.id; update(m.id, id, Delivery.Relayed) }   // a phone nearby carries it
+                SendOutcome.Held -> handed += m.id                                               // we carry it ourselves
+                SendOutcome.Unreachable -> {}      // no key: stays queued until the person comes into range
             }
         }
     }
@@ -360,11 +380,12 @@ class ChatStore private constructor(private val app: Application) {
         val pending = groupPending[m.id] ?: return
         val members = c.members.orEmpty().map { if (it.first == deviceId) it.first to nickname else it }
         for (member in pending.toList()) {
-            if (peers.none { it.id == member } || !inflight.add("${m.id}.$member")) continue
+            if ((peers.none { it.id == member } && keyFor(member) == null) || !inflight.add("${m.id}.$member")) continue
             r.sendGroup(m.text, gid, c.peer.name, members, member, m.id) { outcome ->
                 inflight.remove("${m.id}.$member")
                 if (outcome != SendOutcome.Unreachable) pending.remove(member)
                 if (outcome == SendOutcome.Sent) update(m.id, gid, Delivery.Sent)
+                else if (outcome == SendOutcome.Carried && m.state == Delivery.Sending) update(m.id, gid, Delivery.Relayed)
                 else if (outcome == SendOutcome.Failed && pending.isEmpty() && m.state == Delivery.Sending) update(m.id, gid, Delivery.Failed)
             }
         }
@@ -380,12 +401,13 @@ class ChatStore private constructor(private val app: Application) {
             if (it.id == gid) it.copy(peer = it.peer.copy(name = gname), members = members, messages = it.messages + m,
                 unread = if (activeConversation == gid) it.unread else it.unread + 1) else it
         }
-        Notifier.notify(app, "$gname · $name", text)
+        Notifier.notify(app, "$gname · $name", preview(text))
         Notifier.tap(app)
         save()
     }
 
-    /** Sends queued messages whose recipient is now reachable; gives up after 10 minutes. */
+    /** Sends queued messages whose recipient is now reachable. Contacts whose key we have get a day (phones nearby carry
+     *  the message); others 10 minutes. */
     private fun flushOutbox() {
         if (simulated) return
         for (c in conversations) {
@@ -401,8 +423,9 @@ class ChatStore private constructor(private val app: Application) {
             }
             for (m in c.messages) {
                 if (!m.mine || m.state != Delivery.Sending) continue
-                if (System.currentTimeMillis() - m.timeMs > 600_000) update(m.id, c.id, Delivery.Failed)
-                else if (peers.any { it.id == c.id }) trySend(m, c.id)
+                val carried = keyFor(c.id) != null
+                if (System.currentTimeMillis() - m.timeMs > if (carried) MeshRouter.HOLD_MS else 600_000) update(m.id, c.id, Delivery.Failed)
+                else if (peers.any { it.id == c.id } || (carried && m.id !in handed)) trySend(m, c.id)
             }
         }
     }
@@ -426,8 +449,58 @@ class ChatStore private constructor(private val app: Application) {
         conversations = conversations.map {
             if (it.id == from) it.copy(messages = it.messages + m, unread = if (activeConversation == from) it.unread else it.unread + 1) else it
         }
-        Notifier.notify(app, name, text)
+        Notifier.notify(app, name, preview(text))
         Notifier.tap(app)
+        save()
+    }
+
+    private fun preview(text: String) = if (hidePreviews) app.getString(R.string.notif_hidden) else text
+
+    // ---- saved keys (store-and-forward needs the key of someone who is away)
+
+    private fun learnKey(id: String, pk: ByteArray) {
+        seenKeys[id] = pk
+        if (id in keepKeysFor() && contactKeys[id] == null) { contactKeys = contactKeys + (id to Base64.getEncoder().encodeToString(pk)); save() }
+    }
+
+    private fun keepKeysFor(): Set<String> = conversations.flatMap { c -> listOf(c.id) + c.members.orEmpty().map { it.first } }.toSet()
+
+    /** True when phones nearby can carry messages to this person while they are away. */
+    fun canCarryTo(id: String) = keyFor(id) != null
+
+    private fun keyFor(id: String): ByteArray? =
+        seenKeys[id] ?: contactKeys[id]?.let { runCatching { Base64.getDecoder().decode(it) }.getOrNull() }
+
+    // ---- announcements
+
+    fun post(text: String, hours: Int) {
+        val id = UUID.randomUUID().toString(); val exp = System.currentTimeMillis() + hours * 3_600_000L
+        router?.sendPost(text.trim(), id, exp)
+        posts = listOf(Post(id, deviceId, nickname, MeshRouter.clip(text.trim()), exp, true)) + posts
+    }
+
+    private fun receivePost(from: String, sentName: String, id: String, text: String, exp: Long, hops: Int) {
+        if (from in blocked || posts.any { it.id == id }) return
+        val name = peers.firstOrNull { it.id == from }?.name ?: sentName
+        posts = listOf(Post(id, from, name, text, exp, false, hops)) + posts
+        Notifier.notify(app, "📢 $name", preview(text))
+    }
+
+    // ---- privacy
+
+    fun changeRelay(on: Boolean) { relayOthers = on; router?.relay = on; prefs.edit().putBoolean("relay", on).apply() }
+    fun changeReceipts(on: Boolean) { receipts = on; router?.sendAcks = on; prefs.edit().putBoolean("receipts", on).apply() }
+    fun changeHidePreviews(on: Boolean) { hidePreviews = on; prefs.edit().putBoolean("hidePreviews", on).apply() }
+    fun changeAutoDelete(days: Int) { autoDeleteDays = days; prefs.edit().putInt("autoDelete", days).apply(); prune() }
+
+    /** Drops expired announcements and, if auto-delete is on, messages older than the chosen number of days. */
+    private fun prune() {
+        val now = System.currentTimeMillis()
+        if (posts.any { it.expMs <= now }) posts = posts.filter { it.expMs > now }
+        if (autoDeleteDays <= 0) return
+        val cutoff = now - autoDeleteDays * 86_400_000L
+        if (conversations.none { c -> c.messages.any { it.timeMs < cutoff } }) return
+        conversations = conversations.map { c -> c.copy(messages = c.messages.filter { it.timeMs >= cutoff }) }
         save()
     }
 
@@ -439,7 +512,7 @@ class ChatStore private constructor(private val app: Application) {
         conversations = conversations.map {
             if (it.id == PUBLIC_CHANNEL_ID) it.copy(messages = it.messages + m, unread = if (activeConversation == PUBLIC_CHANNEL_ID) it.unread else it.unread + 1) else it
         }
-        Notifier.notify(app, "#nearby · $name", text)
+        Notifier.notify(app, "#nearby · $name", preview(text))
         save()
     }
 
@@ -528,6 +601,7 @@ class ChatStore private constructor(private val app: Application) {
         if (simulated) return
         val o = JSONObject().put("verified", JSONArray(verified.toList())).put("nicknames", JSONObject(nicknames)).put("blocked", JSONArray(blocked.toList()))
             .put("leftGroups", JSONArray(leftGroups.toList()))
+            .put("keys", JSONObject(contactKeys.filterKeys { it in keepKeysFor() }))
         o.put("conversations", JSONArray(conversations.map { c ->
             JSONObject().put("id", c.id).put("unread", c.unread)
                 .put("peer", JSONObject().put("id", c.peer.id).put("name", c.peer.name).put("hops", c.peer.hops).put("rssi", c.peer.rssi).put("fp", c.peer.fingerprint))
@@ -547,6 +621,7 @@ class ChatStore private constructor(private val app: Application) {
             o.optJSONObject("nicknames")?.let { n -> nicknames = n.keys().asSequence().associateWith { n.getString(it) } }
             o.optJSONArray("blocked")?.let { b -> blocked = (0 until b.length()).map { b.getString(it) }.toSet() }
             o.optJSONArray("leftGroups")?.let { b -> leftGroups = (0 until b.length()).map { b.getString(it) }.toSet() }
+            o.optJSONObject("keys")?.let { k -> contactKeys = k.keys().asSequence().associateWith { k.getString(it) } }
             val cs = o.getJSONArray("conversations")
             conversations = (0 until cs.length()).map { i ->
                 val c = cs.getJSONObject(i); val p = c.getJSONObject("peer"); val ms = c.getJSONArray("messages")
@@ -560,14 +635,15 @@ class ChatStore private constructor(private val app: Application) {
             }
         }
         // Messages still marked "sending" stay queued; they are retried when the person is next in range.
+        prune()
     }
 
     // ---- demo data (emulator)
 
     private fun seed() {
         peers = listOf(
-            Peer("a", "Maja", 1, -48, true, "DEMO"), Peer("b", "Erik", 1, -66), Peer("c", "Noor", 2, -78),
-            Peer("d", "Luca", 3, -88), Peer("e", "Sofia", 2, -72, true),
+            Peer("a", "Maja", 1, -48, true, "DEMO"), Peer("b", "Erik", 1, -66), Peer("c", "Noor", 2, -78, via = "b"),
+            Peer("d", "Luca", 3, -88, via = "c"), Peer("e", "Sofia", 2, -72, true, via = "a"),
         )
         val now = System.currentTimeMillis()
         conversations = listOf(
@@ -587,6 +663,9 @@ class ChatStore private constructor(private val app: Application) {
         )
         // Near the emulator's default position, so the SOS tab shows a distance and direction.
         alerts = listOf(SosAlert("demo-sos", "c", "Noor", "Twisted ankle by the lake path", 37.4252, -122.0815, 9, 2, now - 120_000))
+        posts = listOf(
+            Post("demo-p1", "e", "Sofia", "Free water refills at the info tent until 18:00", now + 5 * 3_600_000L, false, 2),
+            Post("demo-p2", "d", "Luca", "Found: blue backpack near stage B. Ask at the info tent.", now + 40 * 60_000L, false, 3))
     }
 
     private fun drift() {
