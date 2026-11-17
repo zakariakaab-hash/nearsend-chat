@@ -14,10 +14,12 @@
 		23E6DC6F8C707B6C7FAABD7B /* NearbyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28CEAE65B3A970BA018742F3 /* NearbyView.swift */; };
 		24B9C5BF1EE779DA9AA1EB75 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 06C2AC2B316ACA9FD7CCFBA6 /* Assets.xcassets */; };
 		2805A4A18DC1E6078505BED7 /* Platform.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2C5BABD63D9698F3E56778E /* Platform.swift */; };
+		4D46084F04E7A8207C290724 /* KeyBook.swift in Sources */ = {isa = PBXBuildFile; fileRef = A8CE2AC0A090A12473A63FB7 /* KeyBook.swift */; };
 		59DB2C6EE11E3E9535532BFC /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = 80EE8A74865B7D1BBB9E43C7 /* Localizable.strings */; };
 		5C78597EA3F1F9CF377B3DF4 /* NearsendChatApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB40130C7B1E840D860F4464 /* NearsendChatApp.swift */; };
 		6CE3D43D23537F5EC5158AB9 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B4DC2A22C1D63D0A2DB198E /* AppDelegate.swift */; };
 		7E9D2AC431AF9BC052D1E9BC /* ChatsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D296A62CD2EF81230FB8554E /* ChatsView.swift */; };
+		80AFE5B20C4F62C75C66D0FA /* FeatureViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = AEBC876FBBEB2120E170D691 /* FeatureViews.swift */; };
 		86945C7589CE75A07850ED5A /* GroupViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00D6726B615C98F243913F3B /* GroupViews.swift */; };
 		932A3B628956D826782DA903 /* IdentityView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3035BF11BB223029CA61FBE /* IdentityView.swift */; };
 		AB66BB44A63B667FC433FF7E /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = D9AB179AB7D0AE6D8D7DCFF5 /* InfoPlist.strings */; };
@@ -27,6 +29,7 @@
 		D52B97E33BE72926F55921D1 /* BLETransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF6E2160A336370766CF8911 /* BLETransport.swift */; };
 		E259DC715A0201B116936F54 /* MeshService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2FE7E11464E41C885097BF69 /* MeshService.swift */; };
 		ED9459A47ECD6E0BAC374148 /* Framing.swift in Sources */ = {isa = PBXBuildFile; fileRef = 76CAF4DF9CBE52D59A76D02E /* Framing.swift */; };
+		F228ABAD441CEA143F2105D8 /* Photos.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73E4BAF73843F626F41F1F98 /* Photos.swift */; };
 		F861B1D61D3F1B6D29567FE3 /* Anton-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 232B4FB3BF6F535A13312310 /* Anton-Regular.ttf */; };
 /* End PBXBuildFile section */
 
@@ -51,14 +54,17 @@
 		673E83108438FED95148260B /* SosView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SosView.swift; sourceTree = "<group>"; };
 		6AF6BA0C220236EF73DD4D67 /* es */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = es; path = es.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 		7265B28A4872E20448304E03 /* it */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = it; path = it.lproj/InfoPlist.strings; sourceTree = "<group>"; };
+		73E4BAF73843F626F41F1F98 /* Photos.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Photos.swift; sourceTree = "<group>"; };
 		76CAF4DF9CBE52D59A76D02E /* Framing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Framing.swift; sourceTree = "<group>"; };
 		7E24888A74E6A0C26496E8C3 /* de */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = de; path = de.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 		8377C451A1BAF629FEA883B1 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/Localizable.strings; sourceTree = "<group>"; };
 		93F29670D9CD1D7C3ECE229A /* ar */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ar; path = ar.lproj/Localizable.strings; sourceTree = "<group>"; };
 		A2C5BABD63D9698F3E56778E /* Platform.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Platform.swift; sourceTree = "<group>"; };
 		A870FE025C1141233F7BDFEC /* sv */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = sv; path = sv.lproj/InfoPlist.strings; sourceTree = "<group>"; };
+		A8CE2AC0A090A12473A63FB7 /* KeyBook.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyBook.swift; sourceTree = "<group>"; };
 		AB40130C7B1E840D860F4464 /* NearsendChatApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NearsendChatApp.swift; sourceTree = "<group>"; };
 		ACB74D8022A6B90537BD3FE7 /* sv */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = sv; path = sv.lproj/Localizable.strings; sourceTree = "<group>"; };
+		AEBC876FBBEB2120E170D691 /* FeatureViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeatureViews.swift; sourceTree = "<group>"; };
 		B0831F9D62486BBE256AEBDA /* fr */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = fr; path = fr.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 		B0FD3D663C778C0215AE098E /* MeshCrypto.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeshCrypto.swift; sourceTree = "<group>"; };
 		B1A2DDB1220A25E19B11D507 /* ru */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ru; path = ru.lproj/Localizable.strings; sourceTree = "<group>"; };
@@ -83,9 +89,11 @@
 			children = (
 				FF6E2160A336370766CF8911 /* BLETransport.swift */,
 				76CAF4DF9CBE52D59A76D02E /* Framing.swift */,
+				A8CE2AC0A090A12473A63FB7 /* KeyBook.swift */,
 				B0FD3D663C778C0215AE098E /* MeshCrypto.swift */,
 				EABB9A6E8D239B7DB6FB97D9 /* MeshRouter.swift */,
 				2FE7E11464E41C885097BF69 /* MeshService.swift */,
+				73E4BAF73843F626F41F1F98 /* Photos.swift */,
 				A2C5BABD63D9698F3E56778E /* Platform.swift */,
 			);
 			path = Mesh;
@@ -152,6 +160,7 @@
 			isa = PBXGroup;
 			children = (
 				D296A62CD2EF81230FB8554E /* ChatsView.swift */,
+				AEBC876FBBEB2120E170D691 /* FeatureViews.swift */,
 				00D6726B615C98F243913F3B /* GroupViews.swift */,
 				D3035BF11BB223029CA61FBE /* IdentityView.swift */,
 				28CEAE65B3A970BA018742F3 /* NearbyView.swift */,
@@ -254,9 +263,11 @@
 				6CE3D43D23537F5EC5158AB9 /* AppDelegate.swift in Sources */,
 				D52B97E33BE72926F55921D1 /* BLETransport.swift in Sources */,
 				7E9D2AC431AF9BC052D1E9BC /* ChatsView.swift in Sources */,
+				80AFE5B20C4F62C75C66D0FA /* FeatureViews.swift in Sources */,
 				ED9459A47ECD6E0BAC374148 /* Framing.swift in Sources */,
 				86945C7589CE75A07850ED5A /* GroupViews.swift in Sources */,
 				932A3B628956D826782DA903 /* IdentityView.swift in Sources */,
+				4D46084F04E7A8207C290724 /* KeyBook.swift in Sources */,
 				02D7F83D3E0DAF299FEDBE53 /* MeshCrypto.swift in Sources */,
 				B158B62F5C0459D1305A682B /* MeshRouter.swift in Sources */,
 				E259DC715A0201B116936F54 /* MeshService.swift in Sources */,
@@ -264,6 +275,7 @@
 				23E6DC6F8C707B6C7FAABD7B /* NearbyView.swift in Sources */,
 				5C78597EA3F1F9CF377B3DF4 /* NearsendChatApp.swift in Sources */,
 				C718AC7AD68C0EC4CD32DB90 /* OnboardingView.swift in Sources */,
+				F228ABAD441CEA143F2105D8 /* Photos.swift in Sources */,
 				2805A4A18DC1E6078505BED7 /* Platform.swift in Sources */,
 				0059D5DCB4708411765D6F61 /* SosView.swift in Sources */,
 				118D7104DACC4D20E1EB6C53 /* Theme.swift in Sources */,
