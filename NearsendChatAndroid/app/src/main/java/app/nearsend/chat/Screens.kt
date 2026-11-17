@@ -54,6 +54,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.foundation.Image
 import android.Manifest
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -393,6 +394,7 @@ fun ChatsScreen(store: ChatStore, startAdd: Boolean = false, onOpen: (String) ->
                             val last = c.messages.lastOrNull()
                             Text(when {
                                 last == null -> if (isPublic) stringResource(R.string.public_hint) else ""
+                                last.photo != null -> "\uD83D\uDCF7 " + stringResource(R.string.attach_photo)
                                 last.sender != null -> "${last.sender}: ${last.text}"
                                 else -> last.text
                             }, color = p.inkSecondary, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
@@ -435,6 +437,8 @@ fun ThreadScreen(store: ChatStore, conversationId: String, peer: Peer, startInfo
     val noPosition = stringResource(R.string.loc_none)
     val sendPosition = { if (!store.sendLocation(conversationId)) Toast.makeText(ctx, noPosition, Toast.LENGTH_SHORT).show() }
     val askPosition = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { sendPosition() }
+    val pickPhoto = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri -> if (uri != null) store.sendPhoto(uri, conversationId) }
+    var bigPhoto by remember { mutableStateOf<String?>(null) }
     val listState = rememberLazyListState()
     DisposableEffect(conversationId) {
         store.activeConversation = conversationId
@@ -472,7 +476,9 @@ fun ThreadScreen(store: ChatStore, conversationId: String, peer: Peer, startInfo
                         } }
                     }
                 }
-                items(messages, key = { it.id }) { m -> Bubble(m, isPublic || members != null, { store.applyText(it) }) { store.retry(m.id, conversationId) } }
+                items(messages, key = { it.id }) { m ->
+                    Bubble(m, isPublic || members != null, { store.applyText(it) }, { store.loadPhoto(it) }, store.photoProgress[m.id], { bigPhoto = it }) { store.retry(m.id, conversationId) }
+                }
             }
             Row(Modifier.fillMaxWidth().glass(0.dp).navigationBarsPadding().padding(12.dp, 8.dp), verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 Box(Modifier.weight(1f).glass(16.dp).padding(horizontal = 16.dp, vertical = 12.dp)) {
@@ -485,8 +491,8 @@ fun ThreadScreen(store: ChatStore, conversationId: String, peer: Peer, startInfo
                         Icon(Icons.Rounded.Add, null, tint = p.link, modifier = Modifier.size(28.dp))
                     }
                     DropdownMenu(attach, { attach = false }) {
-                        DropdownMenuItem({ Text(stringResource(R.string.attach_photo) + " · " + stringResource(R.string.attach_soon)) }, { attach = false },
-                            leadingIcon = { Icon(Icons.Rounded.Image, null) }, enabled = false)
+                        DropdownMenuItem({ Text(stringResource(R.string.attach_photo) + if (members != null) " · " + stringResource(R.string.attach_soon) else "") },
+                            { attach = false; pickPhoto.launch("image/*") }, leadingIcon = { Icon(Icons.Rounded.Image, null) }, enabled = members == null)
                         DropdownMenuItem({ Text(stringResource(R.string.attach_location)) }, {
                             attach = false
                             if (store.hasLocationPermission()) sendPosition()
@@ -503,13 +509,20 @@ fun ThreadScreen(store: ChatStore, conversationId: String, peer: Peer, startInfo
                 }
             }
         }
+        bigPhoto?.let { id -> store.loadPhoto(id)?.let { img ->
+            Dialog(onDismissRequest = { bigPhoto = null }, properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)) {
+                Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.92f)).clickable { bigPhoto = null }, contentAlignment = Alignment.Center) {
+                    Image(img, null, Modifier.fillMaxWidth(), contentScale = androidx.compose.ui.layout.ContentScale.Fit)
+                }
+            }
+        } }
         if (showInfo && members != null) GroupInfo(livePeer.name, members, store, onClose = { showInfo = false }, onLeave = { store.leaveGroup(conversationId); onBack() })
         else if (showInfo) PeerInfo(livePeer, store, onClose = { showInfo = false }, onRemoved = { showInfo = false; onBack() })
     }
 }
 
 @Composable
-private fun Bubble(m: Message, showSender: Boolean, onAddCard: (String) -> Unit, onRetry: () -> Unit) {
+private fun Bubble(m: Message, showSender: Boolean, onAddCard: (String) -> Unit, loadPhoto: (String) -> ImageBitmap?, progress: Float?, onOpenPhoto: (String) -> Unit, onRetry: () -> Unit) {
     val p = LocalPalette.current
     val card = remember(m.text) { cardName(m.text) }
     var added by remember { mutableStateOf(false) }
@@ -521,7 +534,16 @@ private fun Bubble(m: Message, showSender: Boolean, onAddCard: (String) -> Unit,
         Column(horizontalAlignment = if (m.mine) Alignment.End else Alignment.Start, modifier = Modifier.widthIn(max = 300.dp)) {
             if (showSender && !m.mine && m.sender != null)
                 Text(m.sender, color = Color.White.copy(alpha = 0.9f), fontSize = 11.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(start = 6.dp))
-            if (card != null) Column(
+            if (m.photo != null) {
+                val img = remember(m.photo) { loadPhoto(m.photo) }
+                Box(Modifier.widthIn(max = 240.dp).clip(RoundedCornerShape(18.dp)).background(Color.Black.copy(alpha = 0.15f))
+                    .clickable(enabled = img != null) { onOpenPhoto(m.photo) }, contentAlignment = Alignment.Center) {
+                    if (img != null) Image(img, stringResource(R.string.attach_photo), Modifier.fillMaxWidth(), contentScale = androidx.compose.ui.layout.ContentScale.FillWidth)
+                    else Icon(Icons.Rounded.Image, null, tint = Color.White, modifier = Modifier.padding(40.dp).size(40.dp))
+                    if (progress != null) Text("${(progress * 100).toInt()}%", color = Color.White, fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.background(Color.Black.copy(alpha = 0.55f), RoundedCornerShape(50)).padding(horizontal = 10.dp, vertical = 4.dp))
+                }
+            } else if (card != null) Column(
                 (if (m.mine) Modifier.background(ActionBlue, RoundedCornerShape(20.dp)) else Modifier.glass(20.dp)).padding(horizontal = 14.dp, vertical = 10.dp),
                 verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 val c = if (m.mine) Color.White else p.ink

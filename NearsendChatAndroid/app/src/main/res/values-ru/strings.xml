@@ -209,4 +209,5 @@
     <string name="avatar_hint">Выберите эмодзи и цвет. Люди рядом увидят его возле вашего имени.</string>
     <string name="avatar_initial">Использовать мою букву</string>
     <string name="avatar_tap">Нажмите, чтобы изменить</string>
+    <string name="photo_error">Не удалось использовать это изображение</string>
 </resources>

@@ -209,4 +209,5 @@
     <string name="avatar_hint">絵文字と色を選んでください。近くの人に名前の横に表示されます。</string>
     <string name="avatar_initial">頭文字を使う</string>
     <string name="avatar_tap">タップして変更</string>
+    <string name="photo_error">この画像は使用できません</string>
 </resources>

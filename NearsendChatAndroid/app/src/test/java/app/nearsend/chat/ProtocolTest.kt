@@ -59,6 +59,7 @@ class ProtocolTest {
     private class Node(val id: String, net: Net) {
         val crypto = MeshCrypto.generate()
         val router = MeshRouter(id, id, crypto)
+        val photos = mutableListOf<Pair<String, ByteArray>>()
         val texts = mutableListOf<Triple<String, String, Int>>(); val pubs = mutableListOf<String>(); val delivered = mutableListOf<String>()
         var peers = listOf<Peer>()
         init {
@@ -67,6 +68,7 @@ class ProtocolTest {
             router.onText = { f, _, t, h, _ -> texts += Triple(f, t, h) }
             router.onPublic = { _, _, t, _ -> pubs += t }
             router.onDelivered = { delivered += it }
+            router.onPhoto = { _, _, id, bytes -> photos += id to bytes }
         }
     }
 
@@ -349,6 +351,48 @@ class ProtocolTest {
         assertNull(c.peers.first { it.id == "A" }.avatar)
         assertNull(Avatars.valid(null)); assertNull(Avatars.valid("|1")); assertNull(Avatars.valid(Avatars.EMOJIS[0]))
         assertEquals(fox, Avatars.valid(fox))
+    }
+
+    @Test fun photoGoesInChunksToADirectNeighbourOnly() {
+        val net = Net(); val (a, b, c) = listOf("A", "B", "C").map { net.add(it) }
+        a.router.savedKey = { if (it == "B" || it == "C") (if (it == "B") b else c).crypto.publicKey else null }
+        b.router.savedKey = { if (it == "A") a.crypto.publicKey else null }
+        c.router.savedKey = { if (it == "A") a.crypto.publicKey else null }
+        net.connect("A", "B"); net.connect("B", "C"); net.settle()
+        val photo = ByteArray(30_000) { (it * 31 % 251).toByte() }
+        var outcome: SendOutcome? = null; var last = 0f
+        a.router.sendPhoto(photo, "B", "ph-1", { last = it }) { outcome = it }
+        assertEquals(SendOutcome.Sent, outcome); assertEquals(1f, last, 0.001f)
+        assertEquals(1, b.photos.size)
+        assertArrayEquals(photo, b.photos[0].second); assertEquals("ph-1", b.photos[0].first)
+        assertEquals(listOf("ph-1"), a.delivered)                      // the receipt came back
+        var far: SendOutcome? = null
+        a.router.sendPhoto(photo, "C", "ph-2", { }) { far = it }       // C is two hops away: photos do not travel
+        assertEquals(SendOutcome.Unreachable, far); assertTrue(c.photos.isEmpty())
+        a.router.sendPhoto(photo, "B", "ph-1", { }) { }                // the same photo again is ignored
+        assertEquals(1, b.photos.size)
+    }
+
+    @Test fun photoNeedsEveryChunkAndTheRightKey() {
+        val net = Net(); val (a, b) = listOf("A", "B").map { net.add(it) }
+        a.router.savedKey = { if (it == "B") b.crypto.publicKey else null }
+        b.router.savedKey = { if (it == "A") a.crypto.publicKey else null }
+        net.connect("A", "B"); net.settle()
+        val photo = ByteArray(5_000) { it.toByte() }
+        // Send the chunks by hand, leaving one out.
+        val sealed = a.crypto.sealData(photo, b.crypto.publicKey, "A", "B", "ph-3")
+        val cnt = (sealed.size + MeshRouter.PHOTO_CHUNK - 1) / MeshRouter.PHOTO_CHUNK
+        fun chunk(i: Int, data: ByteArray = sealed.copyOfRange(i * MeshRouter.PHOTO_CHUNK, minOf(sealed.size, (i + 1) * MeshRouter.PHOTO_CHUNK))) =
+            Packet("img", "c-$i-${data.size}", "A", "B", 1, 0, ct = java.util.Base64.getEncoder().encodeToString(data), ref = "ph-3", ix = i, cnt = cnt).toBytes()
+        for (i in 0 until cnt - 1) b.router.receive(chunk(i), "in:A")
+        assertTrue(b.photos.isEmpty())                                  // one chunk missing
+        b.router.receive(chunk(cnt - 1, ByteArray(10) { 1 }), "in:A")  // last chunk damaged: opening fails, nothing is shown
+        assertTrue(b.photos.isEmpty())
+        // Chunks from someone whose key B does not have are dropped.
+        val z = net.add("Z")
+        val forged = Packet("img", "z-1", "Z", "B", 1, 0, ct = "AAAA", ref = "ph-4", ix = 0, cnt = 1).toBytes()
+        b.router.receive(forged, "in:Z"); assertTrue(b.photos.isEmpty())
+        assertEquals(0, z.photos.size)
     }
 
     @Test fun packetsInteroperateWithIosJson() {

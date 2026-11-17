@@ -209,4 +209,5 @@
     <string name="avatar_hint">اختر رمزًا تعبيريًا ولونًا. يراه الأشخاص القريبون بجانب اسمك.</string>
     <string name="avatar_initial">استخدام الحرف الأول</string>
     <string name="avatar_tap">المس للتغيير</string>
+    <string name="photo_error">تعذّر استخدام هذه الصورة</string>
 </resources>

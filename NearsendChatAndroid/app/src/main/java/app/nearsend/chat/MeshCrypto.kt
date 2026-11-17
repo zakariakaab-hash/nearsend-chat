@@ -56,6 +56,13 @@ class MeshCrypto(private val privateKey: ByteArray) {
         ChaCha20Poly1305(envelopeKey(X25519.computeSharedSecret(privateKey, ePk), ePk, publicKey)).decrypt(blob.copyOfRange(32, blob.size), aad)
     }.getOrNull()
 
+    /** Same pairwise key as [seal], for raw bytes such as a photo. */
+    fun sealData(data: ByteArray, peerPk: ByteArray, myId: String, peerId: String, aad: String): ByteArray =
+        ChaCha20Poly1305(key(peerPk, myId, peerId)).encrypt(data, aad.toByteArray())
+
+    fun openData(combined: ByteArray, peerPk: ByteArray, myId: String, peerId: String, aad: String): ByteArray =
+        ChaCha20Poly1305(key(peerPk, myId, peerId)).decrypt(combined, aad.toByteArray())
+
     fun seal(text: String, peerPk: ByteArray, myId: String, peerId: String, aad: String): ByteArray =
         ChaCha20Poly1305(key(peerPk, myId, peerId)).encrypt(text.toByteArray(), aad.toByteArray())
 

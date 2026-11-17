@@ -25,6 +25,7 @@ data class Message(
     val id: String = UUID.randomUUID().toString(),
     val hops: Int = 1,
     val sender: String? = null,   // shown on public-channel messages
+    val photo: String? = null,    // id of a photo kept on this phone (the message shows the picture, text is empty)
 )
 
 data class Conversation(

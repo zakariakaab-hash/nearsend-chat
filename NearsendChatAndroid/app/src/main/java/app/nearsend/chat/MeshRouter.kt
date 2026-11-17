@@ -24,6 +24,8 @@ class Packet(
     val loc: String? = null,     // sos: "lat,lon,accuracyMetres" when the sender shared a position
     val exp: Long? = null,       // post: expiry, ms since epoch
     val av: String? = null,      // ann: avatar "<emoji>|<colour index>"
+    val ix: Int? = null,         // img: index of this chunk
+    val cnt: Int? = null,        // img: number of chunks in the photo
 ) {
     fun toBytes(): ByteArray {
         val o = JSONObject().put("v", 2).put("t", t).put("id", id).put("src", src)
@@ -31,10 +33,11 @@ class Packet(
         o.put("ttl", ttl).put("ts", ts)
         n?.let { o.put("n", it) }; pk?.let { o.put("pk", it) }; ct?.let { o.put("ct", it) }
         tx?.let { o.put("tx", it) }; ref?.let { o.put("ref", it) }; loc?.let { o.put("loc", it) }; exp?.let { o.put("exp", it) }; av?.let { o.put("av", it) }
+        ix?.let { o.put("ix", it) }; cnt?.let { o.put("cnt", it) }
         return o.toString().toByteArray()
     }
 
-    fun withTtl(newTtl: Int) = Packet(t, id, src, dst, newTtl, ts, n, pk, ct, tx, ref, loc, exp, av)
+    fun withTtl(newTtl: Int) = Packet(t, id, src, dst, newTtl, ts, n, pk, ct, tx, ref, loc, exp, av, ix, cnt)
 
     companion object {
         fun parse(bytes: ByteArray): Packet? = runCatching {
@@ -42,7 +45,8 @@ class Packet(
             if (o.getInt("v") != 2) return null
             fun opt(k: String) = if (o.has(k)) o.getString(k) else null
             Packet(o.getString("t"), o.getString("id"), o.getString("src"), opt("dst"), o.getInt("ttl"), o.getLong("ts"),
-                opt("n"), opt("pk"), opt("ct"), opt("tx"), opt("ref"), opt("loc"), if (o.has("exp")) o.getLong("exp") else null, opt("av"))
+                opt("n"), opt("pk"), opt("ct"), opt("tx"), opt("ref"), opt("loc"), if (o.has("exp")) o.getLong("exp") else null, opt("av"),
+                if (o.has("ix")) o.getInt("ix") else null, if (o.has("cnt")) o.getInt("cnt") else null)
         }.getOrNull()
     }
 }
@@ -60,6 +64,8 @@ class MeshRouter(val myId: String, var myName: String, private val crypto: MeshC
         const val HOLD_MS = 24 * 3_600_000L    // store-and-forward copies and announcements live at most a day
         const val MAX_HELD = 200
         const val MAX_POSTS = 50
+        const val PHOTO_CHUNK = 700          // bytes of sealed photo per packet (about 940 characters once base64 encoded)
+        const val MAX_PHOTO_CHUNKS = 90      // about 60 KB sealed, the most we accept
         private val UPLINK_TYPES = setOf("msg", "gm", "ack", "vfy")
 
         fun clip(s: String): String {
@@ -99,6 +105,8 @@ class MeshRouter(val myId: String, var myName: String, private val crypto: MeshC
     var savedKey: ((id: String) -> ByteArray?)? = null
     /** A peer's key was seen (direct or announced); the app saves it for contacts. */
     var onKey: ((id: String, pk: ByteArray) -> Unit)? = null
+    /** A photo from a contact arrived complete and was opened: (from, name, photoId, image bytes). */
+    var onPhoto: ((from: String, name: String, photo: String, bytes: ByteArray) -> Unit)? = null
     /** Optional internet path: sends one of our own packets, sealed to [pk], to someone who is not in Bluetooth range. */
     var uplink: ((pk: ByteArray, data: ByteArray, done: (Boolean) -> Unit) -> Unit)? = null
     /** Privacy settings: pass on and carry other people's packets; confirm messages we receive. */
@@ -168,6 +176,56 @@ class MeshRouter(val myId: String, var myName: String, private val crypto: MeshC
 
     private fun keyOf(id: String): ByteArray? = peers[id]?.pk ?: savedKey?.invoke(id)?.takeIf { it.size == 32 }
 
+    // ---- photos: sealed, cut into chunks, sent one by one to a neighbour, never passed on (PROTOCOL.md section 11)
+
+    private class Incoming(val src: String, val cnt: Int, val parts: Array<ByteArray?>, var last: Long)
+    private val incoming = HashMap<String, Incoming>()
+    private val donePhotos = LinkedHashSet<String>()
+
+    /**
+     * Sends [bytes] (an already compressed image) to [dst], which must be a direct Bluetooth neighbour we have the key of.
+     * Completion: Sent when every chunk was handed to Bluetooth (the receipt comes later through onDelivered), Unreachable when
+     * the person is not in direct range (or walked away), Failed on a write error.
+     */
+    fun sendPhoto(bytes: ByteArray, dst: String, photoId: String, progress: (Float) -> Unit, completion: (SendOutcome) -> Unit) {
+        val pk = keyOf(dst) ?: return completion(SendOutcome.Unreachable)
+        if (peers[dst]?.direct != true || bestLink(dst) == null) return completion(SendOutcome.Unreachable)
+        val sealed = runCatching { crypto.sealData(bytes, pk, myId, dst, photoId) }.getOrNull() ?: return completion(SendOutcome.Failed)
+        val cnt = (sealed.size + PHOTO_CHUNK - 1) / PHOTO_CHUNK
+        if (cnt > MAX_PHOTO_CHUNKS) return completion(SendOutcome.Failed)
+        fun next(i: Int) {
+            if (i == cnt) return completion(SendOutcome.Sent)
+            val link = bestLink(dst) ?: return completion(SendOutcome.Unreachable)
+            val part = sealed.copyOfRange(i * PHOTO_CHUNK, minOf(sealed.size, (i + 1) * PHOTO_CHUNK))
+            val p = Packet("img", UUID.randomUUID().toString(), myId, dst, 1, now(), n = myName, ct = b64.encodeToString(part), ref = photoId, ix = i, cnt = cnt)
+            remember(p.id)
+            val t = transmit ?: return completion(SendOutcome.Failed)
+            t(link, p.toBytes()) { ok -> if (ok) { progress((i + 1f) / cnt); next(i + 1) } else completion(SendOutcome.Failed) }
+        }
+        next(0)
+    }
+
+    private fun receiveImg(p: Packet) {
+        val ref = p.ref ?: return; val ix = p.ix ?: return; val cnt = p.cnt ?: return
+        if (cnt !in 1..MAX_PHOTO_CHUNKS || ix !in 0 until cnt || ref in donePhotos) return
+        val pk = keyOf(p.src) ?: return                      // only from people whose key we have
+        val part = runCatching { unb64.decode(p.ct ?: return) }.getOrNull() ?: return
+        if (part.isEmpty() || part.size > PHOTO_CHUNK + 16) return
+        val inc = incoming.getOrPut(ref) { if (incoming.size >= 4) return; Incoming(p.src, cnt, arrayOfNulls(cnt), now()) }
+        if (inc.src != p.src || inc.cnt != cnt) return
+        inc.parts[ix] = part; inc.last = now()
+        if (inc.parts.any { it == null }) return
+        incoming.remove(ref)
+        val sealed = inc.parts.fold(ByteArray(0)) { a, b -> a + b!! }
+        val bytes = runCatching { crypto.openData(sealed, pk, myId, p.src, ref) }.getOrNull() ?: return
+        donePhotos += ref; if (donePhotos.size > 100) donePhotos.remove(donePhotos.first())
+        onPhoto?.invoke(p.src, p.n ?: peers[p.src]?.name ?: "?", ref, bytes)
+        // A photo is confirmed even when delivery receipts are off: without it the sender cannot tell a lost chunk from success.
+        val ack = Packet("ack", UUID.randomUUID().toString(), myId, p.src, START_TTL, now(), ref = ref)
+        remember(ack.id)
+        sendOrCarry(ack) { }
+    }
+
     private fun sendHello(link: String) {
         val p = Packet("hi", UUID.randomUUID().toString(), myId, null, 1, now(), n = myName, pk = b64.encodeToString(crypto.publicKey))
         remember(p.id)
@@ -195,6 +253,7 @@ class MeshRouter(val myId: String, var myName: String, private val crypto: MeshC
         peers.entries.removeIf { !it.value.direct && it.value.lastSeen <= cutoff }
         if (peers.size != before) emitPeers()
         expire()
+        incoming.values.removeIf { now() - it.last > 120_000 }
         sendAnnounce(allBestLinks(null))
     }
 
@@ -323,6 +382,7 @@ class MeshRouter(val myId: String, var myName: String, private val crypto: MeshC
                 onText?.invoke(p.src, p.n ?: peers[p.src]?.name ?: "?", text, hops, p.id)
                 ack(p)
             } else passOn(p, from)
+            "img" -> if (p.dst == myId) receiveImg(p)      // photos only ever go to one neighbour: never forwarded
             "pub" -> { p.tx?.let { onPublic?.invoke(p.src, p.n ?: "?", it, p.id) }; forward(p, from) }
             "post" -> {
                 val ref = p.ref ?: return; val tx = p.tx ?: return; val exp = minOf(p.exp ?: return, now() + HOLD_MS)

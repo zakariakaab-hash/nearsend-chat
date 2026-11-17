@@ -209,4 +209,5 @@
     <string name="avatar_hint">Elige un emoji y un color. Las personas cerca lo ven junto a tu nombre.</string>
     <string name="avatar_initial">Usar mi inicial</string>
     <string name="avatar_tap">Toca para cambiar</string>
+    <string name="photo_error">No se pudo usar esta imagen</string>
 </resources>

@@ -209,4 +209,5 @@
     <string name="avatar_hint">选择表情和颜色。附近的人会在你的名字旁看到它。</string>
     <string name="avatar_initial">使用我的首字母</string>
     <string name="avatar_tap">点按更改</string>
+    <string name="photo_error">无法使用这张图片</string>
 </resources>

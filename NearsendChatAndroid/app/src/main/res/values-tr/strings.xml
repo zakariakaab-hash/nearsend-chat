@@ -209,4 +209,5 @@
     <string name="avatar_hint">Bir emoji ve renk seç. Yakındaki kişiler adının yanında görür.</string>
     <string name="avatar_initial">Baş harfimi kullan</string>
     <string name="avatar_tap">Değiştirmek için dokun</string>
+    <string name="photo_error">Bu resim kullanılamadı</string>
 </resources>

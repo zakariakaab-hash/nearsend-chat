@@ -50,6 +50,7 @@ JSON object, optional fields omitted when absent.
 | `ct` | `msg`: base64 sealed text · `vfy`: base64 sealed one-time code (section 4) · `gm`: base64 sealed group JSON (section 5) |
 | `tx` | `pub`, `post`: plain text · `sos`: optional plain note |
 | `ref` | `ack`: id of the acknowledged packet · `sos`/`sosx`: alarm id (the same on every repeat) · `post`: announcement id |
+| `ix`, `cnt` | `img`: index of this chunk and number of chunks in the photo (section 11) |
 | `av` | `ann`: the sender's picture, `"<emoji>|<colour index 0-7>"` (section 10); absent = show the initial |
 | `loc` | `sos`: `"lat,lon,accuracyMetres"` (decimal degrees, WGS84) when the sender shares a position; absent otherwise |
 | `exp` | `post`: expiry, ms since epoch; receivers cap it at their own clock + 24 h |
@@ -237,3 +238,25 @@ A person's picture is an **emoji and a colour**, not an image: `"<emoji>|<colour
   (the person is shown with their initial), so a sender cannot put arbitrary text or images on other people's screens.
 - Phones that do not know `av` ignore it. Absent `av` means "no picture".
 - Photos are not supported: Bluetooth messages are too small and slow for them (see section 3 for the limits).
+
+
+## 11. Photos (`img`)
+
+Photos go **only to one direct Bluetooth neighbour**, end-to-end encrypted, in small chunks. They are never flooded, carried or sent
+over the internet relays.
+
+- **Compression.** The sender resizes the picture (long side at most 800 px) and encodes it as lossy WebP of at most about 40 KB.
+  Re-encoding drops the camera metadata (GPS position included).
+- **Sealing.** The WebP bytes are sealed like a message (section 4) with the photo id as `aad`: `nonce(12) || ciphertext || tag(16)`.
+- **Chunks.** The sealed bytes are cut into pieces of 700 bytes. Each piece is an `img` packet with `ttl` 1, `dst` = the receiver,
+  `ref` = photo id (the message id), `ix` = piece number, `cnt` = number of pieces (at most 90) and `ct` = base64 of the piece.
+  The sender writes them one after another to the neighbour.
+- **Receiving.** A phone collects pieces by `ref` (at most 4 photos at once, dropped after 2 minutes without news) and accepts
+  them only from someone whose key it has. When all pieces are there it opens the photo; if opening fails it throws everything away.
+  `img` packets for someone else are ignored, never forwarded.
+- **Receipt and retry.** On success the receiver sends an `ack` with `ref` = the photo id, **even when "Delivery receipts" is off**
+  (without it the sender cannot tell a lost piece from success). If no receipt comes within 30 seconds the sender sends the
+  whole photo again (new packet ids, same `ref` and `ix`; receivers ignore a photo id they already completed). After 4 tries it
+  shows "failed" and the user can tap to try again.
+- A photo waits (shown as "sending") until the person is in direct range, for at most 24 hours.
+- Group chats and the public channel do not support photos.

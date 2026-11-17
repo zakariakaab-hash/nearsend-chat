@@ -19,7 +19,7 @@
 ## What the app keeps on your phone
 
 - Your nickname, your picture (emoji and colour), a random device id and your private encryption key (Android: app-private storage; iOS: Keychain).
-- Your conversations, so they are there after a restart. You can set messages to delete themselves after 1, 7 or 30 days
+- Your conversations, including photos you sent or received (small WebP files in the app's private storage), so they are there after a restart. You can set messages to delete themselves after 1, 7 or 30 days
   (You tab → Privacy).
 - Your contacts' public keys and which contacts you verified, so you can message people who are out of range.
 - Your settings (for example background running, battery saver, privacy switches).
@@ -35,6 +35,8 @@ app removes it too. We cannot recover it, because we never had it.
 Bluetooth is a broadcast medium, so people near you can see some things:
 
 - That your phone runs Nearsend Chat, your **nickname**, your **picture** (an emoji and a colour you choose), your random device id and your **public key**.
+- **Photos** go only to one contact in direct Bluetooth range, end-to-end encrypted. The app shrinks them and removes camera metadata
+  (including the GPS position) before sending. They are never sent over the internet relays.
 - **Private messages** are end-to-end encrypted. Phones that pass them on cannot read them, but they can see who they are
   from and to, and when.
 - **The Nearby channel, announcements and SOS alarms are public and not encrypted.** Everyone in range can read them, and

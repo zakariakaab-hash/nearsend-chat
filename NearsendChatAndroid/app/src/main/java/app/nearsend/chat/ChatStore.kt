@@ -26,6 +26,7 @@ import java.security.SecureRandom
 import java.util.Base64
 import java.util.Locale
 import java.util.UUID
+import androidx.compose.ui.graphics.asImageBitmap
 import kotlin.math.roundToInt
 
 /**
@@ -88,6 +89,11 @@ class ChatStore private constructor(private val app: Application) {
     private var transport: BleTransport? = null
     private var router: MeshRouter? = null
     private val inflight = HashSet<String>()
+    private val photoSentAt = HashMap<String, Long>()     // photo message id -> when all chunks last went out (waiting for the receipt)
+    private val photoTries = HashMap<String, Int>()
+    var photoProgress by mutableStateOf(mapOf<String, Float>()); private set   // photo message id -> 0..1 while sending
+    private val photoDir get() = java.io.File(app.filesDir, "photos")
+    private fun photoFile(id: String) = java.io.File(photoDir, "$id.webp")
     private val tick = object : Runnable { override fun run() { router?.tick(); prune(); noteInternet(); main.postDelayed(this, 8000) } }
 
     // SOS (declared before init: the emulator demo data fills [alerts])
@@ -145,6 +151,7 @@ class ChatStore private constructor(private val app: Application) {
             r.onSosEnd = { from, alarm -> alerts = alerts.map { if (it.alarm == alarm && it.from == from) it.copy(active = false) else it } }
             r.onPost = { from, name, post, text, exp, hops -> receivePost(from, name, post, text, exp, hops) }
             r.onKey = { id, pk -> learnKey(id, pk) }
+            r.onPhoto = { from, name, photo, bytes -> receivePhoto(from, name, photo, bytes) }
             r.savedKey = { id -> keyFor(id) }
             r.relay = relayOthers; r.sendAcks = receipts; r.myAvatar = myAvatar
             t.onNeighbor = { link, id, name, pk -> r.neighborConnected(link, id, name, pk) }
@@ -200,7 +207,7 @@ class ChatStore private constructor(private val app: Application) {
         main.removeCallbacks(tick)
         stopInternet(); internetOn = false
         transport?.stop(); transport = null; router = null; inflight.clear()
-        keys.wipe(); file.delete()
+        keys.wipe(); file.delete(); runCatching { photoDir.deleteRecursively() }
         prefs.edit().clear().apply()
         deviceId = newDeviceId()
         verified = emptySet(); peers = emptyList(); conversations = emptyList()
@@ -361,6 +368,7 @@ class ChatStore private constructor(private val app: Application) {
             })
         }
         if (id.startsWith("g:")) groupPending[messageId] = groupTargets(id).toMutableSet()
+        photoTries.remove(messageId); photoSentAt.remove(messageId)
         flushOutbox()
     }
 
@@ -378,6 +386,66 @@ class ChatStore private constructor(private val app: Application) {
             }
         }
     }
+
+    // ---- photos (direct chats, Bluetooth, someone in direct range)
+
+    /** Shrinks the picture, keeps it on this phone and sends it as soon as the contact is in direct range. */
+    fun sendPhoto(uri: android.net.Uri, id: String) {
+        if (id == PUBLIC_CHANNEL_ID || id.startsWith("g:")) return
+        Thread {
+            val bytes = Photos.compress(app, uri)
+            main.post {
+                if (bytes == null) { android.widget.Toast.makeText(app, app.getString(R.string.photo_error), android.widget.Toast.LENGTH_SHORT).show(); return@post }
+                val m = Message("", System.currentTimeMillis(), true, Delivery.Sending, photo = UUID.randomUUID().toString())
+                runCatching { photoDir.mkdirs(); photoFile(m.photo!!).writeBytes(bytes) }
+                conversations = conversations.map { if (it.id == id) it.copy(messages = it.messages + m) else it }
+                save()
+                if (simulated) scope.launch { delay(900); update(m.id, id, Delivery.Sent); delay(900); update(m.id, id, Delivery.Delivered) }
+                else flushPhoto(m, id)
+            }
+        }.start()
+    }
+
+    fun loadPhoto(photo: String): androidx.compose.ui.graphics.ImageBitmap? =
+        runCatching { android.graphics.BitmapFactory.decodeFile(photoFile(photo).path)?.asImageBitmap() }.getOrNull()
+
+    /** Sends a waiting photo when its person is a direct neighbour; sends it again if no receipt came, then gives up. */
+    private fun flushPhoto(m: Message, cid: String) {
+        val r = router ?: return
+        if (System.currentTimeMillis() - m.timeMs > MeshRouter.HOLD_MS) { update(m.id, cid, Delivery.Failed); return }
+        if (peers.none { it.id == cid && it.hops == 1 }) return
+        val last = photoSentAt[m.id]
+        if (last != null && System.currentTimeMillis() - last < 30_000) return             // chunks are out, waiting for the receipt
+        if ((photoTries[m.id] ?: 0) >= 4) { update(m.id, cid, Delivery.Failed); return }
+        val bytes = runCatching { photoFile(m.photo!!).readBytes() }.getOrNull() ?: run { update(m.id, cid, Delivery.Failed); return }
+        if (!inflight.add("photo." + m.id)) return
+        photoTries[m.id] = (photoTries[m.id] ?: 0) + 1
+        r.sendPhoto(bytes, cid, m.id, { f -> photoProgress = photoProgress + (m.id to f) }) { outcome ->
+            inflight.remove("photo." + m.id)
+            photoProgress = photoProgress - m.id
+            when (outcome) {
+                SendOutcome.Sent -> photoSentAt[m.id] = System.currentTimeMillis()
+                SendOutcome.Failed -> photoSentAt[m.id] = System.currentTimeMillis() - 20_000      // try again soon
+                else -> photoTries[m.id] = (photoTries[m.id] ?: 1) - 1                              // person walked away: not a try
+            }
+        }
+    }
+
+    private fun receivePhoto(from: String, sentName: String, photo: String, bytes: ByteArray) {
+        if (from in blocked) return
+        val name = peers.firstOrNull { it.id == from }?.name ?: sentName
+        ensureConversation(peers.firstOrNull { it.id == from } ?: Peer(from, name, 1, -80))
+        runCatching { photoDir.mkdirs(); photoFile(photo).writeBytes(bytes) }.onFailure { return }
+        val m = Message("", System.currentTimeMillis(), false, id = photo, photo = photo)
+        conversations = conversations.map {
+            if (it.id == from) it.copy(messages = it.messages + m, unread = if (activeConversation == from) it.unread else it.unread + 1) else it
+        }
+        Notifier.notify(app, name, if (hidePreviews) app.getString(R.string.notif_hidden) else "\uD83D\uDCF7 " + app.getString(R.string.attach_photo))
+        Notifier.tap(app)
+        save()
+    }
+
+    private fun deletePhotos(messages: List<Message>) = messages.forEach { m -> m.photo?.let { runCatching { photoFile(it).delete() } } }
 
     // ---- groups
 
@@ -447,6 +515,7 @@ class ChatStore private constructor(private val app: Application) {
             }
             for (m in c.messages) {
                 if (!m.mine || m.state != Delivery.Sending) continue
+                if (m.photo != null) { flushPhoto(m, c.id); continue }
                 val carried = keyFor(c.id) != null
                 if (System.currentTimeMillis() - m.timeMs > if (carried) MeshRouter.HOLD_MS else 600_000) update(m.id, c.id, Delivery.Failed)
                 else if (peers.any { it.id == c.id } || (carried && m.id !in handed)) trySend(m, c.id)
@@ -577,6 +646,7 @@ class ChatStore private constructor(private val app: Application) {
         if (autoDeleteDays <= 0) return
         val cutoff = now - autoDeleteDays * 86_400_000L
         if (conversations.none { c -> c.messages.any { it.timeMs < cutoff } }) return
+        conversations.forEach { c -> deletePhotos(c.messages.filter { it.timeMs < cutoff }) }
         conversations = conversations.map { c -> c.copy(messages = c.messages.filter { it.timeMs >= cutoff }) }
         save()
     }
@@ -685,7 +755,7 @@ class ChatStore private constructor(private val app: Application) {
                 .apply { c.members?.let { ms -> put("members", JSONArray(ms.map { JSONObject().put("id", it.first).put("n", it.second) })) } }
                 .put("messages", JSONArray(c.messages.map { m ->
                     JSONObject().put("id", m.id).put("text", m.text).put("t", m.timeMs).put("mine", m.mine)
-                        .put("state", m.state.name).put("hops", m.hops).apply { m.sender?.let { put("sender", it) } }
+                        .put("state", m.state.name).put("hops", m.hops).apply { m.sender?.let { put("sender", it) }; m.photo?.let { put("photo", it) } }
                 }))
         }))
         runCatching { file.writeText(o.toString()) }
@@ -706,7 +776,7 @@ class ChatStore private constructor(private val app: Application) {
                     (0 until ms.length()).map { j ->
                         val m = ms.getJSONObject(j)
                         Message(m.getString("text"), m.getLong("t"), m.getBoolean("mine"), Delivery.valueOf(m.getString("state")),
-                            m.getString("id"), m.getInt("hops"), if (m.has("sender")) m.getString("sender") else null)
+                            m.getString("id"), m.getInt("hops"), if (m.has("sender")) m.getString("sender") else null, if (m.has("photo")) m.getString("photo") else null)
                     }, c.getInt("unread"),
                     c.optJSONArray("members")?.let { ms -> (0 until ms.length()).map { ms.getJSONObject(it).let { m -> m.getString("id") to m.getString("n") } } })
             }

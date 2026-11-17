@@ -32,6 +32,7 @@ dependencies {
     implementation("androidx.activity:activity-compose:1.9.2")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.6")
     implementation("androidx.core:core-ktx:1.13.1")
+    implementation("androidx.exifinterface:exifinterface:1.3.7")   // photo orientation (Apache-2.0)
     implementation("androidx.appcompat:appcompat:1.7.0")
     implementation("com.google.crypto.tink:tink-android:1.14.1")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")   // WebSocket to the optional internet relays (Apache-2.0)
