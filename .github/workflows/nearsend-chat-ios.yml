@@ -48,7 +48,10 @@ jobs:
           xcrun simctl status_bar $UDID override --time 9:41 --batteryState charged --batteryLevel 100 --cellularBars 0 || true
           xcrun simctl install $UDID dd/Build/Products/Debug-iphonesimulator/NearsendChat.app
           mkdir -p shots
-          shot() { xcrun simctl terminate $UDID app.nearsend.chat || true; xcrun simctl launch $UDID app.nearsend.chat "${@:2}"; sleep 5; xcrun simctl io $UDID screenshot shots/$1.png; }
+          # The Intel runner is slow: warm up once (the first start after install is the slowest), then wait longer per shot, or the
+          # screenshot catches the blue launch screen.
+          xcrun simctl launch $UDID app.nearsend.chat -onboarded YES -tab 0; sleep 20
+          shot() { xcrun simctl terminate $UDID app.nearsend.chat || true; xcrun simctl launch $UDID app.nearsend.chat "${@:2}"; sleep 10; xcrun simctl io $UDID screenshot shots/$1.png; }
           shot 1-onboarding -onboarded NO
           shot 2-nearby -onboarded YES -tab 0
           shot 3-chats -onboarded YES -tab 1
