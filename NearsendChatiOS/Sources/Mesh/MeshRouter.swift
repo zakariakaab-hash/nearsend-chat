@@ -1,11 +1,13 @@
 import Foundation
 
-enum SendOutcome { case sent, unreachable, failed }
+/// `carried`: a phone nearby took a copy for someone who is away. `held`: nobody is around, so we keep carrying it ourselves.
+/// `unreachable` means we have no key for the person (nothing to carry).
+enum SendOutcome { case sent, unreachable, failed, carried, held }
 
 /// Wire packet (JSON). See PROTOCOL.md. Optional fields are omitted when nil.
 struct Packet: Codable {
     var v: Int = 2
-    var t: String            // "hi" | "ann" | "msg" | "gm" | "pub" | "sos" | "sosx" | "ack" | "vfy"
+    var t: String            // "hi" | "ann" | "msg" | "gm" | "pub" | "post" | "img" | "sos" | "sosx" | "ack" | "vfy"
     var id: String
     var src: String
     var dst: String? = nil
@@ -13,10 +15,14 @@ struct Packet: Codable {
     var ts: Int64
     var n: String? = nil     // sender nickname
     var pk: String? = nil    // ann: base64 X25519 public key
-    var ct: String? = nil    // msg: base64 sealed text
-    var tx: String? = nil    // pub: plain text
-    var ref: String? = nil   // ack: id of the message being acknowledged; sos/sosx: alarm id
+    var ct: String? = nil    // msg: base64 sealed text; img: base64 chunk of a sealed photo
+    var tx: String? = nil    // pub / post: plain text
+    var ref: String? = nil   // ack: id of the message being acknowledged; sos/sosx: alarm id; post: post id; img: photo id
     var loc: String? = nil   // sos: "lat,lon,accuracyMeters"
+    var exp: Int64? = nil    // post: expiry, ms since epoch
+    var av: String? = nil    // ann: avatar "<emoji>|<colour index>"
+    var ix: Int? = nil       // img: index of this chunk
+    var cnt: Int? = nil      // img: number of chunks in the photo
 }
 
 /// Sealed body of a "gm" packet: group id ("g:..."), group name, members (id + name, sender included) and the text.
@@ -30,13 +36,25 @@ struct GroupBody: Codable {
 
 /// Multi-hop relay. Transport independent: the BLE layer (or a test harness) feeds packets in and
 /// provides `transmit`. Peers announce themselves every few seconds; announcements, public messages and
-/// direct messages are flooded with a hop limit and de-duplicated by packet id.
+/// direct messages are flooded with a hop limit and de-duplicated by packet id. Packets for someone who is away are
+/// carried (up to 24 hours) and handed over when that person comes into range.
 final class MeshRouter {
     static let startTTL = 5
     static let maxTextBytes = 180
     static let peerTimeout: TimeInterval = 40
+    static let holdTime: TimeInterval = 24 * 3600      // carried packets and announcements live at most a day
+    static let maxHeld = 200
+    static let maxPosts = 50
+    static let photoChunk = 700                         // bytes of sealed photo per packet
+    static let maxPhotoChunks = 90                      // about 60 KB sealed, the most we accept
 
-    private struct PeerInfo { var name: String; var pk: Data; var hops: Int; var lastSeen: Date; var direct: Bool }
+    /// `via`: the neighbour a relayed peer's announcement came through (network view).
+    private struct PeerInfo { var name: String; var pk: Data; var hops: Int; var lastSeen: Date; var direct: Bool; var via: String? = nil; var avatar: String? = nil }
+
+    private final class Incoming {
+        let src: String; let cnt: Int; var parts: [Data?]; var last: Date
+        init(src: String, cnt: Int, last: Date) { self.src = src; self.cnt = cnt; parts = Array(repeating: nil, count: cnt); self.last = last }
+    }
 
     let myID: String
     var myName: String
@@ -56,12 +74,30 @@ final class MeshRouter {
                    _ text: String, _ hops: Int, _ msgID: String) -> Void)?
     var onSos: ((_ from: String, _ name: String, _ alarm: String, _ note: String?, _ loc: String?, _ hops: Int) -> Void)?
     var onSosEnd: ((_ from: String, _ alarm: String) -> Void)?
+    /// Announcement `post` (stable id) from `from`, shown until `exp` (ms since epoch). Called once per post.
+    var onPost: ((_ from: String, _ name: String, _ post: String, _ text: String, _ exp: Int64, _ hops: Int) -> Void)?
+    /// A photo from a contact arrived complete and was opened: (from, name, photo id, image bytes).
+    var onPhoto: ((_ from: String, _ name: String, _ photo: String, _ bytes: Data) -> Void)?
+    /// Keys of people met before who are not in range now (saved contacts): to seal to them and to open what they sent through a carrier.
+    var savedKey: ((_ id: String) -> Data?)?
+    /// A peer's key was seen (direct or announced); the app saves it for contacts.
+    var onKey: ((_ id: String, _ pk: Data) -> Void)?
+    /// Privacy settings: pass on and carry other people's packets; confirm messages we receive.
+    var relay = true
+    var sendAcks = true
+    /// Our own picture (emoji and colour), announced to everyone nearby.
+    var myAvatar: String?
 
     private var links: [String: String] = [:]      // link id -> peer id (direct neighbours; possibly two links per peer)
     private var peers: [String: PeerInfo] = [:]
     private var rssi: [String: Int] = [:]
     private var seen = Set<String>()
     private var seenOrder: [String] = []
+    private var held: [String: (packet: Packet, until: Date)] = [:]   // packet id -> packet for someone away
+    private var heldOrder: [String] = []                              // oldest first
+    private var posts: [String: Packet] = [:]                         // post id -> announcement
+    private var incoming: [String: Incoming] = [:]                    // photo id -> chunks received so far
+    private var donePhotos: [String] = []
     private let encoder = JSONEncoder()
     private let decoder = JSONDecoder()
 
@@ -81,9 +117,11 @@ final class MeshRouter {
         guard id != myID, pk.count == 32 else { return }
         links[link] = id
         peers[id] = PeerInfo(name: name, pk: pk, hops: 1, lastSeen: now(), direct: true)
+        onKey?(id, pk)
         emitPeers()
         if sayHello { sendHello(to: link) }
         sendAnnounce(to: [link])
+        shareStored(link: link, id: id)
     }
 
     func neighborLost(link: String) {
@@ -96,14 +134,74 @@ final class MeshRouter {
         var p = Packet(t: "hi", id: UUID().uuidString, src: myID, ttl: 1, ts: ms())
         p.n = myName; p.pk = crypto.publicKey.base64EncodedString()
         remember(p.id)
-        guard let data = try? encoder.encode(p) else { return }
-        transmit?(link, data) { _ in }
+        write(p, on: link)
     }
 
     func updateRSSI(link: String, rssi value: Int) {
         guard let id = links[link] else { return }
         rssi[id] = value
         emitPeers()
+    }
+
+    private func write(_ p: Packet, on link: String) {
+        guard let data = try? encoder.encode(p) else { return }
+        transmit?(link, data) { _ in }
+    }
+
+    // MARK: carrying packets for people who are away
+
+    /// A phone came into range: deliver what we carry for it, give it a copy of the rest to carry too, and show it the
+    /// announcements it may have missed.
+    private func shareStored(link: String, id: String) {
+        expire()
+        deliverHeld(to: id)
+        for p in heldPackets() where p.dst != id && (relay || p.src == myID) {
+            var q = p; q.ttl = Self.startTTL
+            write(q, on: link)
+        }
+        for p in Array(posts.values) where relay || p.src == myID {
+            var copy = Packet(t: "post", id: UUID().uuidString, src: p.src, ttl: 1, ts: p.ts)
+            copy.n = p.n; copy.tx = p.tx; copy.ref = p.ref; copy.exp = p.exp
+            remember(copy.id)
+            write(copy, on: link)
+        }
+    }
+
+    /// `id` became reachable: send what we hold for it. Copies handed straight to it are done; flooded ones stay until acked.
+    private func deliverHeld(to id: String) {
+        for p in heldPackets() where p.dst == id {
+            let direct = bestLink(for: id) != nil
+            var q = p; q.ttl = Self.startTTL
+            route(q, except: nil) { [weak self] r in if r == .sent && direct { self?.dropHeld(p.id) } }
+        }
+    }
+
+    private func hold(_ p: Packet) {
+        guard let dst = p.dst, dst != myID else { return }
+        dropHeld(p.id)
+        let sent = Date(timeIntervalSince1970: Double(p.ts) / 1000)
+        held[p.id] = (p, min(sent, now()).addingTimeInterval(Self.holdTime))   // a sender clock in the future cannot keep it longer
+        heldOrder.append(p.id)
+        while heldOrder.count > Self.maxHeld { held.removeValue(forKey: heldOrder.removeFirst()) }
+    }
+
+    private func dropHeld(_ id: String) {
+        if held.removeValue(forKey: id) != nil { heldOrder.removeAll { $0 == id } }
+    }
+
+    private func heldPackets() -> [Packet] { heldOrder.compactMap { held[$0]?.packet } }
+
+    private func expire() {
+        let t = now()
+        for (id, h) in held where h.until < t { dropHeld(id) }
+        let nowMs = ms()
+        posts = posts.filter { ($0.value.exp ?? 0) > nowMs }
+    }
+
+    private func keyOf(_ id: String) -> Data? {
+        if let k = peers[id]?.pk { return k }
+        if let k = savedKey?(id), k.count == 32 { return k }
+        return nil
     }
 
     // MARK: periodic
@@ -114,12 +212,15 @@ final class MeshRouter {
         let before = peers.count
         peers = peers.filter { $0.value.direct || $0.value.lastSeen > cutoff }
         if peers.count != before { emitPeers() }
+        expire()
+        let t = now()
+        incoming = incoming.filter { t.timeIntervalSince($0.value.last) <= 120 }
         sendAnnounce(to: allBestLinks(except: nil))
     }
 
     private func sendAnnounce(to targets: [String]) {
         var p = Packet(t: "ann", id: UUID().uuidString, src: myID, ttl: Self.startTTL, ts: ms())
-        p.n = myName; p.pk = crypto.publicKey.base64EncodedString()
+        p.n = myName; p.pk = crypto.publicKey.base64EncodedString(); p.av = myAvatar
         remember(p.id)
         guard let data = try? encoder.encode(p) else { return }
         for l in targets { transmit?(l, data) { _ in } }
@@ -127,13 +228,36 @@ final class MeshRouter {
 
     // MARK: sending
 
+    /// Sends now if `dst` is reachable. If not, but we know its key (a contact), the message is stored and carried:
+    /// `.carried` when a phone nearby took a copy, `.held` when nobody is around yet. `.unreachable` only without a key.
     func sendText(_ text: String, to dst: String, msgID: String, completion: @escaping (SendOutcome) -> Void) {
-        guard let info = peers[dst] else { completion(.unreachable); return }
-        guard let ct = try? crypto.seal(Self.clip(text), peerPK: info.pk, myID: myID, peerID: dst, aad: msgID) else { completion(.failed); return }
+        guard let pk = keyOf(dst) else { completion(.unreachable); return }
+        guard let ct = try? crypto.seal(Self.clip(text), peerPK: pk, myID: myID, peerID: dst, aad: msgID) else { completion(.failed); return }
         var p = Packet(t: "msg", id: msgID, src: myID, dst: dst, ttl: Self.startTTL, ts: ms())
         p.n = myName; p.ct = ct.base64EncodedString()
-        remember(msgID)
-        route(p, except: nil, completion: completion)
+        sendOrCarry(p, completion: completion)
+    }
+
+    private func sendOrCarry(_ p: Packet, completion: @escaping (SendOutcome) -> Void) {
+        remember(p.id)
+        if let dst = p.dst, peers[dst] != nil { route(p, except: nil, completion: completion); return }
+        hold(p)
+        route(p, except: nil) { r in completion(r == .sent ? .carried : .held) }
+    }
+
+    /// Public announcement, kept by every phone until `exp` (at most a day) and shown to phones that arrive later.
+    func sendPost(_ text: String, postID: String, exp: Int64) {
+        var p = Packet(t: "post", id: UUID().uuidString, src: myID, ttl: Self.startTTL, ts: ms())
+        p.n = myName; p.tx = Self.clip(text); p.ref = postID
+        p.exp = min(exp, ms() + Int64(Self.holdTime * 1000))
+        remember(p.id); keepPost(p)
+        route(p, except: nil, completion: nil)
+    }
+
+    private func keepPost(_ p: Packet) {
+        guard let ref = p.ref else { return }
+        posts[ref] = p
+        while posts.count > Self.maxPosts, let victim = posts.min(by: { ($0.value.exp ?? 0) < ($1.value.exp ?? 0) })?.key { posts.removeValue(forKey: victim) }
     }
 
     func sendPublic(_ text: String, msgID: String, completion: @escaping (SendOutcome) -> Void) {
@@ -156,15 +280,14 @@ final class MeshRouter {
     /// One sealed copy of a group message for member `dst`; the packet id is "<msgID>.<dst>" so each copy is acked on its own.
     func sendGroup(_ text: String, group: String, groupName: String, members: [(id: String, name: String)], to dst: String,
                    msgID: String, completion: @escaping (SendOutcome) -> Void) {
-        guard let info = peers[dst] else { completion(.unreachable); return }
+        guard let pk = keyOf(dst) else { completion(.unreachable); return }
         let id = "\(msgID).\(dst)"
         let body = GroupBody(g: group, gn: groupName, m: members.map { GroupBody.Member(id: $0.id, n: $0.name) }, tx: Self.clip(text))
         guard let json = try? encoder.encode(body), let str = String(data: json, encoding: .utf8),
-              let ct = try? crypto.seal(str, peerPK: info.pk, myID: myID, peerID: dst, aad: id) else { completion(.failed); return }
+              let ct = try? crypto.seal(str, peerPK: pk, myID: myID, peerID: dst, aad: id) else { completion(.failed); return }
         var p = Packet(t: "gm", id: id, src: myID, dst: dst, ttl: Self.startTTL, ts: ms())
         p.n = myName; p.ct = ct.base64EncodedString()
-        remember(id)
-        route(p, except: nil, completion: completion)
+        sendOrCarry(p, completion: completion)
     }
 
     /// SOS goes to everyone, unencrypted, like "pub". The app repeats it while the alarm is on; `alarm` ties repeats together.
@@ -175,6 +298,57 @@ final class MeshRouter {
         if !end { p.loc = loc }
         remember(p.id)
         route(p, except: nil, completion: nil)
+    }
+
+    // MARK: photos: sealed, cut into chunks, sent one by one to a neighbour, never passed on (PROTOCOL.md section 11)
+
+    /// Sends `bytes` (an already compressed image) to `dst`, which must be a direct Bluetooth neighbour we have the key of.
+    /// Completion: `.sent` when every chunk was handed to Bluetooth (the receipt comes later through `onDelivered`),
+    /// `.unreachable` when the person is not in direct range (or walked away), `.failed` on a write error.
+    func sendPhoto(_ bytes: Data, to dst: String, photoID: String, progress: @escaping (Double) -> Void, completion: @escaping (SendOutcome) -> Void) {
+        guard let pk = keyOf(dst) else { completion(.unreachable); return }
+        guard peers[dst]?.direct == true, bestLink(for: dst) != nil else { completion(.unreachable); return }
+        guard let sealed = try? crypto.sealData(bytes, peerPK: pk, myID: myID, peerID: dst, aad: photoID) else { completion(.failed); return }
+        let cnt = (sealed.count + Self.photoChunk - 1) / Self.photoChunk
+        guard cnt <= Self.maxPhotoChunks else { completion(.failed); return }
+        func next(_ i: Int) {
+            if i == cnt { completion(.sent); return }
+            guard let link = bestLink(for: dst) else { completion(.unreachable); return }
+            let lo = i * Self.photoChunk, hi = min(sealed.count, (i + 1) * Self.photoChunk)
+            var p = Packet(t: "img", id: UUID().uuidString, src: myID, dst: dst, ttl: 1, ts: ms())
+            p.n = myName; p.ct = sealed.subdata(in: lo..<hi).base64EncodedString(); p.ref = photoID; p.ix = i; p.cnt = cnt
+            remember(p.id)
+            guard let data = try? encoder.encode(p), let t = transmit else { completion(.failed); return }
+            t(link, data) { ok in
+                if ok { progress(Double(i + 1) / Double(cnt)); next(i + 1) } else { completion(.failed) }
+            }
+        }
+        next(0)
+    }
+
+    private func receiveImg(_ p: Packet) {
+        guard let ref = p.ref, let ix = p.ix, let cnt = p.cnt,
+              (1...Self.maxPhotoChunks).contains(cnt), (0..<cnt).contains(ix), !donePhotos.contains(ref),
+              let pk = keyOf(p.src),                                   // only from people whose key we have
+              let s = p.ct, let part = Data(base64Encoded: s), !part.isEmpty, part.count <= Self.photoChunk + 16 else { return }
+        let inc: Incoming
+        if let existing = incoming[ref] { inc = existing }
+        else {
+            guard incoming.count < 4 else { return }
+            inc = Incoming(src: p.src, cnt: cnt, last: now())
+            incoming[ref] = inc
+        }
+        guard inc.src == p.src, inc.cnt == cnt else { return }
+        inc.parts[ix] = part; inc.last = now()
+        guard !inc.parts.contains(where: { $0 == nil }) else { return }
+        incoming.removeValue(forKey: ref)
+        var sealed = Data()
+        for piece in inc.parts { if let piece { sealed.append(piece) } }
+        guard let bytes = try? crypto.openData(sealed, peerPK: pk, myID: myID, peerID: p.src, aad: ref) else { return }
+        donePhotos.append(ref); if donePhotos.count > 100 { donePhotos.removeFirst() }
+        onPhoto?(p.src, p.n ?? peers[p.src]?.name ?? "?", ref, bytes)
+        // A photo is confirmed even when delivery receipts are off: without it the sender cannot tell a lost chunk from success.
+        sendAck(to: p.src, ref: ref)
     }
 
     // MARK: receiving
@@ -190,33 +364,42 @@ final class MeshRouter {
         case "ann":
             guard let s = p.pk, let pk = Data(base64Encoded: s), pk.count == 32 else { return }
             let direct = peers[p.src]?.direct ?? false
-            peers[p.src] = PeerInfo(name: p.n ?? "?", pk: pk, hops: direct ? 1 : hops, lastSeen: now(), direct: direct)
+            let wasKnown = peers[p.src] != nil
+            peers[p.src] = PeerInfo(name: p.n ?? "?", pk: pk, hops: direct ? 1 : hops, lastSeen: now(), direct: direct,
+                                    via: direct ? nil : link.flatMap { links[$0] }, avatar: Avatars.valid(p.av))
+            onKey?(p.src, pk)
             emitPeers()
+            if !wasKnown { deliverHeld(to: p.src) }
             forward(p, from: link)
         case "msg":
             if p.dst == myID {
-                guard let info = peers[p.src], let s = p.ct, let ct = Data(base64Encoded: s),
-                      let text = try? crypto.open(ct, peerPK: info.pk, myID: myID, peerID: p.src, aad: p.id) else { return }
-                onText?(p.src, p.n ?? info.name, text, hops, p.id)
-                var ack = Packet(t: "ack", id: UUID().uuidString, src: myID, dst: p.src, ttl: Self.startTTL, ts: ms())
-                ack.ref = p.id
-                remember(ack.id)
-                route(ack, except: nil) { _ in }
-            } else { forward(p, from: link) }
+                guard let pk = keyOf(p.src), let s = p.ct, let ct = Data(base64Encoded: s),
+                      let text = try? crypto.open(ct, peerPK: pk, myID: myID, peerID: p.src, aad: p.id) else { return }
+                onText?(p.src, p.n ?? peers[p.src]?.name ?? "?", text, hops, p.id)
+                ack(p)
+            } else { passOn(p, from: link) }
+        case "img":
+            if p.dst == myID { receiveImg(p) }      // photos only ever go to one neighbour: never forwarded
+        case "post":
+            guard let ref = p.ref, let tx = p.tx, let e = p.exp else { return }
+            let exp = min(e, ms() + Int64(Self.holdTime * 1000))
+            if exp <= ms() { return }
+            let fresh = posts[ref] == nil
+            var kept = p; kept.dst = nil; kept.exp = exp
+            keepPost(kept)
+            if fresh { onPost?(p.src, p.n ?? "?", ref, tx, exp, hops) }
+            forward(p, from: link)
         case "gm":
             if p.dst == myID {
-                guard let info = peers[p.src], let s = p.ct, let ct = Data(base64Encoded: s),
-                      let str = try? crypto.open(ct, peerPK: info.pk, myID: myID, peerID: p.src, aad: p.id),
+                guard let pk = keyOf(p.src), let s = p.ct, let ct = Data(base64Encoded: s),
+                      let str = try? crypto.open(ct, peerPK: pk, myID: myID, peerID: p.src, aad: p.id),
                       let body = try? decoder.decode(GroupBody.self, from: Data(str.utf8)),
                       body.g.hasPrefix("g:"), !body.tx.isEmpty else { return }
                 let members = (body.m ?? []).filter { !$0.id.isEmpty }.map { (id: $0.id, name: $0.n) }
                 let gn = body.gn.flatMap { $0.isEmpty ? nil : $0 } ?? "?"
-                onGroup?(p.src, p.n ?? info.name, body.g, gn, members, body.tx, hops, String(p.id.split(separator: ".").first ?? ""))
-                var ack = Packet(t: "ack", id: UUID().uuidString, src: myID, dst: p.src, ttl: Self.startTTL, ts: ms())
-                ack.ref = p.id
-                remember(ack.id)
-                route(ack, except: nil) { _ in }
-            } else { forward(p, from: link) }
+                onGroup?(p.src, p.n ?? peers[p.src]?.name ?? "?", body.g, gn, members, body.tx, hops, String(p.id.split(separator: ".").first ?? ""))
+                ack(p)
+            } else { passOn(p, from: link) }
         case "pub":
             if let tx = p.tx { onPublic?(p.src, p.n ?? "?", tx, p.id) }
             forward(p, from: link)
@@ -227,21 +410,41 @@ final class MeshRouter {
             if let alarm = p.ref { onSosEnd?(p.src, alarm) }
             forward(p, from: link)
         case "ack":
-            if p.dst == myID, let ref = p.ref { onDelivered?(ref) } else { forward(p, from: link) }
+            if let ref = p.ref { dropHeld(ref) }            // delivered: carriers drop their copy as the ack passes
+            if p.dst == myID, let ref = p.ref { onDelivered?(ref) } else { passOn(p, from: link) }
         case "vfy":
             if p.dst == myID {
                 guard let info = peers[p.src], let s = p.ct, let ct = Data(base64Encoded: s),
                       let code = try? crypto.open(ct, peerPK: info.pk, myID: myID, peerID: p.src, aad: p.id) else { return }
                 onVerify?(p.src, MeshCrypto.fingerprint(info.pk), code)
-            } else { forward(p, from: link) }
+            } else { passOn(p, from: link) }
         default: break
         }
     }
 
     // MARK: internals
 
+    private func ack(_ p: Packet) {
+        guard sendAcks else { return }
+        sendAck(to: p.src, ref: p.id)
+    }
+
+    private func sendAck(to dst: String, ref: String) {
+        var ack = Packet(t: "ack", id: UUID().uuidString, src: myID, dst: dst, ttl: Self.startTTL, ts: ms())
+        ack.ref = ref
+        remember(ack.id)
+        sendOrCarry(ack) { _ in }
+    }
+
+    /// A packet for someone else: pass it on, and keep a copy to carry if that person is not reachable now.
+    private func passOn(_ p: Packet, from link: String?) {
+        guard relay else { return }
+        if let dst = p.dst, peers[dst] == nil { hold(p) }
+        forward(p, from: link)
+    }
+
     private func forward(_ p: Packet, from link: String?) {
-        guard p.ttl > 1 else { return }
+        guard relay, p.ttl > 1 else { return }
         var q = p; q.ttl -= 1
         route(q, except: link, completion: nil)
     }
@@ -274,7 +477,7 @@ final class MeshRouter {
     private func emitPeers() {
         onPeers?(peers.map { id, i in
             let r = i.direct ? (rssi[id] ?? -80) : -70 - 8 * i.hops
-            return Peer(id: id, name: i.name, hops: i.hops, rssi: min(-40, max(-95, r)), fingerprint: MeshCrypto.fingerprint(i.pk))
+            return Peer(id: id, name: i.name, hops: i.hops, rssi: min(-40, max(-95, r)), fingerprint: MeshCrypto.fingerprint(i.pk), via: i.via, avatar: i.avatar)
         }.sorted { $0.id < $1.id })
     }
 

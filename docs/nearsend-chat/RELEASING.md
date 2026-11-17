@@ -20,7 +20,13 @@ What is still needed before real people can install the apps. Items marked **(yo
 ## 2. Android — internal testing, then Play
 1. Google Play Console, one-time **US$25**. **(you)**
 2. Create an upload key and keep it safe: `keytool -genkey -v -keystore nearsend-upload.jks -keyalg RSA -keysize 2048 -validity 10000 -alias upload`. **Never commit it.**
-3. Add a `signingConfigs` block (reading passwords from `~/.gradle/gradle.properties`) and run `./gradlew :app:bundleRelease`. Upload the `.aab` to *Internal testing*.
+3. Put the key details in `~/.gradle/gradle.properties` (on your computer, never in the repo):
+   `NEARSEND_KEYSTORE=C:/path/to/nearsend-upload.jks`, `NEARSEND_KEYSTORE_PASSWORD=...`, `NEARSEND_KEY_ALIAS=upload`, `NEARSEND_KEY_PASSWORD=...`.
+   `app/build.gradle.kts` reads them. Then run `./gradlew :app:bundleRelease` in `NearsendChatAndroid/`; the signed bundle is
+   `app/build/outputs/bundle/release/app-release.aab`. Without the four lines the bundle is built **unsigned** and Play will refuse it.
+   Upload it to *Internal testing* first. For each new upload raise `versionCode` in `app/build.gradle.kts`.
+   Back up the `.jks` file and its passwords somewhere safe (with *Play App Signing* Google keeps the real signing key, and the upload
+   key can be reset through Play support if lost, but it is slow).
 4. Store listing, privacy policy URL (publish `PRIVACY.md`, see the checklist above), Data safety form, content rating, target audience.
    Data safety: nothing is sent to us. Because of the optional "Internet" switch, do not tick "no data shared" blindly: read Google's definitions and
    decide whether the IP address and send times that public relays see count (messages themselves are end-to-end encrypted and user-initiated).

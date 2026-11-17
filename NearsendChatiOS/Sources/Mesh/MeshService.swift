@@ -195,6 +195,8 @@ final class ChatStore: ObservableObject {
                 switch outcome {
                 case .sent: self.update(m.id, in: id, .sent)
                 case .failed: self.update(m.id, in: id, .failed)
+                case .carried: self.update(m.id, in: id, .relayed)     // a phone nearby carries it
+                case .held: break                                       // we carry it ourselves
                 case .unreachable: break          // stays queued until the person comes into range
                 }
             }

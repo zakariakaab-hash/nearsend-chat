@@ -22,7 +22,7 @@ jobs:
           curl -fsSL -o app/src/main/res/font/anton_regular.ttf https://github.com/google/fonts/raw/main/ofl/anton/Anton-Regular.ttf
           test $(stat -c%s app/src/main/res/font/anton_regular.ttf) -gt 10000
       - uses: gradle/actions/setup-gradle@v4
-        with: { gradle-version: '8.7' }
+        with: { gradle-version: '8.13' }
       - name: Unit tests (crypto vectors + relay simulation)
         run: |
           set +e
@@ -39,7 +39,7 @@ jobs:
           grep -E "^e: |error:|What went wrong|Execution failed|Could not|Unresolved|not found" -A3 build.log | head -40 | while IFS= read -r l; do echo "::error::${l//%/%25}"; done
           exit $code
       - name: Generate Gradle wrapper
-        run: gradle wrapper --gradle-version 8.7
+        run: gradle wrapper --gradle-version 8.13
       - name: Enable KVM
         working-directory: .
         run: |

@@ -38,6 +38,17 @@ final class MeshCrypto {
         return try ChaChaPoly.seal(Data(text.utf8), using: k, nonce: n, authenticating: Data(aad.utf8)).combined
     }
 
+    /// Same pairwise key as `seal`, for raw bytes such as a photo.
+    func sealData(_ data: Data, peerPK: Data, myID: String, peerID: String, aad: String) throws -> Data {
+        let k = try key(with: peerPK, myID: myID, peerID: peerID)
+        return try ChaChaPoly.seal(data, using: k, authenticating: Data(aad.utf8)).combined
+    }
+
+    func openData(_ combined: Data, peerPK: Data, myID: String, peerID: String, aad: String) throws -> Data {
+        let k = try key(with: peerPK, myID: myID, peerID: peerID)
+        return try ChaChaPoly.open(try ChaChaPoly.SealedBox(combined: combined), using: k, authenticating: Data(aad.utf8))
+    }
+
     func open(_ combined: Data, peerPK: Data, myID: String, peerID: String, aad: String) throws -> String {
         let k = try key(with: peerPK, myID: myID, peerID: peerID)
         let box = try ChaChaPoly.SealedBox(combined: combined)

@@ -14,6 +14,24 @@ android {
         versionCode = 2
         versionName = "0.2.0"
     }
+    // Release signing: the upload key stays on your computer. Put these four lines in ~/.gradle/gradle.properties (never in the repo):
+    //   NEARSEND_KEYSTORE=C:/path/to/nearsend-upload.jks   NEARSEND_KEYSTORE_PASSWORD=...   NEARSEND_KEY_ALIAS=upload   NEARSEND_KEY_PASSWORD=...
+    val keystore = providers.gradleProperty("NEARSEND_KEYSTORE").orNull
+    signingConfigs {
+        if (keystore != null) create("release") {
+            storeFile = file(keystore)
+            storePassword = providers.gradleProperty("NEARSEND_KEYSTORE_PASSWORD").get()
+            keyAlias = providers.gradleProperty("NEARSEND_KEY_ALIAS").get()
+            keyPassword = providers.gradleProperty("NEARSEND_KEY_PASSWORD").get()
+        }
+    }
+    buildTypes {
+        release {
+            // ponytail: no code shrinking yet (R8 needs keep rules for Tink and friends); turn on once tested on a release build.
+            isMinifyEnabled = false
+            if (keystore != null) signingConfig = signingConfigs.getByName("release")
+        }
+    }
     buildFeatures { compose = true }
     composeOptions { kotlinCompilerExtensionVersion = "1.5.14" }
     compileOptions {

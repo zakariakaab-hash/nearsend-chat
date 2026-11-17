@@ -41,6 +41,7 @@ do {
 final class Node {
     let id: String; let router: MeshRouter; let crypto: MeshCrypto
     var texts: [(from: String, text: String, hops: Int)] = []; var pubs: [String] = []; var delivered: [String] = []; var peers: [Peer] = []
+    var photos: [(id: String, bytes: Data)] = []; var posts: [String] = []
     init(_ id: String, net: Net) {
         let c = MeshCrypto()
         self.id = id; self.crypto = c
@@ -50,6 +51,8 @@ final class Node {
         router.onText = { [unowned self] f, _, t, h, _ in self.texts.append((f, t, h)) }
         router.onPublic = { [unowned self] _, _, t, _ in self.pubs.append(t) }
         router.onDelivered = { [unowned self] in self.delivered.append($0) }
+        router.onPhoto = { [unowned self] _, _, id, bytes in self.photos.append((id, bytes)) }
+        router.onPost = { [unowned self] _, _, _, text, _, _ in self.posts.append(text) }
     }
 }
 final class Net {
@@ -169,6 +172,85 @@ do {   // groups: one sealed copy per member, each acked with its own id; relays
     check(got["D"]?[0].3 == ["A", "B", "D"] && got["D"]?[0].4 == "gm-1" && got["D"]?[0].0 == "A", "member list and message id survive")
     check(got["C"] == nil, "a relay that is not a member reads nothing")
     check(Set(n[0].delivered) == ["gm-1.B", "gm-1.D"], "each copy is acked with its own id")
+}
+do {   // store-and-forward: a message for someone who is away is carried, then delivered when they show up
+    let net = Net(); let n = ["A", "B", "C"].map { net.add($0) }
+    n[0].router.savedKey = { $0 == "C" ? n[2].crypto.publicKey : nil }
+    n[2].router.savedKey = { $0 == "A" ? n[0].crypto.publicKey : nil }
+    net.connect("A", "B"); net.settle()
+    var outcome: SendOutcome?
+    n[0].router.sendText("see you later", to: "C", msgID: "sf-1") { outcome = $0 }
+    check(outcome == .carried, "a message for someone away is carried by a phone nearby")
+    check(n[2].texts.isEmpty, "the person away has not got it yet")
+    net.connect("B", "C")                                  // B walks over to C
+    check(n[2].texts.map { $0.text } == ["see you later"], "the carrier delivers it when it meets the person")
+    check(n[0].delivered == ["sf-1"], "the receipt travels back through the carrier")
+    var none: SendOutcome?
+    Net().add("X").router.sendText("hi", to: "nobody", msgID: "x-1") { none = $0 }
+    check(none == .unreachable, "no key: nothing to carry")
+}
+do {   // with nobody around the sender keeps carrying it
+    let net = Net(); let n = ["A", "C"].map { net.add($0) }
+    n[0].router.savedKey = { $0 == "C" ? n[1].crypto.publicKey : nil }
+    n[1].router.savedKey = { $0 == "A" ? n[0].crypto.publicKey : nil }
+    var outcome: SendOutcome?
+    n[0].router.sendText("wait for me", to: "C", msgID: "h-1") { outcome = $0 }
+    check(outcome == .held, "nobody around: the sender holds the message")
+    net.connect("A", "C")
+    check(n[1].texts.map { $0.text } == ["wait for me"], "a held message leaves with the sender when the person appears")
+}
+do {   // relay off: neither forwards nor carries other people's packets
+    let net = Net(); let n = ["A", "B", "C"].map { net.add($0) }
+    n[1].router.relay = false
+    net.connect("A", "B"); net.connect("B", "C"); net.settle()
+    n[0].router.sendPublic("hello", msgID: "r-pub") { _ in }
+    check(n[1].pubs == ["hello"] && n[2].pubs.isEmpty, "a phone with relay off still reads but does not pass on")
+}
+do {   // announcements reach late arrivals and expire
+    let net = Net(); let n = ["A", "B", "D"].map { net.add($0) }
+    net.connect("A", "B"); net.settle()
+    let exp = Int64(Date().timeIntervalSince1970 * 1000) + 3_600_000
+    n[0].router.sendPost("free water", postID: "p-1", exp: exp)
+    check(n[1].posts == ["free water"], "an announcement reaches a neighbour")
+    check(n[2].posts.isEmpty, "D is not there yet")
+    net.connect("B", "D")
+    check(n[2].posts == ["free water"], "a late arrival gets the announcement from a neighbour")
+    var t = Date(); n[1].router.now = { t }; t = t.addingTimeInterval(2 * 3600); n[1].router.tick()
+    let late = net.add("E")
+    net.connect("B", "E")
+    check(late.posts.isEmpty, "an expired announcement is no longer handed on")
+}
+do {   // the picture travels with announcements and only our emojis are accepted
+    let net = Net(); let n = ["A", "B", "C"].map { net.add($0) }
+    let fox = Avatars.encode(Avatars.emojis[6], 3)
+    n[0].router.myAvatar = fox
+    net.connect("A", "B"); net.connect("B", "C"); net.settle()
+    check(n[1].peers.first { $0.id == "A" }?.avatar == fox, "the picture reaches a direct neighbour")
+    check(n[2].peers.first { $0.id == "A" }?.avatar == fox, "the picture reaches a phone two hops away")
+    n[0].router.myAvatar = "evil text|1"; net.settle()
+    check(n[1].peers.first { $0.id == "A" }?.avatar == nil, "text that is not one of our emojis is ignored")
+    n[0].router.myAvatar = Avatars.emojis[0] + "|99"; net.settle()
+    check(n[1].peers.first { $0.id == "A" }?.avatar == nil, "an unknown colour is ignored")
+    check(Avatars.valid(nil) == nil && Avatars.valid("|1") == nil && Avatars.valid(Avatars.emojis[0]) == nil && Avatars.valid(fox) == fox, "avatar validation")
+    check(Avatars.emojis.count == 30 && Set(Avatars.emojis).count == 30, "30 different emojis")
+}
+do {   // photos: chunked, sealed, only to a direct neighbour, confirmed, never forwarded
+    let net = Net(); let n = ["A", "B", "C"].map { net.add($0) }
+    n[0].router.savedKey = { $0 == "B" ? n[1].crypto.publicKey : ($0 == "C" ? n[2].crypto.publicKey : nil) }
+    n[1].router.savedKey = { $0 == "A" ? n[0].crypto.publicKey : nil }
+    n[2].router.savedKey = { $0 == "A" ? n[0].crypto.publicKey : nil }
+    net.connect("A", "B"); net.connect("B", "C"); net.settle()
+    let photo = Data((0..<30_000).map { UInt8(truncatingIfNeeded: $0 * 31) })
+    var outcome: SendOutcome?; var last = 0.0
+    n[0].router.sendPhoto(photo, to: "B", photoID: "ph-1", progress: { last = $0 }) { outcome = $0 }
+    check(outcome == .sent && last == 1.0, "a photo is sent in chunks to a direct neighbour")
+    check(n[1].photos.count == 1 && n[1].photos[0].id == "ph-1" && n[1].photos[0].bytes == photo, "the neighbour reassembles and opens the same bytes")
+    check(n[0].delivered == ["ph-1"], "the receipt comes back")
+    var far: SendOutcome?
+    n[0].router.sendPhoto(photo, to: "C", photoID: "ph-2", progress: { _ in }) { far = $0 }
+    check(far == .unreachable && n[2].photos.isEmpty, "a photo does not travel through other phones")
+    n[0].router.sendPhoto(photo, to: "B", photoID: "ph-1", progress: { _ in }) { _ in }
+    check(n[1].photos.count == 1, "the same photo again is ignored")
 }
 print(failures == 0 ? "ALL PASSED" : "\(failures) FAILED")
 exit(failures == 0 ? 0 : 1)
