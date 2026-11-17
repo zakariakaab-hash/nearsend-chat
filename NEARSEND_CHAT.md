@@ -21,7 +21,7 @@ Belongs to the [nearsend.app](https://nearsend.app) family and shares its "Open 
 - **12 languages** that follow the phone's language, plus an in-app language picker (You tab): English, Svenska, Español, Français, Deutsch, Português, Italiano, العربية (right-to-left), Türkçe, Русский, 简体中文, 日本語.
 - Light/dark "Open Sky" design from nearsend.app, app icons, Reduce Motion and screen-reader labels.
 
-Docs: [`PROTOCOL.md`](docs/nearsend-chat/PROTOCOL.md) · [`PRIVACY.md`](docs/nearsend-chat/PRIVACY.md) (draft) · [`RELEASING.md`](docs/nearsend-chat/RELEASING.md)
+Docs: [`PROTOCOL.md`](docs/nearsend-chat/PROTOCOL.md) · [`PRIVACY.md`](docs/nearsend-chat/PRIVACY.md) · [`RELEASING.md`](docs/nearsend-chat/RELEASING.md)
 
 ## What's in this repo
 
@@ -32,7 +32,7 @@ Docs: [`PROTOCOL.md`](docs/nearsend-chat/PROTOCOL.md) · [`PRIVACY.md`](docs/nea
 | `.github/workflows/nearsend-chat-ios.yml` | Builds iOS on a macOS runner, screenshots simulator, commits Xcode project + previews |
 | `.github/workflows/nearsend-chat-android.yml` | Builds the APK, screenshots an emulator, commits Gradle wrapper + font + previews |
 | `i18n/` | One translation table (`translations.txt`) → generates iOS `*.lproj` and Android `values-*` strings (`python3 i18n/generate.py`) |
-| `docs/nearsend-chat/` | Protocol spec, privacy policy draft, release guide |
+| `docs/nearsend-chat/` | Protocol spec, privacy policy, release guide |
 | `*/previews/` | CI screenshots (day, night, several languages) |
 
 The rest of the repository is the unmodified upstream Bitchat iOS app.
