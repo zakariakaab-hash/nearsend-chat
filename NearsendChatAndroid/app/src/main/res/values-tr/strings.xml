@@ -186,4 +186,23 @@
     <string name="priv_never">Asla</string>
     <string name="priv_1day">1 gün</string>
     <string name="priv_days">%1$d gün</string>
+    <string name="inet_title">İnternet</string>
+    <string name="inet_ask">İnternet kullanılsın mı?</string>
+    <string name="inet_body">Bluetooth menzili dışındaki kişilere mesajlar internetteki herkese açık aktarma sunucularından geçer. Uçtan uca şifreli kalır, ancak sunucular IP adresini ve ne zaman gönderdiğini görebilir.</string>
+    <string name="inet_turn_on">Aç</string>
+    <string name="inet_status">Bağlı · aktarıcı: %1$d</string>
+    <string name="inet_connecting">Bağlanıyor…</string>
+    <string name="inet_off">Kapalı · yalnızca Bluetooth</string>
+    <string name="inet_hint">Uzakta · mesajların internet üzerinden gider</string>
+    <string name="attach_title">Ekle</string>
+    <string name="attach_photo">Fotoğraf</string>
+    <string name="attach_location">Konum</string>
+    <string name="attach_contact">Kişi</string>
+    <string name="attach_soon">Yakında</string>
+    <string name="loc_none">Henüz konum yok. Açık havada tekrar dene.</string>
+    <string name="card_title">Kişi kartı</string>
+    <string name="card_add">Kişiyi ekle</string>
+    <string name="card_added">Eklendi</string>
+    <string name="bat_title">Pil tasarrufu</string>
+    <string name="bat_body">Tam siyah arka plan ve animasyon yok. OLED ekranlarda pil tasarrufu sağlar. Bluetooth yine de pil harcar.</string>
 </resources>

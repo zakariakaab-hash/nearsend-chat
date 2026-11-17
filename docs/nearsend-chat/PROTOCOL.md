@@ -184,6 +184,10 @@ phones that are not contacts.
   other's device ids and names. Each copy is end-to-end encrypted, but a group of N people costs N packets per message.
 - **Carried messages stay readable as metadata.** Phones that carry a message see who it is from and to and when, for up to
   24 h. They cannot read the text. Anyone can fill the 200-slot store with junk and push real messages out.
+- **Internet relays see metadata.** With "Internet" on, the relay operators learn your IP address, when you send or fetch,
+  the size of each packet and the topic of the receiver (a hash of their key; the same topic every time). They cannot read
+  the packet or see who sent it. Anyone who knows a person's public key can compute their topic and send them junk or
+  count how many packets they receive. Relays may drop or delay events.
 - **Announcements are public, unauthenticated and stored.** Phones keep them until they expire and show them to people who
   arrive later; anyone can post under any name.
 
@@ -197,3 +201,26 @@ A public, unencrypted notice that stays around for a while (like a note on a boa
   With "Pass on messages for others" off, a phone only shares its own.
 - Receivers group by `ref`, show each announcement once, and hide it after `exp` (capped at their clock + 24 h).
   The app offers 1, 6 or 24 h.
+
+## 9. Internet relays (optional, Android; off by default)
+
+When the user switches on "Internet", private packets (`msg`, `gm`, `ack`, `vfy`) for a contact who is **not** a Bluetooth
+neighbour also go to public Nostr relays (NIP-01). Nothing else uses the internet: no `ann`, `pub`, `post`, `sos` and no
+forwarding for others, and nobody appears "nearby" because of it.
+
+- **Relays** (WebSocket): `wss://relay.damus.io`, `wss://nos.lol`, `wss://relay.primal.net`, `wss://offchain.pub`. A phone
+  keeps a connection to each, retrying after 15 s, 30 s, … at most 5 min.
+- **Topic** of a phone: `hex(SHA-256("nearsend-inet-v1" || public key))`, 64 characters. Not its device id.
+- **Envelope.** The whole packet JSON (the same bytes as over Bluetooth, already end-to-end sealed) is sealed again to the
+  receiver's public key: `ephemeralPk(32) || nonce(12) || ChaCha20-Poly1305(packet, aad = topic) || tag(16)`, key =
+  HKDF-SHA256(X25519(ephemeral secret, receiver key), salt `nearsend-inet-v1`, info = `ephemeralPk || receiverPk`, 32 bytes).
+  The relays therefore see neither the sender, the packet type nor the text.
+- **Event** (kind **4243**, content = base64 of the envelope, tags `["t", topic]` and `["expiration", now + 24 h]`),
+  signed with a **fresh throwaway** BIP-340 key per event, so events cannot be linked to a sender. A relay answers with `OK`;
+  the app counts the packet as stored (shown as "relayed") when at least one relay says so.
+- **Listening:** `["REQ","ns",{"kinds":[4243],"#t":[<own topic>],"since":<last connected − 15 min, at most 24 h ago>}]`.
+  Events that fail to open (not for us, changed) are dropped. An opened packet goes to the normal receive path, but only
+  `msg`/`gm`/`ack`/`vfy` addressed to this phone are accepted, and nothing is passed on into the Bluetooth mesh.
+- **When it is used:** a packet whose destination is not a neighbour is held as in section 3 *and* published; packets still
+  waiting are published again when the first relay connects. Contacts must already have exchanged keys (section 3).
+- Limits: content at most 16,000 characters; the id cache (section 3) drops duplicates that arrive both ways.

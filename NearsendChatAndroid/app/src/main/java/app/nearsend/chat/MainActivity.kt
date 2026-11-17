@@ -17,10 +17,14 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Chat
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.Canvas
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Sensors
-import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
@@ -87,7 +91,7 @@ class MainActivity : AppCompatActivity() {
 
 @Composable
 fun NearsendApp(store: ChatStore, startOnboarded: Boolean, startTab: Int, startThread: String?, startInfo: Boolean, startQr: Boolean, onOnboardingDone: () -> Unit) {
-    val night = isSystemInDarkTheme()
+    val night = isSystemInDarkTheme() || store.batterySaver
     var onboarded by remember { mutableStateOf(startOnboarded) }
     var tab by remember { mutableIntStateOf(startTab) }
     var thread by remember { mutableStateOf(startThread) }
@@ -95,7 +99,7 @@ fun NearsendApp(store: ChatStore, startOnboarded: Boolean, startTab: Int, startT
     val openPeer = threadPeer ?: thread?.let { id -> store.conversations.firstOrNull { it.id == id }?.peer }
     LaunchedEffect(store.wipeCount) { if (store.wipeCount > 0) { onboarded = false; thread = null; tab = 0 } }
 
-    CompositionLocalProvider(LocalPalette provides if (night) NightPalette else DayPalette) {
+    CompositionLocalProvider(LocalPalette provides if (night) NightPalette else DayPalette, LocalBatterySaver provides store.batterySaver) {
         Box(Modifier.fillMaxSize()) {
             SkyBackground()
             if (!onboarded) {
@@ -126,8 +130,9 @@ fun NearsendApp(store: ChatStore, startOnboarded: Boolean, startTab: Int, startT
 private fun TabBar(selected: Int, badges: Map<Int, Int>, onSelect: (Int) -> Unit) {
     val p = LocalPalette.current
     // (tab index, label, icon) in display order; SOS is index 3 but sits third.
-    val items: List<Triple<Int, Int, ImageVector>> = listOf(Triple(0, R.string.tab_nearby, Icons.Filled.Sensors), Triple(1, R.string.tab_chats, Icons.Filled.Chat),
-        Triple(SOS_TAB, R.string.tab_sos, Icons.Filled.Warning), Triple(2, R.string.tab_you, Icons.Filled.Person))
+    // SOS and Chats have no vector icon: SOS is a round red badge, Chats a round bubble.
+    val items: List<Triple<Int, Int, ImageVector?>> = listOf(Triple(0, R.string.tab_nearby, Icons.Filled.Sensors), Triple(1, R.string.tab_chats, null),
+        Triple(SOS_TAB, R.string.tab_sos, null), Triple(2, R.string.tab_you, Icons.Filled.Person))
     Row(Modifier.fillMaxWidth().glass(0.dp).navigationBarsPadding().padding(vertical = 8.dp)) {
         items.forEach { (i, labelRes, icon) ->
             val color = when { i == selected && i == SOS_TAB -> SosRed; i == selected -> p.link; i == SOS_TAB -> SosRed.copy(alpha = 0.8f); else -> p.inkSecondary }
@@ -135,12 +140,27 @@ private fun TabBar(selected: Int, badges: Map<Int, Int>, onSelect: (Int) -> Unit
             val label = stringResource(labelRes)
             Column(Modifier.weight(1f).clickable { onSelect(i) }.padding(vertical = 4.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                 Box {
-                    Icon(icon, label, tint = color)
+                    if (icon != null) Icon(icon, label, tint = color)
+                    else if (i != SOS_TAB) RoundChatIcon(color)
+                    else Box(Modifier.size(24.dp).background(SosRed, CircleShape), contentAlignment = Alignment.Center) {
+                        Text("SOS", color = androidx.compose.ui.graphics.Color.White, fontSize = 8.sp, fontWeight = FontWeight.Black, modifier = Modifier.clearAndSetSemantics { })
+                    }
                     if (count > 0) Text("$count", color = androidx.compose.ui.graphics.Color.White, fontSize = 10.sp,
                         modifier = Modifier.align(Alignment.TopEnd).offset(10.dp, (-4).dp).background(androidx.compose.ui.graphics.Color(0xFFFF3B30), RoundedCornerShape(50)).padding(horizontal = 5.dp))
                 }
                 Text(label, color = color, fontSize = 11.sp)
             }
         }
+    }
+}
+
+/** A chat bubble built from a circle, a small tail and three dots, so it is as round as the SOS badge next to it. */
+@Composable
+private fun RoundChatIcon(color: androidx.compose.ui.graphics.Color) {
+    Canvas(Modifier.size(24.dp)) {
+        val u = size.minDimension
+        drawCircle(color, u * 0.46f, Offset(u * 0.5f, u * 0.46f))
+        drawPath(Path().apply { moveTo(u * 0.20f, u * 0.70f); lineTo(u * 0.08f, u * 0.96f); lineTo(u * 0.42f, u * 0.86f); close() }, color)
+        for (k in -1..1) drawCircle(androidx.compose.ui.graphics.Color.White, u * 0.065f, Offset(u * 0.5f + k * u * 0.19f, u * 0.46f))
     }
 }

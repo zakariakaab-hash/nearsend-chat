@@ -187,4 +187,23 @@
     <string name="priv_never">Never</string>
     <string name="priv_1day">1 day</string>
     <string name="priv_days">%1$d days</string>
+    <string name="inet_title">Internet</string>
+    <string name="inet_ask">Use the internet?</string>
+    <string name="inet_body">Messages to contacts who are out of Bluetooth range go through public relay servers on the internet. They stay end-to-end encrypted, but the servers can see your IP address and when you send.</string>
+    <string name="inet_turn_on">Turn on</string>
+    <string name="inet_status">Connected · relays: %1$d</string>
+    <string name="inet_connecting">Connecting…</string>
+    <string name="inet_off">Off · Bluetooth only</string>
+    <string name="inet_hint">Away · your messages go over the internet</string>
+    <string name="attach_title">Attach</string>
+    <string name="attach_photo">Photo</string>
+    <string name="attach_location">Location</string>
+    <string name="attach_contact">Contact</string>
+    <string name="attach_soon">Soon</string>
+    <string name="loc_none">No position yet. Try again outdoors.</string>
+    <string name="card_title">Contact card</string>
+    <string name="card_add">Add contact</string>
+    <string name="card_added">Added</string>
+    <string name="bat_title">Battery saver</string>
+    <string name="bat_body">Pure black background and no animations. Saves battery on OLED screens. Bluetooth still uses power.</string>
 </resources>

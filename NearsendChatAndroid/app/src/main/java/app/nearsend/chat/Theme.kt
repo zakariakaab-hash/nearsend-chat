@@ -67,9 +67,14 @@ val LocalPalette = staticCompositionLocalOf { DayPalette }
 
 private fun frac(v: Double) = v - floor(v)
 
+/** True while "Battery saver" is on: black background, no ambient animations. */
+val LocalBatterySaver = compositionLocalOf { false }
+
 @Composable
 fun SkyBackground(modifier: Modifier = Modifier.fillMaxSize()) {
     val p = LocalPalette.current
+    // Battery saver: pure black (OLED pixels switch off) and nothing animating.
+    if (LocalBatterySaver.current) { Canvas(modifier) { drawRect(Color.Black) }; return }
     val drift by rememberInfiniteTransition(label = "drift").animateFloat(
         0f, 1f, infiniteRepeatable(tween(28000, easing = LinearEasing), RepeatMode.Reverse), label = "d",
     )

@@ -186,4 +186,23 @@
     <string name="priv_never">أبدًا</string>
     <string name="priv_1day">يوم واحد</string>
     <string name="priv_days">%1$d أيام</string>
+    <string name="inet_title">الإنترنت</string>
+    <string name="inet_ask">استخدام الإنترنت؟</string>
+    <string name="inet_body">الرسائل إلى جهات الاتصال خارج نطاق البلوتوث تمر عبر خوادم ترحيل عامة على الإنترنت. تبقى مشفّرة من طرف إلى طرف، لكن الخوادم ترى عنوان IP الخاص بك ووقت الإرسال.</string>
+    <string name="inet_turn_on">تشغيل</string>
+    <string name="inet_status">متصل · المرحّلات: %1$d</string>
+    <string name="inet_connecting">جارٍ الاتصال…</string>
+    <string name="inet_off">متوقف · بلوتوث فقط</string>
+    <string name="inet_hint">غير متصل · رسائلك تمر عبر الإنترنت</string>
+    <string name="attach_title">إرفاق</string>
+    <string name="attach_photo">صورة</string>
+    <string name="attach_location">الموقع</string>
+    <string name="attach_contact">جهة اتصال</string>
+    <string name="attach_soon">قريبًا</string>
+    <string name="loc_none">لا يوجد موقع بعد. حاول مجددًا في الهواء الطلق.</string>
+    <string name="card_title">بطاقة اتصال</string>
+    <string name="card_add">إضافة جهة اتصال</string>
+    <string name="card_added">تمت الإضافة</string>
+    <string name="bat_title">توفير البطارية</string>
+    <string name="bat_body">خلفية سوداء تمامًا وبدون حركات. يوفّر البطارية في شاشات OLED. لا يزال البلوتوث يستهلك الطاقة.</string>
 </resources>

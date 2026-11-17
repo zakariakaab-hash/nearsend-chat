@@ -54,6 +54,12 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.PathEffect
+import android.Manifest
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.material.icons.rounded.*
+import org.json.JSONObject
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.selected
@@ -119,6 +125,15 @@ fun NearbyScreen(store: ChatStore, onOpenChat: (Peer) -> Unit) {
     val switchLabel = stringResource(R.string.mesh_switch)
     var network by remember { mutableStateOf(false) }
     var newPost by remember { mutableStateOf(false) }
+    var askInternet by remember { mutableStateOf(false) }
+    val inetLabel = stringResource(R.string.inet_title)
+    if (askInternet) AlertDialog(
+        onDismissRequest = { askInternet = false },
+        title = { Text(stringResource(R.string.inet_ask)) },
+        text = { Text(stringResource(R.string.inet_body)) },
+        confirmButton = { TextButton({ askInternet = false; store.changeInternet(true) }) { Text(stringResource(R.string.inet_turn_on)) } },
+        dismissButton = { TextButton({ askInternet = false }) { Text(stringResource(R.string.cancel)) } },
+    )
     if (newPost) NewPostDialog(store) { newPost = false }
     LazyColumn(Modifier.fillMaxSize().statusBarsPadding(), contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         item { PageTitle(R.string.tab_nearby) }
@@ -140,10 +155,28 @@ fun NearbyScreen(store: ChatStore, onOpenChat: (Peer) -> Unit) {
         }
         item {
             Card(padding = 12.dp) {
+                val up = store.internetOn && store.internetRelays > 0
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Icon(Icons.Filled.Public, null, tint = if (up) p.secure else p.inkSecondary, modifier = Modifier.size(22.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(inetLabel, color = p.ink, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+                        Text(when {
+                            !store.internetOn -> stringResource(R.string.inet_off)
+                            up -> stringResource(R.string.inet_status, store.internetRelays)
+                            else -> stringResource(R.string.inet_connecting)
+                        }, color = if (up) p.secure else p.inkSecondary, fontSize = 12.sp)
+                    }
+                    Switch(store.internetOn, { if (it) askInternet = true else store.changeInternet(false) }, Modifier.semantics { contentDescription = inetLabel },
+                        colors = SwitchDefaults.colors(checkedTrackColor = p.secure, checkedThumbColor = Color.White))
+                }
+            }
+        }
+        item {
+            Card(padding = 12.dp) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                     Chip(stringResource(R.string.net_view), network) { network = !network }
                 }
-                Radar(store.peers, Modifier.fillMaxWidth().height(320.dp), network)
+                Radar(store.peers, Modifier.fillMaxWidth().height(320.dp), network, store.internetOn, store.awayContacts)
             }
         }
         item {
@@ -183,15 +216,19 @@ private fun angleFor(p: Peer): Float {
 }
 
 @Composable
-fun Radar(peers: List<Peer>, modifier: Modifier = Modifier, network: Boolean = false) {
+fun Radar(peers: List<Peer>, modifier: Modifier = Modifier, network: Boolean = false, internet: Boolean = false, away: List<Peer> = emptyList()) {
     val p = LocalPalette.current
-    val rot by rememberInfiniteTransition(label = "sweep").animateFloat(
+    val rot = if (LocalBatterySaver.current) 25f else rememberInfiniteTransition(label = "sweep").animateFloat(
         0f, 360f, infiniteRepeatable(tween(4000, easing = LinearEasing)), label = "r",
-    )
+    ).value
     val tail = 0.16f   // fraction of a turn the fading tail covers
     val desc = stringResource(R.string.radar) + ": " + if (peers.size == 1) stringResource(R.string.one_person) else stringResource(R.string.n_people, peers.size)
     BoxWithConstraints(modifier.semantics { contentDescription = desc }, contentAlignment = Alignment.Center) {
         val box = minOf(maxWidth, maxHeight)
+        // Internet: a node at the upper right; contacts reached through it sit along the top edge (offsets in dp from the centre).
+        fun rim(angle: Float) = Offset(cos(angle) * box.value / 2 * 0.93f, sin(angle) * box.value / 2 * 0.93f)
+        val nodeAt = rim(-0.72f)
+        val awayAt = away.take(3).indices.map { rim(-0.72f - 0.5f * (it + 1)) }
         Canvas(Modifier.size(box)) {
             val c = center
             val r = size.minDimension / 2
@@ -208,6 +245,12 @@ fun Radar(peers: List<Peer>, modifier: Modifier = Modifier, network: Boolean = f
                         center = c),
                     r, c)
                 drawLine(ActionBlue, c, Offset(c.x + r, c.y), strokeWidth = 2.dp.toPx())
+            }
+            if (internet) {
+                val dash = PathEffect.dashPathEffect(floatArrayOf(6.dp.toPx(), 5.dp.toPx()))
+                fun px(o: Offset) = Offset(c.x + o.x.dp.toPx(), c.y + (o.y - 7f).dp.toPx())   // icon centre sits ~7 dp above its label column's centre
+                drawLine(p.secure.copy(alpha = 0.8f), c, px(nodeAt), 2.dp.toPx(), pathEffect = dash)
+                awayAt.forEach { drawLine(p.secure.copy(alpha = 0.6f), px(nodeAt), px(it), 2.dp.toPx(), pathEffect = dash) }
             }
             if (network) {
                 // Lines show how each person is reached: straight from us, or through the person who passed them on.
@@ -226,6 +269,20 @@ fun Radar(peers: List<Peer>, modifier: Modifier = Modifier, network: Boolean = f
             drawCircle(ActionBlue.copy(alpha = 0.25f), 12.dp.toPx(), c)
             drawCircle(Color.White, 8.dp.toPx(), c)
             drawCircle(ActionBlue, 6.dp.toPx(), c)
+        }
+        if (internet) {
+            Column(Modifier.offset(nodeAt.x.dp, nodeAt.y.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                Box(Modifier.size(20.dp).background(p.secure, RoundedCornerShape(6.dp)), contentAlignment = Alignment.Center) {
+                    Icon(Icons.Filled.Lock, null, tint = Color.White, modifier = Modifier.size(12.dp))
+                }
+                Text(stringResource(R.string.inet_title), color = p.secure, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+            }
+            away.take(3).forEachIndexed { k, peer ->
+                Column(Modifier.offset(awayAt[k].x.dp, awayAt[k].y.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Box(Modifier.size(13.dp).background(Color.White, CircleShape).border(2.dp, p.secure, CircleShape))
+                    Text(peer.name, color = p.ink, fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                }
+            }
         }
         peers.forEach { peer ->
             val rr = radiusFor(peer) * (box.value / 2)
@@ -309,7 +366,7 @@ fun ChatsScreen(store: ChatStore, startAdd: Boolean = false, onOpen: (String) ->
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 PageTitle(R.string.tab_chats, Modifier.weight(1f))
                 RoundIconButton(Icons.Filled.QrCode, stringResource(R.string.add_verify)) { adding = true }
-                RoundIconButton(Icons.Filled.Edit, stringResource(R.string.write_to)) { writing = true }
+                RoundIconButton(Icons.Rounded.Add, stringResource(R.string.write_to)) { writing = true }
             }
         }
         if (store.conversations.size <= 1) item {
@@ -373,6 +430,11 @@ fun ThreadScreen(store: ChatStore, conversationId: String, peer: Peer, startInfo
     val encrypted = store.simulated || livePeer.fingerprint.isNotEmpty()
     var draft by remember { mutableStateOf("") }
     var showInfo by remember { mutableStateOf(startInfo) }
+    var attach by remember { mutableStateOf(false) }
+    val ctx = LocalContext.current
+    val noPosition = stringResource(R.string.loc_none)
+    val sendPosition = { if (!store.sendLocation(conversationId)) Toast.makeText(ctx, noPosition, Toast.LENGTH_SHORT).show() }
+    val askPosition = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { sendPosition() }
     val listState = rememberLazyListState()
     DisposableEffect(conversationId) {
         store.activeConversation = conversationId
@@ -392,14 +454,14 @@ fun ThreadScreen(store: ChatStore, conversationId: String, peer: Peer, startInfo
                     Text(when {
                         isPublic -> stringResource(R.string.public_channel)
                         members != null -> stringResource(R.string.group_members, members.size)
-                        !online && store.canCarryTo(conversationId) -> stringResource(R.string.carry_hint)
+                        !online && store.canCarryTo(conversationId) -> stringResource(if (store.internetOn) R.string.inet_hint else R.string.carry_hint)
                         !online -> stringResource(R.string.out_of_range)
                         livePeer.hops == 1 -> stringResource(R.string.direct_link)
                         else -> stringResource(R.string.n_hops, livePeer.hops)
                     }, color = if (online || members != null) p.secure else p.inkSecondary, fontSize = 11.sp, textAlign = TextAlign.Center)
                 }
                 if (isPublic) Spacer(Modifier.width(40.dp))
-                else Icon(Icons.Filled.Info, stringResource(R.string.contact_info), tint = p.link, modifier = Modifier.clickable { showInfo = true }.padding(8.dp))
+                else Icon(Icons.Rounded.MoreVert, stringResource(R.string.contact_info), tint = p.link, modifier = Modifier.clickable { showInfo = true }.padding(8.dp))
             }
             LazyColumn(Modifier.weight(1f), state = listState, contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 item {
@@ -410,12 +472,29 @@ fun ThreadScreen(store: ChatStore, conversationId: String, peer: Peer, startInfo
                         } }
                     }
                 }
-                items(messages, key = { it.id }) { m -> Bubble(m, isPublic || members != null) { store.retry(m.id, conversationId) } }
+                items(messages, key = { it.id }) { m -> Bubble(m, isPublic || members != null, { store.applyText(it) }) { store.retry(m.id, conversationId) } }
             }
             Row(Modifier.fillMaxWidth().glass(0.dp).navigationBarsPadding().padding(12.dp, 8.dp), verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 Box(Modifier.weight(1f).glass(16.dp).padding(horizontal = 16.dp, vertical = 12.dp)) {
                     if (draft.isEmpty()) Text(stringResource(R.string.message), color = p.inkSecondary, fontSize = 16.sp)
                     BasicTextField(draft, { draft = it }, Modifier.fillMaxWidth(), textStyle = TextStyle(color = p.ink, fontSize = 16.sp), cursorBrush = SolidColor(ActionBlue), maxLines = 5)
+                }
+                if (!isPublic) Box {
+                    val attachLabel = stringResource(R.string.attach_title)
+                    Box(Modifier.size(46.dp).glass(23.dp).clickable { attach = true }.semantics { contentDescription = attachLabel }, contentAlignment = Alignment.Center) {
+                        Icon(Icons.Rounded.Add, null, tint = p.link, modifier = Modifier.size(28.dp))
+                    }
+                    DropdownMenu(attach, { attach = false }) {
+                        DropdownMenuItem({ Text(stringResource(R.string.attach_photo) + " · " + stringResource(R.string.attach_soon)) }, { attach = false },
+                            leadingIcon = { Icon(Icons.Rounded.Image, null) }, enabled = false)
+                        DropdownMenuItem({ Text(stringResource(R.string.attach_location)) }, {
+                            attach = false
+                            if (store.hasLocationPermission()) sendPosition()
+                            else askPosition.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
+                        }, leadingIcon = { Icon(Icons.Rounded.Place, null) })
+                        DropdownMenuItem({ Text(stringResource(R.string.attach_contact)) }, { attach = false; store.send(store.myCard(), conversationId) },
+                            leadingIcon = { Icon(Icons.Rounded.Person, null) })
+                    }
                 }
                 val canSend = draft.isNotBlank()
                 Box(Modifier.size(46.dp).background(if (canSend) ActionBlue else ActionBlue.copy(alpha = 0.4f), RoundedCornerShape(12.dp))
@@ -430,8 +509,10 @@ fun ThreadScreen(store: ChatStore, conversationId: String, peer: Peer, startInfo
 }
 
 @Composable
-private fun Bubble(m: Message, showSender: Boolean, onRetry: () -> Unit) {
+private fun Bubble(m: Message, showSender: Boolean, onAddCard: (String) -> Unit, onRetry: () -> Unit) {
     val p = LocalPalette.current
+    val card = remember(m.text) { cardName(m.text) }
+    var added by remember { mutableStateOf(false) }
     val stateName = stringResource(when (m.state) {
         Delivery.Sending -> R.string.state_sending; Delivery.Sent -> R.string.state_sent; Delivery.Relayed -> R.string.state_relayed
         Delivery.Delivered -> R.string.state_delivered; Delivery.Failed -> R.string.state_failed
@@ -440,7 +521,15 @@ private fun Bubble(m: Message, showSender: Boolean, onRetry: () -> Unit) {
         Column(horizontalAlignment = if (m.mine) Alignment.End else Alignment.Start, modifier = Modifier.widthIn(max = 300.dp)) {
             if (showSender && !m.mine && m.sender != null)
                 Text(m.sender, color = Color.White.copy(alpha = 0.9f), fontSize = 11.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(start = 6.dp))
-            Text(linkify(m.text, if (m.mine) Color.White else p.link), color = if (m.mine) Color.White else p.ink, fontSize = 16.sp,
+            if (card != null) Column(
+                (if (m.mine) Modifier.background(ActionBlue, RoundedCornerShape(20.dp)) else Modifier.glass(20.dp)).padding(horizontal = 14.dp, vertical = 10.dp),
+                verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                val c = if (m.mine) Color.White else p.ink
+                Text(stringResource(R.string.card_title), color = c.copy(alpha = 0.7f), fontSize = 12.sp)
+                Text(card, color = c, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                if (!m.mine) Text(stringResource(if (added) R.string.card_added else R.string.card_add), color = p.link, fontSize = 14.sp, fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.padding(top = 6.dp).clickable(enabled = !added) { onAddCard(m.text); added = true })
+            } else Text(linkify(m.text, if (m.mine) Color.White else p.link), color = if (m.mine) Color.White else p.ink, fontSize = 16.sp,
                 modifier = (if (m.mine) Modifier.background(ActionBlue, RoundedCornerShape(20.dp)) else Modifier.glass(20.dp)).padding(horizontal = 14.dp, vertical = 10.dp))
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.padding(top = 3.dp)) {
                 Text(timeOf(m.timeMs), color = Color.White.copy(alpha = 0.85f), fontSize = 11.sp)
@@ -457,6 +546,12 @@ private fun Bubble(m: Message, showSender: Boolean, onRetry: () -> Unit) {
         }
     }
 }
+
+/** The name on a contact card sent as a chat message (see ChatStore.myCard), or null for an ordinary message. */
+private fun cardName(text: String): String? = runCatching {
+    val o = JSONObject(text.trim())
+    if (o.optInt("nearsend") == 1 && o.has("pk") && o.has("id")) o.optString("n").ifEmpty { "?" } else null
+}.getOrNull()
 
 /** Contact info: nickname, QR or fingerprint verification, block and remove. */
 @Composable
@@ -807,6 +902,9 @@ fun IdentityScreen(store: ChatStore, startQr: Boolean = false) {
                     }
                 }
             }
+        }
+        item {
+            Card { SettingSwitch(R.string.bat_title, R.string.bat_body, store.batterySaver) { store.changeBatterySaver(it) } }
         }
         item {
             Box(Modifier.fillMaxWidth().glass(12.dp).clickable { confirmWipe = true }.padding(vertical = 14.dp), contentAlignment = Alignment.Center) {

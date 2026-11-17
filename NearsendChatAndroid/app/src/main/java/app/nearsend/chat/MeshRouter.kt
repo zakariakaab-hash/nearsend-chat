@@ -59,6 +59,7 @@ class MeshRouter(val myId: String, var myName: String, private val crypto: MeshC
         const val HOLD_MS = 24 * 3_600_000L    // store-and-forward copies and announcements live at most a day
         const val MAX_HELD = 200
         const val MAX_POSTS = 50
+        private val UPLINK_TYPES = setOf("msg", "gm", "ack", "vfy")
 
         fun clip(s: String): String {
             val sb = StringBuilder(); var n = 0
@@ -97,6 +98,8 @@ class MeshRouter(val myId: String, var myName: String, private val crypto: MeshC
     var savedKey: ((id: String) -> ByteArray?)? = null
     /** A peer's key was seen (direct or announced); the app saves it for contacts. */
     var onKey: ((id: String, pk: ByteArray) -> Unit)? = null
+    /** Optional internet path: sends one of our own packets, sealed to [pk], to someone who is not in Bluetooth range. */
+    var uplink: ((pk: ByteArray, data: ByteArray, done: (Boolean) -> Unit) -> Unit)? = null
     /** Privacy settings: pass on and carry other people's packets; confirm messages we receive. */
     var relay = true
     var sendAcks = true
@@ -213,7 +216,29 @@ class MeshRouter(val myId: String, var myName: String, private val crypto: MeshC
         remember(p.id)
         if (p.dst in peers) return route(p, null, completion)
         hold(p)
-        route(p, null) { completion(if (it == SendOutcome.Sent) SendOutcome.Carried else SendOutcome.Held) }
+        route(p, null) { r ->
+            // A phone nearby took a copy, the internet relays took one, or (neither) we keep carrying it ourselves.
+            val up = uplink; val pk = p.dst?.let(::keyOf)
+            if (r == SendOutcome.Sent) completion(SendOutcome.Carried)
+            if (up != null && pk != null) up(pk, p.toBytes()) { ok -> if (r != SendOutcome.Sent) completion(if (ok) SendOutcome.Carried else SendOutcome.Held) }
+            else if (r != SendOutcome.Sent) completion(SendOutcome.Held)
+        }
+    }
+
+    /** The internet just came up: give it our own waiting packets. [onCarried] gets the id of each one a relay stored. */
+    fun uplinkHeld(onCarried: (id: String) -> Unit) {
+        val up = uplink ?: return
+        expire()
+        for ((p, _) in held.values.toList()) {
+            if (p.src != myId || p.dst in peers) continue
+            up(keyOf(p.dst ?: continue) ?: continue, p.toBytes()) { ok -> if (ok) onCarried(p.id) }
+        }
+    }
+
+    /** A packet that came over the internet. Only private packets addressed to us are taken; nothing is passed on. */
+    fun receiveUplink(data: ByteArray) {
+        val p = Packet.parse(data) ?: return
+        if (p.dst == myId && p.t in UPLINK_TYPES) receive(data, null)
     }
 
     /** Public announcement, kept by every phone until [exp] (at most a day) and shown to phones that arrive later. */

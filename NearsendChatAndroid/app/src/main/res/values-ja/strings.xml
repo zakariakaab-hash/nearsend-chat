@@ -186,4 +186,23 @@
     <string name="priv_never">しない</string>
     <string name="priv_1day">1日</string>
     <string name="priv_days">%1$d日</string>
+    <string name="inet_title">インターネット</string>
+    <string name="inet_ask">インターネットを使いますか？</string>
+    <string name="inet_body">Bluetoothの圏外にいる連絡先へのメッセージは、インターネット上の公開リレーサーバーを経由します。エンドツーエンド暗号化のままですが、サーバーにはIPアドレスと送信時刻が見えます。</string>
+    <string name="inet_turn_on">オンにする</string>
+    <string name="inet_status">接続済み · リレー：%1$d</string>
+    <string name="inet_connecting">接続中…</string>
+    <string name="inet_off">オフ · Bluetoothのみ</string>
+    <string name="inet_hint">圏外 · メッセージはインターネット経由で届きます</string>
+    <string name="attach_title">添付</string>
+    <string name="attach_photo">写真</string>
+    <string name="attach_location">位置情報</string>
+    <string name="attach_contact">連絡先</string>
+    <string name="attach_soon">近日対応</string>
+    <string name="loc_none">まだ位置情報がありません。屋外でもう一度お試しください。</string>
+    <string name="card_title">連絡先カード</string>
+    <string name="card_add">連絡先を追加</string>
+    <string name="card_added">追加済み</string>
+    <string name="bat_title">バッテリーセーバー</string>
+    <string name="bat_body">真っ黒の背景でアニメーションなし。OLED画面で電池を節約します。Bluetoothは引き続き電力を使います。</string>
 </resources>

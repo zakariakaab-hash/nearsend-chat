@@ -186,4 +186,23 @@
     <string name="priv_never">Никогда</string>
     <string name="priv_1day">1 день</string>
     <string name="priv_days">%1$d дн.</string>
+    <string name="inet_title">Интернет</string>
+    <string name="inet_ask">Использовать интернет?</string>
+    <string name="inet_body">Сообщения контактам вне зоны Bluetooth идут через публичные серверы-ретрансляторы в интернете. Они остаются зашифрованными сквозным шифрованием, но серверы видят ваш IP-адрес и время отправки.</string>
+    <string name="inet_turn_on">Включить</string>
+    <string name="inet_status">Подключено · ретрансляторов: %1$d</string>
+    <string name="inet_connecting">Подключение…</string>
+    <string name="inet_off">Выкл. · только Bluetooth</string>
+    <string name="inet_hint">Не рядом · сообщения идут через интернет</string>
+    <string name="attach_title">Прикрепить</string>
+    <string name="attach_photo">Фото</string>
+    <string name="attach_location">Местоположение</string>
+    <string name="attach_contact">Контакт</string>
+    <string name="attach_soon">Скоро</string>
+    <string name="loc_none">Позиция пока не определена. Попробуйте на открытом месте.</string>
+    <string name="card_title">Карточка контакта</string>
+    <string name="card_add">Добавить контакт</string>
+    <string name="card_added">Добавлено</string>
+    <string name="bat_title">Экономия заряда</string>
+    <string name="bat_body">Чисто чёрный фон и без анимаций. Экономит заряд на OLED-экранах. Bluetooth по-прежнему расходует энергию.</string>
 </resources>

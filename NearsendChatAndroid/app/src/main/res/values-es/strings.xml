@@ -186,4 +186,23 @@
     <string name="priv_never">Nunca</string>
     <string name="priv_1day">1 día</string>
     <string name="priv_days">%1$d días</string>
+    <string name="inet_title">Internet</string>
+    <string name="inet_ask">¿Usar internet?</string>
+    <string name="inet_body">Los mensajes a contactos fuera del alcance de Bluetooth pasan por servidores de retransmisión públicos en internet. Siguen cifrados de extremo a extremo, pero los servidores pueden ver tu dirección IP y cuándo envías.</string>
+    <string name="inet_turn_on">Activar</string>
+    <string name="inet_status">Conectado · relés: %1$d</string>
+    <string name="inet_connecting">Conectando…</string>
+    <string name="inet_off">Desactivado · solo Bluetooth</string>
+    <string name="inet_hint">Ausente · tus mensajes van por internet</string>
+    <string name="attach_title">Adjuntar</string>
+    <string name="attach_photo">Foto</string>
+    <string name="attach_location">Ubicación</string>
+    <string name="attach_contact">Contacto</string>
+    <string name="attach_soon">Pronto</string>
+    <string name="loc_none">Aún no hay posición. Inténtalo de nuevo al aire libre.</string>
+    <string name="card_title">Tarjeta de contacto</string>
+    <string name="card_add">Añadir contacto</string>
+    <string name="card_added">Añadido</string>
+    <string name="bat_title">Ahorro de batería</string>
+    <string name="bat_body">Fondo totalmente negro y sin animaciones. Ahorra batería en pantallas OLED. El Bluetooth sigue consumiendo energía.</string>
 </resources>

@@ -34,6 +34,7 @@ dependencies {
     implementation("androidx.core:core-ktx:1.13.1")
     implementation("androidx.appcompat:appcompat:1.7.0")
     implementation("com.google.crypto.tink:tink-android:1.14.1")
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")   // WebSocket to the optional internet relays (Apache-2.0)
     implementation("com.journeyapps:zxing-android-embedded:4.3.0")   // QR scanner + generator (Apache-2.0)
 
     testImplementation("junit:junit:4.13.2")

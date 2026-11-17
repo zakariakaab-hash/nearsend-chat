@@ -260,6 +260,80 @@ class ProtocolTest {
         assertEquals(null, n[0].peers.first { it.id == "B" }.via)
     }
 
+    // ---- internet relays (PROTOCOL.md section 9)
+
+    @Test fun schnorrMatchesBip340Vectors() {
+        val sk = hex("0000000000000000000000000000000000000000000000000000000000000003")
+        assertEquals("f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9", toHex(Schnorr.publicKey(sk)))
+        assertEquals("e907831f80848d1069a5371b402410364bdf1c5f8307b0084c55f1ce2dca8215" +
+            "25f66a4a85ea8b71e482a74f382d2ce5ebeee8fdb2172f477df4900d310536c0", toHex(Schnorr.sign(sk, ByteArray(32), ByteArray(32))))
+        val sk1 = hex("b7e151628aed2a6abf7158809cf4f3c762e7160f38b4da56a784d9045190cfef")
+        assertEquals("dff1d77f2a671c5f36183726db2341be58feae1da2deced843240f7b502ba659", toHex(Schnorr.publicKey(sk1)))
+        assertEquals("6896bd60eeae296db48a229ff71dfe071bde413e6d43f917dc8dcf8c78de3341" +
+            "8906d11ac976abccb20b091292bff4ea897efcb639ea871cfa95f6de339e4b0a",
+            toHex(Schnorr.sign(sk1, hex("243f6a8885a308d313198a2e03707344a4093822299f31d0082efa98ec4e6c89"),
+                hex("0000000000000000000000000000000000000000000000000000000000000001"))))
+    }
+
+    @Test fun relayEventIdIsTheHashOfItsCanonicalForm() {
+        val ev = RelayEvent.build("ab", "QUJD", 1_700_000_000, hex("0000000000000000000000000000000000000000000000000000000000000003"))
+        val canon = """[0,"f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9",1700000000,4243,[["t","ab"],["expiration","1700086400"]],"QUJD"]"""
+        assertEquals(toHex(java.security.MessageDigest.getInstance("SHA-256").digest(canon.toByteArray())), ev.id)
+        val o = org.json.JSONObject(ev.json)
+        assertEquals(ev.id, o.getString("id")); assertEquals(128, o.getString("sig").length); assertEquals("QUJD", o.getString("content"))
+    }
+
+    @Test fun internetEnvelopeOnlyOpensForItsOwner() {
+        val a = MeshCrypto.generate(); val b = MeshCrypto.generate()
+        val topic = MeshCrypto.inetTopic(b.publicKey)
+        assertEquals(64, topic.length); assertNotEquals(topic, MeshCrypto.inetTopic(a.publicKey))
+        val blob = MeshCrypto.sealTo(b.publicKey, "packet".toByteArray(), topic.toByteArray())
+        assertEquals("packet", String(b.openSealed(blob, topic.toByteArray())!!))
+        assertNull(a.openSealed(blob, topic.toByteArray()))            // someone else's key
+        assertNull(b.openSealed(blob, "other".toByteArray()))          // moved to another topic
+        assertNull(b.openSealed(blob.copyOf().also { it[40] = (it[40] + 1).toByte() }, topic.toByteArray()))
+        assertNull(b.openSealed(ByteArray(10), topic.toByteArray()))   // junk
+    }
+
+    /** A stand-in for the relays: what one phone seals to a key is opened by that key's phone and given to its router. */
+    private fun wire(from: Node, to: Node) {
+        from.router.uplink = { pk, data, done ->
+            val topic = MeshCrypto.inetTopic(pk).toByteArray()
+            to.crypto.openSealed(MeshCrypto.sealTo(pk, data, topic), topic)?.let { to.router.receiveUplink(it) }
+            done(true)
+        }
+    }
+
+    @Test fun internetCarriesPrivatePacketsBetweenContacts() {
+        val net = Net(); val (a, b) = listOf("A", "B").map { net.add(it) }
+        a.router.savedKey = { if (it == "B") b.crypto.publicKey else null }
+        b.router.savedKey = { if (it == "A") a.crypto.publicKey else null }
+        var first: SendOutcome? = null
+        a.router.sendText("before the internet", "B", "in-0") { first = it }
+        assertEquals(SendOutcome.Held, first)                              // no Bluetooth neighbour, no internet yet
+        wire(a, b); wire(b, a)
+        val carried = mutableListOf<String>()
+        a.router.uplinkHeld { carried += it }                               // the internet comes up: waiting packets go out
+        assertEquals(listOf("in-0"), carried)
+        var outcome: SendOutcome? = null
+        a.router.sendText("over the internet", "B", "in-1") { outcome = it }
+        assertEquals(SendOutcome.Carried, outcome)
+        assertEquals(listOf("before the internet", "over the internet"), b.texts.map { it.second })
+        assertEquals(listOf("in-0", "in-1"), a.delivered)                   // B's receipts came back the same way
+    }
+
+    @Test fun internetOnlyAcceptsPrivatePacketsForMe() {
+        val net = Net(); val (a, b, c) = listOf("A", "B", "C").map { net.add(it) }
+        net.connect("B", "C")
+        val before = net.transmits
+        b.router.receiveUplink(Packet("pub", "x-1", "A", null, 5, 0, n = "A", tx = "spam").toBytes())
+        b.router.receiveUplink(Packet("ann", "x-2", "A", null, 5, 0, n = "A", pk = java.util.Base64.getEncoder().encodeToString(a.crypto.publicKey)).toBytes())
+        b.router.receiveUplink(Packet("msg", "x-3", "A", "C", 5, 0, n = "A", ct = "AAAA").toBytes())
+        assertTrue(b.pubs.isEmpty()); assertTrue(c.pubs.isEmpty())
+        assertTrue(b.peers.none { it.id == "A" })                           // nobody appears "nearby" from the internet
+        assertEquals(before, net.transmits)                                 // and nothing is passed on into the mesh
+    }
+
     @Test fun packetsInteroperateWithIosJson() {
         // A packet exactly as the iOS JSONEncoder writes it (keys in a different order, optional fields absent).
         val json = """{"ts":1700000000000,"ttl":4,"t":"pub","src":"IOS-1","v":2,"id":"p-1","tx":"hej","n":"Ios"}"""

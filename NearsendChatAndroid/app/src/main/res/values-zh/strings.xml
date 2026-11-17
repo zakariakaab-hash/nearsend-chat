@@ -186,4 +186,23 @@
     <string name="priv_never">永不</string>
     <string name="priv_1day">1 天</string>
     <string name="priv_days">%1$d 天</string>
+    <string name="inet_title">互联网</string>
+    <string name="inet_ask">使用互联网？</string>
+    <string name="inet_body">发给蓝牙范围外联系人的消息会经过互联网上的公共中继服务器。消息仍是端到端加密的，但服务器能看到你的 IP 地址和发送时间。</string>
+    <string name="inet_turn_on">开启</string>
+    <string name="inet_status">已连接 · 中继：%1$d</string>
+    <string name="inet_connecting">正在连接…</string>
+    <string name="inet_off">已关闭 · 仅蓝牙</string>
+    <string name="inet_hint">不在附近 · 消息经互联网发送</string>
+    <string name="attach_title">添加附件</string>
+    <string name="attach_photo">照片</string>
+    <string name="attach_location">位置</string>
+    <string name="attach_contact">联系人</string>
+    <string name="attach_soon">即将推出</string>
+    <string name="loc_none">暂无位置信息。请在室外重试。</string>
+    <string name="card_title">名片</string>
+    <string name="card_add">添加联系人</string>
+    <string name="card_added">已添加</string>
+    <string name="bat_title">省电模式</string>
+    <string name="bat_body">纯黑背景且无动画。可在 OLED 屏幕上省电。蓝牙仍会耗电。</string>
 </resources>

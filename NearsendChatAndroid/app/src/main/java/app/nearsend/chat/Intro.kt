@@ -16,7 +16,6 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.SignalCellularOff
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
@@ -28,6 +27,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.res.stringResource
@@ -154,7 +154,17 @@ private fun NoSignalArt() {
             }
         }
         Box(Modifier.size(96.dp).glass(48.dp), contentAlignment = Alignment.Center) {
-            Icon(Icons.Filled.SignalCellularOff, null, tint = ActionBlue, modifier = Modifier.size(40.dp))
+            // Four rising bars like the signal icon in the status bar, struck through: no cell signal needed.
+            Canvas(Modifier.size(46.dp)) {
+                val bw = size.width * 0.16f; val gap = (size.width - 4 * bw) / 3
+                for (k in 0 until 4) {
+                    val h = size.height * (0.30f + 0.23f * k)
+                    drawRoundRect(ActionBlue, Offset(k * (bw + gap), size.height - h), Size(bw, h), CornerRadius(bw / 3))
+                }
+                val from = Offset(size.width * 0.04f, size.height * 0.04f); val to = Offset(size.width * 0.96f, size.height * 0.96f)
+                drawLine(Color.White, from, to, 8.dp.toPx(), StrokeCap.Round)      // a light edge so the slash reads over the bars
+                drawLine(ActionBlue, from, to, 4.dp.toPx(), StrokeCap.Round)
+            }
         }
     }
 }
@@ -218,7 +228,11 @@ private fun StoryCanvas(page: Int) {
             4 -> {   // verify: a QR on one phone, a scan line, then a tick on both
                 val w = size.width * .2f; val h = w * 1.8f
                 val l = at(.3f, .5f) - Offset(w / 2, h / 2); val r = at(.7f, .5f) - Offset(w / 2, h / 2)
-                for (o in listOf(l, r)) drawRoundRect(Color.White, o, Size(w, h), CornerRadius(14.dp.toPx()), style = Stroke(2.dp.toPx()))
+                // Left: an iPhone (rounder corners, pill-shaped Dynamic Island). Right: an Android phone (squarer, punch-hole camera).
+                drawRoundRect(Color.White, l, Size(w, h), CornerRadius(16.dp.toPx()), style = Stroke(2.dp.toPx()))
+                drawRoundRect(Color.White, r, Size(w, h), CornerRadius(10.dp.toPx()), style = Stroke(2.dp.toPx()))
+                drawRoundRect(Color.White, l + Offset(w * .34f, 8.dp.toPx()), Size(w * .32f, 6.dp.toPx()), CornerRadius(3.dp.toPx()))
+                drawCircle(Color.White, 3.dp.toPx(), r + Offset(w / 2, 11.dp.toPx()))
                 val q = w * .7f; val qo = l + Offset((w - q) / 2, (h - q) / 2); val cell = q / 7
                 for (k in 0 until 49) if (k in QR_DOTS) drawRect(Color.White, qo + Offset(k % 7 * cell, k / 7 * cell), Size(cell * .9f, cell * .9f))
                 val done = t > .66f

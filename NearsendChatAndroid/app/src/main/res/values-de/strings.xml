@@ -186,4 +186,23 @@
     <string name="priv_never">Nie</string>
     <string name="priv_1day">1 Tag</string>
     <string name="priv_days">%1$d Tage</string>
+    <string name="inet_title">Internet</string>
+    <string name="inet_ask">Internet verwenden?</string>
+    <string name="inet_body">Nachrichten an Kontakte außerhalb der Bluetooth-Reichweite laufen über öffentliche Relay-Server im Internet. Sie bleiben Ende-zu-Ende-verschlüsselt, aber die Server sehen deine IP-Adresse und wann du sendest.</string>
+    <string name="inet_turn_on">Einschalten</string>
+    <string name="inet_status">Verbunden · Relays: %1$d</string>
+    <string name="inet_connecting">Verbinde…</string>
+    <string name="inet_off">Aus · nur Bluetooth</string>
+    <string name="inet_hint">Weg · deine Nachrichten gehen über das Internet</string>
+    <string name="attach_title">Anhängen</string>
+    <string name="attach_photo">Foto</string>
+    <string name="attach_location">Standort</string>
+    <string name="attach_contact">Kontakt</string>
+    <string name="attach_soon">Bald</string>
+    <string name="loc_none">Noch keine Position. Versuche es draußen erneut.</string>
+    <string name="card_title">Kontaktkarte</string>
+    <string name="card_add">Kontakt hinzufügen</string>
+    <string name="card_added">Hinzugefügt</string>
+    <string name="bat_title">Energiesparmodus</string>
+    <string name="bat_body">Tiefschwarzer Hintergrund und keine Animationen. Spart Akku bei OLED-Displays. Bluetooth verbraucht weiterhin Strom.</string>
 </resources>

@@ -186,4 +186,23 @@
     <string name="priv_never">Aldrig</string>
     <string name="priv_1day">1 dag</string>
     <string name="priv_days">%1$d dagar</string>
+    <string name="inet_title">Internet</string>
+    <string name="inet_ask">Använda internet?</string>
+    <string name="inet_body">Meddelanden till kontakter utom Bluetooth-räckvidd går via publika reläservrar på internet. De är fortfarande totalsträckskrypterade, men servrarna kan se din IP-adress och när du skickar.</string>
+    <string name="inet_turn_on">Slå på</string>
+    <string name="inet_status">Ansluten · reläer: %1$d</string>
+    <string name="inet_connecting">Ansluter…</string>
+    <string name="inet_off">Av · bara Bluetooth</string>
+    <string name="inet_hint">Borta · dina meddelanden går via internet</string>
+    <string name="attach_title">Bifoga</string>
+    <string name="attach_photo">Foto</string>
+    <string name="attach_location">Plats</string>
+    <string name="attach_contact">Kontakt</string>
+    <string name="attach_soon">Snart</string>
+    <string name="loc_none">Ingen position än. Försök igen utomhus.</string>
+    <string name="card_title">Kontaktkort</string>
+    <string name="card_add">Lägg till kontakt</string>
+    <string name="card_added">Tillagd</string>
+    <string name="bat_title">Batterisparläge</string>
+    <string name="bat_body">Helsvart bakgrund och inga animationer. Sparar batteri på OLED-skärmar. Bluetooth drar fortfarande ström.</string>
 </resources>

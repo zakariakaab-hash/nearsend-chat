@@ -63,6 +63,12 @@ class ChatStore private constructor(private val app: Application) {
     private val seenKeys = HashMap<String, ByteArray>()                      // every key seen this session
     private val handed = HashSet<String>()                                   // message ids the router stores/carries this session
     var posts by mutableStateOf(listOf<Post>()); private set                 // announcements, newest first (not saved)
+    // Internet (optional, off by default): contacts out of Bluetooth range are reached through public relays
+    var internetOn by mutableStateOf(prefs.getBoolean("internet", false)); private set
+    var internetRelays by mutableStateOf(0); private set                     // relays connected right now
+    private var inet: InternetRelay? = null
+    private var inetSaved = 0L
+    var batterySaver by mutableStateOf(prefs.getBoolean("saver", false)); private set   // black background, no animations
     // Privacy settings
     var relayOthers by mutableStateOf(prefs.getBoolean("relay", true)); private set
     var receipts by mutableStateOf(prefs.getBoolean("receipts", true)); private set
@@ -81,7 +87,7 @@ class ChatStore private constructor(private val app: Application) {
     private var transport: BleTransport? = null
     private var router: MeshRouter? = null
     private val inflight = HashSet<String>()
-    private val tick = object : Runnable { override fun run() { router?.tick(); prune(); main.postDelayed(this, 8000) } }
+    private val tick = object : Runnable { override fun run() { router?.tick(); prune(); noteInternet(); main.postDelayed(this, 8000) } }
 
     // SOS (declared before init: the emulator demo data fills [alerts])
     var alerts by mutableStateOf(listOf<SosAlert>()); private set     // received alarms, newest first (not saved)
@@ -146,6 +152,7 @@ class ChatStore private constructor(private val app: Application) {
             t.onRssi = { link, rssi -> r.updateRssi(link, rssi) }
             t.onState = { bluetoothState = it }
             router = r; transport = t
+            if (internetOn) startInternet()
             main.postDelayed(tick, 8000)
         }
         transport?.start()
@@ -190,6 +197,7 @@ class ChatStore private constructor(private val app: Application) {
     fun wipeAll() {
         stopSos()
         main.removeCallbacks(tick)
+        stopInternet(); internetOn = false
         transport?.stop(); transport = null; router = null; inflight.clear()
         keys.wipe(); file.delete()
         prefs.edit().clear().apply()
@@ -197,7 +205,7 @@ class ChatStore private constructor(private val app: Application) {
         verified = emptySet(); peers = emptyList(); conversations = emptyList()
         nicknames = emptyMap(); blocked = emptySet(); leftGroups = emptySet(); groupPending.clear(); groupAcks.clear(); myCodes.clear(); pendingVerify.clear(); lastVerified = null; alerts = emptyList()
         contactKeys = emptyMap(); seenKeys.clear(); handed.clear(); posts = emptyList()
-        relayOthers = true; receipts = true; hidePreviews = false; autoDeleteDays = 0
+        relayOthers = true; receipts = true; hidePreviews = false; autoDeleteDays = 0; batterySaver = false
         nickname = "anon-${(1000..9999).random()}"
         if (!simulated) myFingerprint = ""
         ensurePublicChannel()
@@ -254,6 +262,21 @@ class ChatStore private constructor(private val app: Application) {
         myCodes += code
         return JSONObject().put("nearsend", 1).put("id", deviceId).put("n", nickname)
             .put("pk", Base64.getEncoder().encodeToString(keys.loadOrCreate().publicKey)).put("c", code).toString()
+    }
+
+    /** Our contact card as a chat message. Tapping it in a chat adds us as an UNVERIFIED contact (no one-time code). */
+    fun myCard(): String = JSONObject().put("nearsend", 1).put("id", deviceId).put("n", nickname)
+        .put("pk", Base64.getEncoder().encodeToString(keys.loadOrCreate().publicKey)).toString()
+
+    /** Sends our last known position as a map link. False when there is no permission or no position yet. */
+    @android.annotation.SuppressLint("MissingPermission")
+    fun sendLocation(id: String): Boolean {
+        if (!hasLocationPermission()) return false
+        val lm = app.getSystemService(LocationManager::class.java)
+        val fix = (listOf(LocationManager.GPS_PROVIDER, LocationManager.NETWORK_PROVIDER).mapNotNull { runCatching { lm?.getLastKnownLocation(it) }.getOrNull() } +
+            listOfNotNull(myLocation)).minByOrNull { it.accuracy } ?: return false
+        send("\uD83D\uDCCD https://www.openstreetmap.org/?mlat=%.5f&mlon=%.5f".format(Locale.US, fix.latitude, fix.longitude), id)
+        return true
     }
 
     /** We scanned someone's QR: their key is verified, and they get our proof so they can verify us too. */
@@ -471,6 +494,53 @@ class ChatStore private constructor(private val app: Application) {
     private fun keyFor(id: String): ByteArray? =
         seenKeys[id] ?: contactKeys[id]?.let { runCatching { Base64.getDecoder().decode(it) }.getOrNull() }
 
+    // ---- internet
+
+    /** Contacts who are out of Bluetooth range but can be written to over the internet (shown on the radar). */
+    val awayContacts: List<Peer> get() = if (!internetOn) emptyList() else conversations
+        .filter { c -> !c.isGroup && c.id != PUBLIC_CHANNEL_ID && c.id !in blocked && peers.none { it.id == c.id } && keyFor(c.id) != null }
+        .map { it.peer }
+
+    fun changeInternet(on: Boolean) {
+        internetOn = on; prefs.edit().putBoolean("internet", on).apply()
+        if (simulated) { internetRelays = if (on) 3 else 0; return }
+        if (on) startInternet() else stopInternet()
+    }
+
+    private fun startInternet() {
+        val r = router ?: return        // started together with the mesh
+        if (inet != null) return
+        val relay = InternetRelay(keys.loadOrCreate()) { f -> main.post { f() } }
+        // Ask for what arrived since we were last connected (with some slack for clocks), at most the day relays keep it.
+        relay.since = maxOf(prefs.getLong("inetSeen", 0) - 900, System.currentTimeMillis() / 1000 - RelayEvent.KEEP_S)
+        relay.onPacket = { if (inet === relay) router?.receiveUplink(it) }
+        relay.onState = { n ->
+            if (inet === relay) {
+                val cameUp = internetRelays == 0 && n > 0
+                internetRelays = n
+                if (cameUp) router?.uplinkHeld { markCarried(it) }      // messages that were waiting go out now
+            }
+        }
+        r.uplink = { pk, data, done -> relay.publish(pk, data, done) }
+        inet = relay; relay.start()
+    }
+
+    private fun stopInternet() { inet?.stop(); inet = null; router?.uplink = null; internetRelays = 0 }
+
+    /** Remembers when we were last connected, so the next start only asks the relays for newer messages. */
+    private fun noteInternet() {
+        val s = System.currentTimeMillis() / 1000
+        if (inet == null || internetRelays == 0 || s - inetSaved < 60) return
+        inetSaved = s; prefs.edit().putLong("inetSeen", s).apply()
+    }
+
+    /** A relay stored one of our waiting packets ("<message id>" or "<message id>.<group member>"). */
+    private fun markCarried(packetId: String) {
+        val mid = packetId.substringBefore('.')
+        val c = conversations.firstOrNull { cv -> cv.messages.any { it.id == mid && it.mine && it.state == Delivery.Sending } } ?: return
+        handed += mid; update(mid, c.id, Delivery.Relayed)
+    }
+
     // ---- announcements
 
     fun post(text: String, hours: Int) {
@@ -488,6 +558,7 @@ class ChatStore private constructor(private val app: Application) {
 
     // ---- privacy
 
+    fun changeBatterySaver(on: Boolean) { batterySaver = on; prefs.edit().putBoolean("saver", on).apply() }
     fun changeRelay(on: Boolean) { relayOthers = on; router?.relay = on; prefs.edit().putBoolean("relay", on).apply() }
     fun changeReceipts(on: Boolean) { receipts = on; router?.sendAcks = on; prefs.edit().putBoolean("receipts", on).apply() }
     fun changeHidePreviews(on: Boolean) { hidePreviews = on; prefs.edit().putBoolean("hidePreviews", on).apply() }
@@ -655,6 +726,7 @@ class ChatStore private constructor(private val app: Application) {
                 Message("Yes, by the water stand", now - 840_000, true),
                 Message("Coming now 👋", now - 60_000, false)), unread = 1),
             Conversation("c", peers[2], listOf(Message("Relayed through Erik, nice range", now - 7_200_000, false, hops = 2))),
+            Conversation("f", Peer("f", "Ines", 1, -80, true), listOf(Message("Train is late, save me a spot!", now - 3_000_000, false))),
             Conversation("g:demo", Peer("g:demo", "Festival crew", 1, -50), listOf(
                 Message("Meet at the food trucks at 8?", now - 1_500_000, false, sender = "Maja"),
                 Message("Works for me", now - 1_400_000, false, sender = "Erik", hops = 2),
@@ -663,6 +735,8 @@ class ChatStore private constructor(private val app: Application) {
         )
         // Near the emulator's default position, so the SOS tab shows a distance and direction.
         alerts = listOf(SosAlert("demo-sos", "c", "Noor", "Twisted ankle by the lake path", 37.4252, -122.0815, 9, 2, now - 120_000))
+        contactKeys = mapOf("f" to Base64.getEncoder().encodeToString(ByteArray(32)))   // Ines is a saved contact, out of range
+        if (internetOn) internetRelays = 3
         posts = listOf(
             Post("demo-p1", "e", "Sofia", "Free water refills at the info tent until 18:00", now + 5 * 3_600_000L, false, 2),
             Post("demo-p2", "d", "Luca", "Found: blue backpack near stage B. Ask at the info tent.", now + 40 * 60_000L, false, 3))
