@@ -48,6 +48,9 @@ final class ChatStore: ObservableObject {
     private var handed = Set<String>()                      // message ids the router carries for us this session
     private var photoSentAt: [String: Date] = [:]           // photo message id -> when all chunks last went out
     private var photoTries: [String: Int] = [:]
+    private let photoCache = NSCache<NSString, UIImage>()     // decoded pictures, so a redraw does not decode them again
+    private var tickCount = 0
+    private var savePending = false
 
     // Announcements, pictures, photos and privacy settings
     @Published private(set) var posts: [Post] = []          // newest first (not saved)
@@ -96,6 +99,9 @@ final class ChatStore: ObservableObject {
         locationStatus = location.status
         location.onUpdate = { [weak self] l in Task { @MainActor in self?.myLocation = l } }
         location.onStatus = { [weak self] s in Task { @MainActor in self?.locationChanged(s) } }
+        for name in [UIApplication.didEnterBackgroundNotification, UIApplication.willTerminateNotification] {
+            NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in Task { @MainActor in self?.saveNow() } }
+        }
     }
 
     var relayedCount: Int { peers.filter { $0.hops > 1 }.count }
@@ -140,9 +146,14 @@ final class ChatStore: ObservableObject {
         t.onState = { [weak self] s in Task { @MainActor in self?.bluetoothState = s } }
         router = r; transport = t
         if meshActive { t.start() }
-        timer = Timer.scheduledTimer(withTimeInterval: 8, repeats: true) { [weak self, weak r] _ in
-            r?.tick()
-            Task { @MainActor in self?.prune(); self?.flushOutbox() }
+        // Announce every 8 s, or every 16 s in Low Power Mode (relayed people are forgotten after 40 s of silence).
+        timer = Timer.scheduledTimer(withTimeInterval: 4, repeats: true) { [weak self, weak r] _ in
+            Task { @MainActor in
+                guard let self else { return }
+                self.tickCount += 1
+                if self.tickCount % (ProcessInfo.processInfo.isLowPowerModeEnabled ? 4 : 2) == 0 { r?.tick() }
+                self.prune(); self.flushOutbox()
+            }
         }
     }
 
@@ -156,7 +167,7 @@ final class ChatStore: ObservableObject {
         stopSos()
         leftGroups = []; groupPending = [:]; groupAcks = [:]; alerts = []
         keyBook.replace([:]); handed = []; posts = []; photoSentAt = [:]; photoTries = [:]; photoProgress = [:]
-        try? FileManager.default.removeItem(at: Self.photosDir)
+        try? FileManager.default.removeItem(at: Self.photosDir); photoCache.removeAllObjects()
         transport?.stop(); timer?.invalidate()
         router = nil; transport = nil; started = false; inflight = []
         KeyStore.wipe()
@@ -356,7 +367,7 @@ final class ChatStore: ObservableObject {
         guard autoDeleteDays > 0 else { return }
         let cutoff = now.addingTimeInterval(-Double(autoDeleteDays) * 86400)
         guard conversations.contains(where: { $0.messages.contains { $0.date < cutoff } }) else { return }
-        for c in conversations { for m in c.messages where m.date < cutoff { if let p = m.photo { try? FileManager.default.removeItem(at: Self.photoURL(p)) } } }
+        for c in conversations { for m in c.messages where m.date < cutoff { if let p = m.photo { try? FileManager.default.removeItem(at: Self.photoURL(p)); photoCache.removeObject(forKey: p as NSString) } } }
         for i in conversations.indices { conversations[i].messages.removeAll { $0.date < cutoff } }
         save()
     }
@@ -375,12 +386,26 @@ final class ChatStore: ObservableObject {
         return photosDir.appendingPathComponent(id + ".img")
     }
 
-    func loadPhoto(_ id: String) -> UIImage? { UIImage(contentsOfFile: Self.photoURL(id).path) }
+    func loadPhoto(_ id: String) -> UIImage? {
+        if let cached = photoCache.object(forKey: id as NSString) { return cached }
+        guard let img = UIImage(contentsOfFile: Self.photoURL(id).path) else { return nil }
+        photoCache.setObject(img, forKey: id as NSString)
+        return img
+    }
 
     /// Shrinks the picture, keeps it on this phone and sends it as soon as the contact is in direct range.
     func sendPhoto(_ data: Data, in id: String) {
-        guard id != publicChannelID, !id.hasPrefix("g:"), let i = index(id) else { return }
-        guard let bytes = Photos.compress(data) else { photoError = true; return }
+        guard id != publicChannelID, !id.hasPrefix("g:"), index(id) != nil else { return }
+        // Shrinking a big picture takes a moment: do it off the main thread so the screen does not stall.
+        Task.detached(priority: .userInitiated) { [weak self] in
+            let bytes = Photos.compress(data)
+            await MainActor.run { self?.addPhoto(bytes, in: id) }
+        }
+    }
+
+    private func addPhoto(_ bytes: Data?, in id: String) {
+        guard let i = index(id) else { return }
+        guard let bytes else { photoError = true; return }
         let pid = UUID().uuidString
         guard (try? bytes.write(to: Self.photoURL(pid), options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])) != nil else { photoError = true; return }
         let m = Message(id: pid, text: "", date: .now, mine: true, state: .sending, photo: pid)
@@ -588,7 +613,19 @@ final class ChatStore: ObservableObject {
         return dir.appendingPathComponent("chat.json")
     }
 
+    /// Writes the chat file soon (after a short pause), so a burst of changes is one write instead of many.
     private func save() {
+        guard !simulated, !savePending else { return }
+        savePending = true
+        Task {
+            try? await Task.sleep(for: .milliseconds(700))
+            savePending = false
+            saveNow()
+        }
+    }
+
+    /// Writes the chat file now. Also runs when the app goes to the background or is closed.
+    func saveNow() {
         guard !simulated else { return }
         let keep = keepKeysFor()
         let keys = keyBook.all().filter { keep.contains($0.key) }.mapValues { $0.base64EncodedString() }

@@ -139,6 +139,7 @@ final class MeshRouter {
 
     func updateRSSI(link: String, rssi value: Int) {
         guard let id = links[link] else { return }
+        if let old = rssi[id], abs(old - value) < 4 { return }      // small wobble: nothing to redraw
         rssi[id] = value
         emitPeers()
     }

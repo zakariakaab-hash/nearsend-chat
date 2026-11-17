@@ -125,6 +125,7 @@ struct RadarView: View {
     let peers: [Peer]
     @State private var sweep = 0.0
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @ObservedObject private var power = PowerMode.shared
     private let tail = 0.16 // fraction of a turn the fading tail covers
 
     var body: some View {
@@ -176,7 +177,14 @@ struct RadarView: View {
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Radar")
         .accessibilityValue(peers.count == 1 ? "1 person nearby" : "\(peers.count) people nearby")
-        .onAppear { if !reduceMotion { withAnimation(.linear(duration: 4).repeatForever(autoreverses: false)) { sweep = 360 } } }
+        .onAppear { updateSweep() }
+        .onChange(of: power.lowPower) { _, _ in updateSweep() }
+    }
+
+    /// The sweep turns only when motion is allowed and the phone is not in Low Power Mode.
+    private func updateSweep() {
+        if reduceMotion || power.lowPower { withAnimation(.linear(duration: 0.01)) { sweep = 0 } }
+        else { withAnimation(.linear(duration: 4).repeatForever(autoreverses: false)) { sweep = 360 } }
     }
 
     /// RSSI -40 → near centre, -95 → edge

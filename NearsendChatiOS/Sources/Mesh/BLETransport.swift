@@ -54,6 +54,7 @@ final class BLETransport: NSObject {
     private var outgoing: [Outgoing] = []
     private var notifySeq: [UUID: UInt8] = [:]
     private var timer: Timer?
+    private var rssiTick = 0
 
     init(id: String, name: String, publicKey: Data) {
         identity = Identity(id: id, name: name, pk: publicKey.base64EncodedString())
@@ -64,8 +65,12 @@ final class BLETransport: NSObject {
         guard central == nil else { return }
         central = CBCentralManager(delegate: self, queue: .main, options: [CBCentralManagerOptionRestoreIdentifierKey: Self.centralRestoreID])
         peripheralManager = CBPeripheralManager(delegate: self, queue: .main, options: [CBPeripheralManagerOptionRestoreIdentifierKey: Self.peripheralRestoreID])
-        timer = Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { [weak self] _ in
-            self?.links.values.forEach { if $0.peripheral.state == .connected, $0.announced { $0.peripheral.readRSSI() } }
+        // Reading signal strength keeps the radio busy: every 6 s, or every 15 s in Low Power Mode.
+        timer = Timer.scheduledTimer(withTimeInterval: 3, repeats: true) { [weak self] _ in
+            guard let self else { return }
+            self.rssiTick += 1
+            guard self.rssiTick % (ProcessInfo.processInfo.isLowPowerModeEnabled ? 5 : 2) == 0 else { return }
+            self.links.values.forEach { if $0.peripheral.state == .connected, $0.announced { $0.peripheral.readRSSI() } }
         }
     }
 

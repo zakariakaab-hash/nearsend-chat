@@ -36,6 +36,7 @@ enum Theme {
 struct SkyBackground: View {
     @Environment(\.colorScheme) private var scheme
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @ObservedObject private var power = PowerMode.shared
     @State private var drift = false
 
     var body: some View {
@@ -61,7 +62,14 @@ struct SkyBackground: View {
             }
         }
         .ignoresSafeArea()
-        .onAppear { if !reduceMotion { withAnimation(.easeInOut(duration: 28).repeatForever(autoreverses: true)) { drift = true } } }
+        .onAppear { updateDrift() }
+        .onChange(of: power.lowPower) { _, _ in updateDrift() }
+    }
+
+    /// The slow cloud drift runs only when motion is allowed and the phone is not in Low Power Mode.
+    private func updateDrift() {
+        if reduceMotion || power.lowPower { withAnimation(.linear(duration: 0.01)) { drift = false } }
+        else { withAnimation(.easeInOut(duration: 28).repeatForever(autoreverses: true)) { drift = true } }
     }
 
     private func frac(_ v: Double) -> Double { v - floor(v) }

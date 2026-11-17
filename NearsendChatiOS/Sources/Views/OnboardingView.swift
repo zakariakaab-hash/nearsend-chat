@@ -29,7 +29,7 @@ struct OnboardingView: View {
                                     Circle().stroke(.white.opacity(0.5 - Double(r) * 0.14), lineWidth: 1)
                                         .frame(width: 130 + CGFloat(r) * 56, height: 130 + CGFloat(r) * 56)
                                         .scaleEffect(pulse ? 1.1 : 0.95)
-                                        .animation(reduceMotion ? nil : .easeInOut(duration: 2.2).repeatForever().delay(Double(r) * 0.25), value: pulse)
+                                        .animation(reduceMotion || PowerMode.shared.lowPower ? nil : .easeInOut(duration: 2.2).repeatForever().delay(Double(r) * 0.25), value: pulse)
                                 }
                                 Image(systemName: pages[i].icon).font(.system(size: 46, weight: .regular))
                                     .foregroundStyle(Theme.actionBlue)
