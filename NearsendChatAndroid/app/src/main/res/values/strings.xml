@@ -206,4 +206,8 @@
     <string name="card_added">Added</string>
     <string name="bat_title">Battery saver</string>
     <string name="bat_body">Pure black background and no animations. Saves battery on OLED screens. Bluetooth still uses power.</string>
+    <string name="avatar_title">Your picture</string>
+    <string name="avatar_hint">Pick an emoji and a colour. People nearby see it next to your name.</string>
+    <string name="avatar_initial">Use my initial</string>
+    <string name="avatar_tap">Tap to change</string>
 </resources>

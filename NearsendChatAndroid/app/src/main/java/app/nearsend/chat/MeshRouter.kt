@@ -23,17 +23,18 @@ class Packet(
     val ref: String? = null,     // ack: id of the message being acknowledged; sos/sosx: alarm id (same on every repeat)
     val loc: String? = null,     // sos: "lat,lon,accuracyMetres" when the sender shared a position
     val exp: Long? = null,       // post: expiry, ms since epoch
+    val av: String? = null,      // ann: avatar "<emoji>|<colour index>"
 ) {
     fun toBytes(): ByteArray {
         val o = JSONObject().put("v", 2).put("t", t).put("id", id).put("src", src)
         dst?.let { o.put("dst", it) }
         o.put("ttl", ttl).put("ts", ts)
         n?.let { o.put("n", it) }; pk?.let { o.put("pk", it) }; ct?.let { o.put("ct", it) }
-        tx?.let { o.put("tx", it) }; ref?.let { o.put("ref", it) }; loc?.let { o.put("loc", it) }; exp?.let { o.put("exp", it) }
+        tx?.let { o.put("tx", it) }; ref?.let { o.put("ref", it) }; loc?.let { o.put("loc", it) }; exp?.let { o.put("exp", it) }; av?.let { o.put("av", it) }
         return o.toString().toByteArray()
     }
 
-    fun withTtl(newTtl: Int) = Packet(t, id, src, dst, newTtl, ts, n, pk, ct, tx, ref, loc, exp)
+    fun withTtl(newTtl: Int) = Packet(t, id, src, dst, newTtl, ts, n, pk, ct, tx, ref, loc, exp, av)
 
     companion object {
         fun parse(bytes: ByteArray): Packet? = runCatching {
@@ -41,7 +42,7 @@ class Packet(
             if (o.getInt("v") != 2) return null
             fun opt(k: String) = if (o.has(k)) o.getString(k) else null
             Packet(o.getString("t"), o.getString("id"), o.getString("src"), opt("dst"), o.getInt("ttl"), o.getLong("ts"),
-                opt("n"), opt("pk"), opt("ct"), opt("tx"), opt("ref"), opt("loc"), if (o.has("exp")) o.getLong("exp") else null)
+                opt("n"), opt("pk"), opt("ct"), opt("tx"), opt("ref"), opt("loc"), if (o.has("exp")) o.getLong("exp") else null, opt("av"))
         }.getOrNull()
     }
 }
@@ -74,7 +75,7 @@ class MeshRouter(val myId: String, var myName: String, private val crypto: MeshC
     }
 
     /** [via]: the neighbour a relayed peer's announcement came through (for the network view). */
-    private class PeerInfo(val name: String, val pk: ByteArray, val hops: Int, val lastSeen: Long, val direct: Boolean, val via: String? = null)
+    private class PeerInfo(val name: String, val pk: ByteArray, val hops: Int, val lastSeen: Long, val direct: Boolean, val via: String? = null, val avatar: String? = null)
 
     var now: () -> Long = { System.currentTimeMillis() }
     /** Link ids are "out:<id>" (we connected to that phone and can write to it) or "in:<id>" (it connected to us and we reply
@@ -102,6 +103,8 @@ class MeshRouter(val myId: String, var myName: String, private val crypto: MeshC
     var uplink: ((pk: ByteArray, data: ByteArray, done: (Boolean) -> Unit) -> Unit)? = null
     /** Privacy settings: pass on and carry other people's packets; confirm messages we receive. */
     var relay = true
+    /** Our own picture (emoji and colour), announced to everyone nearby. */
+    var myAvatar: String? = null
     var sendAcks = true
 
     private val links = LinkedHashMap<String, String>()      // link id -> peer id (direct neighbours; possibly two links per peer)
@@ -196,7 +199,7 @@ class MeshRouter(val myId: String, var myName: String, private val crypto: MeshC
     }
 
     private fun sendAnnounce(targets: List<String>) {
-        val p = Packet("ann", UUID.randomUUID().toString(), myId, null, START_TTL, now(), n = myName, pk = b64.encodeToString(crypto.publicKey))
+        val p = Packet("ann", UUID.randomUUID().toString(), myId, null, START_TTL, now(), n = myName, pk = b64.encodeToString(crypto.publicKey), av = myAvatar)
         remember(p.id)
         val data = p.toBytes()
         targets.forEach { transmit?.invoke(it, data) { } }
@@ -307,7 +310,7 @@ class MeshRouter(val myId: String, var myName: String, private val crypto: MeshC
                 if (pk.size != 32) return
                 val direct = peers[p.src]?.direct ?: false
                 val wasKnown = p.src in peers
-                peers[p.src] = PeerInfo(p.n ?: "?", pk, if (direct) 1 else hops, now(), direct, if (direct) null else from?.let { links[it] })
+                peers[p.src] = PeerInfo(p.n ?: "?", pk, if (direct) 1 else hops, now(), direct, if (direct) null else from?.let { links[it] }, Avatars.valid(p.av))
                 onKey?.invoke(p.src, pk)
                 emitPeers()
                 if (!wasKnown) deliverHeld(p.src)
@@ -404,7 +407,7 @@ class MeshRouter(val myId: String, var myName: String, private val crypto: MeshC
     private fun emitPeers() {
         onPeers?.invoke(peers.map { (id, i) ->
             val r = if (i.direct) (rssi[id] ?: -80) else -70 - 8 * i.hops
-            Peer(id, i.name, i.hops, r.coerceIn(-95, -40), false, MeshCrypto.fingerprint(i.pk), i.via)
+            Peer(id, i.name, i.hops, r.coerceIn(-95, -40), false, MeshCrypto.fingerprint(i.pk), i.via, i.avatar)
         }.sortedBy { it.id })
     }
 

@@ -145,14 +145,24 @@ fun PrimaryButton(title: String, modifier: Modifier = Modifier, onClick: () -> U
     ) { Text(title, color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 16.sp) }
 }
 
+/** The colours people can pick for their picture (top, bottom of the gradient). Index 0 is the app's blue. */
+val AvatarColors = listOf(
+    BrandBlue to ActionBlueDeep, Color(0xFFFF8A65) to Color(0xFFE64A19), Color(0xFFFFCA28) to Color(0xFFF57F17), Color(0xFF66BB6A) to Color(0xFF2E7D32),
+    Color(0xFF26C6DA) to Color(0xFF00838F), Color(0xFF9575CD) to Color(0xFF512DA8), Color(0xFFF06292) to Color(0xFFAD1457), Color(0xFF78909C) to Color(0xFF37474F),
+)
+
+/** A round picture: the person's emoji on their colour, or their initial when they have not chosen one. */
 @Composable
-fun Avatar(name: String, size: Dp = 48.dp, online: Boolean = false) {
+fun Avatar(name: String, size: Dp = 48.dp, online: Boolean = false, avatar: String? = null) {
     val shade = (abs(name.hashCode()) % 5) / 10f
+    val chosen = Avatars.parse(avatar)
     Box(Modifier.size(size)) {
-        Box(
-            Modifier.size(size).background(Brush.verticalGradient(listOf(BrandBlue.copy(alpha = 1f - shade * 0.3f), ActionBlueDeep)), CircleShape),
-            contentAlignment = Alignment.Center,
-        ) { Text(name.take(1).uppercase(), color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = (size.value * 0.4f).sp) }
+        val brush = chosen?.let { (_, c) -> AvatarColors[c].let { Brush.verticalGradient(listOf(it.first, it.second)) } }
+            ?: Brush.verticalGradient(listOf(BrandBlue.copy(alpha = 1f - shade * 0.3f), ActionBlueDeep))
+        Box(Modifier.size(size).background(brush, CircleShape), contentAlignment = Alignment.Center) {
+            if (chosen != null) Text(chosen.first, fontSize = (size.value * 0.5f).sp)
+            else Text(name.take(1).uppercase(), color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = (size.value * 0.4f).sp)
+        }
         if (online) Box(Modifier.size(size * 0.26f).align(Alignment.BottomEnd).background(PairedGreen, CircleShape).border(2.dp, Color.White, CircleShape))
     }
 }

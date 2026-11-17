@@ -191,7 +191,7 @@ fun NearbyScreen(store: ChatStore, onOpenChat: (Peer) -> Unit) {
         items(store.peers, key = { it.id }) { peer ->
             Card(Modifier.clickable { onOpenChat(peer) }, padding = 12.dp) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Avatar(peer.name, online = true)
+                    Avatar(peer.name, online = true, avatar = peer.avatar)
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                             Text(peer.name, color = p.ink, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
@@ -383,7 +383,7 @@ fun ChatsScreen(store: ChatStore, startAdd: Boolean = false, onOpen: (String) ->
             val isPublic = c.id == PUBLIC_CHANNEL_ID
             Card(Modifier.clickable { onOpen(c.id) }, padding = 12.dp) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Avatar(if (isPublic) "#" else c.peer.name, 52.dp, online = !isPublic && !c.isGroup && c.peer.hops == 1)
+                    Avatar(if (isPublic) "#" else c.peer.name, 52.dp, online = !isPublic && !c.isGroup && c.peer.hops == 1, avatar = c.peer.avatar)
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Row {
                             Text(if (isPublic) stringResource(R.string.nearby_channel) else c.peer.name, color = p.ink, fontSize = 17.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
@@ -564,7 +564,7 @@ private fun PeerInfo(peer: Peer, store: ChatStore, onClose: () -> Unit, onRemove
     Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.45f)).clickable(onClick = close), contentAlignment = Alignment.BottomCenter) {
         Column(Modifier.fillMaxWidth().glass(24.dp).clickable(enabled = false) {}.verticalScroll(rememberScrollState()).navigationBarsPadding().padding(20.dp),
             horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(14.dp)) {
-            Avatar(peer.name, 72.dp)
+            Avatar(peer.name, 72.dp, avatar = peer.avatar)
             Text(peer.name, color = p.ink, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
             if (isBlocked) StatusPill(stringResource(R.string.blocked_hint), Color(0xFFD93025))
             if (peer.fingerprint.isNotEmpty()) Box(Modifier.fillMaxWidth().glass(12.dp).padding(horizontal = 16.dp, vertical = 12.dp)) {
@@ -705,7 +705,7 @@ fun WriteToDialog(store: ChatStore, onPick: (Peer) -> Unit, onNewGroup: () -> Un
                 people.forEach { peer ->
                     Row(Modifier.fillMaxWidth().clickable { onPick(peer) }.padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Avatar(peer.name, 40.dp, online = label == R.string.in_range && peer.hops == 1)
+                        Avatar(peer.name, 40.dp, online = label == R.string.in_range && peer.hops == 1, avatar = peer.avatar)
                         Text(peer.name, color = p.ink, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
                         if (peer.verified) Icon(Icons.Filled.Verified, stringResource(R.string.verified), tint = ActionBlue, modifier = Modifier.size(16.dp))
                     }
@@ -743,7 +743,7 @@ private fun NewGroupDialog(store: ChatStore, onCreated: (String) -> Unit, onClos
                 val on = peer.id in picked
                 Row(Modifier.fillMaxWidth().clickable { picked = if (on) picked - peer.id else picked + peer.id }.padding(vertical = 4.dp),
                     verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Avatar(peer.name, 40.dp, online = inRange.any { it.id == peer.id } && peer.hops == 1)
+                    Avatar(peer.name, 40.dp, online = inRange.any { it.id == peer.id } && peer.hops == 1, avatar = peer.avatar)
                     Text(peer.name, color = p.ink, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
                     Checkbox(on, { picked = if (on) picked - peer.id else picked + peer.id }, colors = CheckboxDefaults.colors(checkedColor = ActionBlue))
                 }
@@ -770,7 +770,8 @@ private fun GroupInfo(name: String, members: List<Pair<String, String>>, store: 
             members.forEach { (id, n) ->
                 val me = id == store.deviceId
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Avatar(if (me) store.nickname else n, 36.dp, online = !me && store.peers.any { it.id == id && it.hops == 1 })
+                    Avatar(if (me) store.nickname else n, 36.dp, online = !me && store.peers.any { it.id == id && it.hops == 1 },
+                        avatar = if (me) store.myAvatar else store.peers.firstOrNull { it.id == id }?.avatar)
                     Text(if (me) store.nickname + " (" + stringResource(R.string.lbl_you) + ")" else store.peers.firstOrNull { it.id == id }?.name ?: n,
                         color = p.ink, fontSize = 15.sp, modifier = Modifier.weight(1f))
                 }
@@ -811,6 +812,7 @@ fun IdentityScreen(store: ChatStore, startQr: Boolean = false) {
     val p = LocalPalette.current
     var showQr by remember { mutableStateOf(startQr) }
     var confirmWipe by remember { mutableStateOf(false) }
+    var pickAvatar by remember { mutableStateOf(false) }
     var langMenu by remember { mutableStateOf(false) }
     var taps by remember { mutableIntStateOf(0) }
     var lastTap by remember { mutableLongStateOf(0L) }
@@ -828,7 +830,8 @@ fun IdentityScreen(store: ChatStore, startQr: Boolean = false) {
         item {
             Card {
                 Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Avatar(store.nickname, 88.dp)
+                    Box(Modifier.clip(CircleShape).clickable { pickAvatar = true }) { Avatar(store.nickname, 88.dp, avatar = store.myAvatar) }
+                    Text(stringResource(R.string.avatar_tap), color = p.link, fontSize = 12.sp, modifier = Modifier.clickable { pickAvatar = true })
                     BasicTextField(store.nickname, { store.updateNickname(it) }, singleLine = true,
                         textStyle = TextStyle(color = p.ink, fontSize = 22.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center),
                         cursorBrush = SolidColor(ActionBlue), keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
@@ -926,6 +929,7 @@ fun IdentityScreen(store: ChatStore, startQr: Boolean = false) {
         }
     }
     if (showQr) AddOrVerifyDialog(store) { showQr = false }
+    if (pickAvatar) AvatarPicker(store) { pickAvatar = false }
     if (confirmWipe) AlertDialog(
         onDismissRequest = { confirmWipe = false },
         title = { Text(stringResource(R.string.erase_confirm)) },
@@ -947,5 +951,40 @@ private fun SettingSwitch(@StringRes title: Int, @StringRes body: Int, on: Boole
         Spacer(Modifier.width(12.dp))
         Switch(on, onChange, Modifier.semantics { contentDescription = label },
             colors = SwitchDefaults.colors(checkedTrackColor = ActionBlue, checkedThumbColor = Color.White))
+    }
+}
+
+/** Choose an emoji and a colour for your picture. Changes apply at once and go out with the next announcement. */
+@Composable
+private fun AvatarPicker(store: ChatStore, onClose: () -> Unit) {
+    val p = LocalPalette.current
+    val current = Avatars.parse(store.myAvatar)
+    var emoji by remember { mutableStateOf(current?.first) }
+    var color by remember { mutableIntStateOf(current?.second ?: 0) }
+    fun apply(e: String?, c: Int) { emoji = e; color = c; store.changeAvatar(e?.let { Avatars.encode(it, c) }) }
+    Dialog(onDismissRequest = onClose, properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)) {
+        Column(Modifier.padding(horizontal = 20.dp).widthIn(max = 420.dp).fillMaxWidth().glass(24.dp, solid = true).verticalScroll(rememberScrollState()).padding(20.dp),
+            horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text(stringResource(R.string.avatar_title), color = p.ink, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
+            Avatar(store.nickname, 88.dp, avatar = store.myAvatar)
+            Text(stringResource(R.string.avatar_hint), color = p.inkSecondary, fontSize = 13.sp, textAlign = TextAlign.Center)
+            Avatars.EMOJIS.chunked(6).forEach { row ->
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    row.forEach { e ->
+                        Box(Modifier.size(42.dp).clip(CircleShape).background(if (e == emoji) ActionBlue.copy(alpha = 0.2f) else p.ink.copy(alpha = 0.06f))
+                            .clickable { apply(e, color) }, contentAlignment = Alignment.Center) { Text(e, fontSize = 24.sp) }
+                    }
+                }
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                AvatarColors.forEachIndexed { i, (top, bottom) ->
+                    Box(Modifier.size(30.dp).background(Brush.verticalGradient(listOf(top, bottom)), CircleShape)
+                        .border(if (i == color) 3.dp else 0.dp, p.ink, CircleShape).clickable { apply(emoji, i) })
+                }
+            }
+            Text(stringResource(R.string.avatar_initial), color = p.link, fontSize = 15.sp, fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.clickable { apply(null, 0) }.padding(8.dp))
+            Text(stringResource(R.string.close), color = p.link, fontSize = 15.sp, modifier = Modifier.clickable(onClick = onClose).padding(8.dp))
+        }
     }
 }

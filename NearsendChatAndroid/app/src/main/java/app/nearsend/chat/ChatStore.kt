@@ -69,6 +69,7 @@ class ChatStore private constructor(private val app: Application) {
     private var inet: InternetRelay? = null
     private var inetSaved = 0L
     var batterySaver by mutableStateOf(prefs.getBoolean("saver", false)); private set   // black background, no animations
+    var myAvatar by mutableStateOf(prefs.getString("avatar", null)?.let { Avatars.valid(it) }); private set   // our emoji + colour picture
     // Privacy settings
     var relayOthers by mutableStateOf(prefs.getBoolean("relay", true)); private set
     var receipts by mutableStateOf(prefs.getBoolean("receipts", true)); private set
@@ -145,7 +146,7 @@ class ChatStore private constructor(private val app: Application) {
             r.onPost = { from, name, post, text, exp, hops -> receivePost(from, name, post, text, exp, hops) }
             r.onKey = { id, pk -> learnKey(id, pk) }
             r.savedKey = { id -> keyFor(id) }
-            r.relay = relayOthers; r.sendAcks = receipts
+            r.relay = relayOthers; r.sendAcks = receipts; r.myAvatar = myAvatar
             t.onNeighbor = { link, id, name, pk -> r.neighborConnected(link, id, name, pk) }
             t.onLost = { r.neighborLost(it) }
             t.onPacket = { data, link -> r.receive(data, link) }
@@ -205,7 +206,7 @@ class ChatStore private constructor(private val app: Application) {
         verified = emptySet(); peers = emptyList(); conversations = emptyList()
         nicknames = emptyMap(); blocked = emptySet(); leftGroups = emptySet(); groupPending.clear(); groupAcks.clear(); myCodes.clear(); pendingVerify.clear(); lastVerified = null; alerts = emptyList()
         contactKeys = emptyMap(); seenKeys.clear(); handed.clear(); posts = emptyList()
-        relayOthers = true; receipts = true; hidePreviews = false; autoDeleteDays = 0; batterySaver = false
+        relayOthers = true; receipts = true; hidePreviews = false; autoDeleteDays = 0; batterySaver = false; myAvatar = null
         nickname = "anon-${(1000..9999).random()}"
         if (!simulated) myFingerprint = ""
         ensurePublicChannel()
@@ -558,6 +559,11 @@ class ChatStore private constructor(private val app: Application) {
 
     // ---- privacy
 
+    /** Sets our picture ("<emoji>|<colour>", see Avatars) or clears it (null = show the initial). Goes out with the next announcement. */
+    fun changeAvatar(a: String?) {
+        myAvatar = a; router?.myAvatar = a
+        prefs.edit().apply { if (a == null) remove("avatar") else putString("avatar", a) }.apply()
+    }
     fun changeBatterySaver(on: Boolean) { batterySaver = on; prefs.edit().putBoolean("saver", on).apply() }
     fun changeRelay(on: Boolean) { relayOthers = on; router?.relay = on; prefs.edit().putBoolean("relay", on).apply() }
     fun changeReceipts(on: Boolean) { receipts = on; router?.sendAcks = on; prefs.edit().putBoolean("receipts", on).apply() }
@@ -675,7 +681,7 @@ class ChatStore private constructor(private val app: Application) {
             .put("keys", JSONObject(contactKeys.filterKeys { it in keepKeysFor() }))
         o.put("conversations", JSONArray(conversations.map { c ->
             JSONObject().put("id", c.id).put("unread", c.unread)
-                .put("peer", JSONObject().put("id", c.peer.id).put("name", c.peer.name).put("hops", c.peer.hops).put("rssi", c.peer.rssi).put("fp", c.peer.fingerprint))
+                .put("peer", JSONObject().put("id", c.peer.id).put("name", c.peer.name).put("hops", c.peer.hops).put("rssi", c.peer.rssi).put("fp", c.peer.fingerprint).put("av", c.peer.avatar ?: ""))
                 .apply { c.members?.let { ms -> put("members", JSONArray(ms.map { JSONObject().put("id", it.first).put("n", it.second) })) } }
                 .put("messages", JSONArray(c.messages.map { m ->
                     JSONObject().put("id", m.id).put("text", m.text).put("t", m.timeMs).put("mine", m.mine)
@@ -696,7 +702,7 @@ class ChatStore private constructor(private val app: Application) {
             val cs = o.getJSONArray("conversations")
             conversations = (0 until cs.length()).map { i ->
                 val c = cs.getJSONObject(i); val p = c.getJSONObject("peer"); val ms = c.getJSONArray("messages")
-                Conversation(c.getString("id"), Peer(p.getString("id"), p.getString("name"), p.getInt("hops"), p.getInt("rssi"), false, p.optString("fp")),
+                Conversation(c.getString("id"), Peer(p.getString("id"), p.getString("name"), p.getInt("hops"), p.getInt("rssi"), false, p.optString("fp"), avatar = Avatars.valid(p.optString("av"))),
                     (0 until ms.length()).map { j ->
                         val m = ms.getJSONObject(j)
                         Message(m.getString("text"), m.getLong("t"), m.getBoolean("mine"), Delivery.valueOf(m.getString("state")),
@@ -713,8 +719,9 @@ class ChatStore private constructor(private val app: Application) {
 
     private fun seed() {
         peers = listOf(
-            Peer("a", "Maja", 1, -48, true, "DEMO"), Peer("b", "Erik", 1, -66), Peer("c", "Noor", 2, -78, via = "b"),
-            Peer("d", "Luca", 3, -88, via = "c"), Peer("e", "Sofia", 2, -72, true, via = "a"),
+            Peer("a", "Maja", 1, -48, true, "DEMO", avatar = Avatars.encode(Avatars.EMOJIS[6], 1)), Peer("b", "Erik", 1, -66, avatar = Avatars.encode(Avatars.EMOJIS[21], 3)),
+            Peer("c", "Noor", 2, -78, via = "b", avatar = Avatars.encode(Avatars.EMOJIS[13], 2)),
+            Peer("d", "Luca", 3, -88, via = "c"), Peer("e", "Sofia", 2, -72, true, via = "a", avatar = Avatars.encode(Avatars.EMOJIS[9], 5)),
         )
         val now = System.currentTimeMillis()
         conversations = listOf(

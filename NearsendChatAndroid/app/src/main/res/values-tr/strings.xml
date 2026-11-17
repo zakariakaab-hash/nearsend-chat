@@ -205,4 +205,8 @@
     <string name="card_added">Eklendi</string>
     <string name="bat_title">Pil tasarrufu</string>
     <string name="bat_body">Tam siyah arka plan ve animasyon yok. OLED ekranlarda pil tasarrufu sağlar. Bluetooth yine de pil harcar.</string>
+    <string name="avatar_title">Resmin</string>
+    <string name="avatar_hint">Bir emoji ve renk seç. Yakındaki kişiler adının yanında görür.</string>
+    <string name="avatar_initial">Baş harfimi kullan</string>
+    <string name="avatar_tap">Değiştirmek için dokun</string>
 </resources>

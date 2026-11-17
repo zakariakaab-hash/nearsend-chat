@@ -205,4 +205,8 @@
     <string name="card_added">Добавлено</string>
     <string name="bat_title">Экономия заряда</string>
     <string name="bat_body">Чисто чёрный фон и без анимаций. Экономит заряд на OLED-экранах. Bluetooth по-прежнему расходует энергию.</string>
+    <string name="avatar_title">Ваша картинка</string>
+    <string name="avatar_hint">Выберите эмодзи и цвет. Люди рядом увидят его возле вашего имени.</string>
+    <string name="avatar_initial">Использовать мою букву</string>
+    <string name="avatar_tap">Нажмите, чтобы изменить</string>
 </resources>

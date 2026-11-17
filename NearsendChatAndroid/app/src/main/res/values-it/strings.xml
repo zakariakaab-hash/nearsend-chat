@@ -205,4 +205,8 @@
     <string name="card_added">Aggiunto</string>
     <string name="bat_title">Risparmio batteria</string>
     <string name="bat_body">Sfondo nero puro e nessuna animazione. Risparmia batteria sugli schermi OLED. Il Bluetooth consuma comunque energia.</string>
+    <string name="avatar_title">La tua immagine</string>
+    <string name="avatar_hint">Scegli un emoji e un colore. Le persone vicine lo vedono accanto al tuo nome.</string>
+    <string name="avatar_initial">Usa la mia iniziale</string>
+    <string name="avatar_tap">Tocca per cambiare</string>
 </resources>

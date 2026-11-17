@@ -12,6 +12,7 @@ data class Peer(
     val verified: Boolean = false,
     val fingerprint: String = "",
     val via: String? = null,   // relayed peers: the neighbour their announcement came through (network view)
+    val avatar: String? = null,   // the emoji and colour they chose, see Avatars
 )
 
 enum class Delivery { Sending, Sent, Relayed, Delivered, Failed }

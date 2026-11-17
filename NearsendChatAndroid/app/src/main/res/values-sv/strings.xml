@@ -205,4 +205,8 @@
     <string name="card_added">Tillagd</string>
     <string name="bat_title">Batterisparläge</string>
     <string name="bat_body">Helsvart bakgrund och inga animationer. Sparar batteri på OLED-skärmar. Bluetooth drar fortfarande ström.</string>
+    <string name="avatar_title">Din bild</string>
+    <string name="avatar_hint">Välj en emoji och en färg. Folk i närheten ser den bredvid ditt namn.</string>
+    <string name="avatar_initial">Använd min initial</string>
+    <string name="avatar_tap">Tryck för att ändra</string>
 </resources>

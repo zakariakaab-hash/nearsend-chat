@@ -205,4 +205,8 @@
     <string name="card_added">Adicionado</string>
     <string name="bat_title">Economia de bateria</string>
     <string name="bat_body">Fundo totalmente preto e sem animações. Economiza bateria em telas OLED. O Bluetooth continua gastando energia.</string>
+    <string name="avatar_title">Sua imagem</string>
+    <string name="avatar_hint">Escolha um emoji e uma cor. Pessoas por perto veem ao lado do seu nome.</string>
+    <string name="avatar_initial">Usar minha inicial</string>
+    <string name="avatar_tap">Toque para mudar</string>
 </resources>

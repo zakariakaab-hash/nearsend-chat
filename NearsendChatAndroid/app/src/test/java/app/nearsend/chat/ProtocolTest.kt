@@ -334,6 +334,23 @@ class ProtocolTest {
         assertEquals(before, net.transmits)                                 // and nothing is passed on into the mesh
     }
 
+    @Test fun pictureTravelsWithAnnouncementsAndOnlyOurEmojisAreAccepted() {
+        val net = Net(); val (a, b, c) = listOf("A", "B", "C").map { net.add(it) }
+        val fox = Avatars.encode(Avatars.EMOJIS[6], 3)
+        a.router.myAvatar = fox
+        net.connect("A", "B"); net.connect("B", "C"); net.settle()
+        assertEquals(fox, b.peers.first { it.id == "A" }.avatar)          // direct neighbour
+        assertEquals(fox, c.peers.first { it.id == "A" }.avatar)          // two hops, carried by the announcement
+        a.router.myAvatar = "evil text|1"; net.settle()
+        assertNull(b.peers.first { it.id == "A" }.avatar)                 // not one of our emojis: ignored
+        a.router.myAvatar = Avatars.EMOJIS[0] + "|99"; net.settle()
+        assertNull(b.peers.first { it.id == "A" }.avatar)                 // unknown colour: ignored
+        a.router.myAvatar = null; net.settle()
+        assertNull(c.peers.first { it.id == "A" }.avatar)
+        assertNull(Avatars.valid(null)); assertNull(Avatars.valid("|1")); assertNull(Avatars.valid(Avatars.EMOJIS[0]))
+        assertEquals(fox, Avatars.valid(fox))
+    }
+
     @Test fun packetsInteroperateWithIosJson() {
         // A packet exactly as the iOS JSONEncoder writes it (keys in a different order, optional fields absent).
         val json = """{"ts":1700000000000,"ttl":4,"t":"pub","src":"IOS-1","v":2,"id":"p-1","tx":"hej","n":"Ios"}"""

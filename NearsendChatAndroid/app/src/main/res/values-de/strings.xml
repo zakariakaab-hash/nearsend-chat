@@ -205,4 +205,8 @@
     <string name="card_added">Hinzugefügt</string>
     <string name="bat_title">Energiesparmodus</string>
     <string name="bat_body">Tiefschwarzer Hintergrund und keine Animationen. Spart Akku bei OLED-Displays. Bluetooth verbraucht weiterhin Strom.</string>
+    <string name="avatar_title">Dein Bild</string>
+    <string name="avatar_hint">Wähle ein Emoji und eine Farbe. Personen in der Nähe sehen es neben deinem Namen.</string>
+    <string name="avatar_initial">Meinen Anfangsbuchstaben verwenden</string>
+    <string name="avatar_tap">Zum Ändern tippen</string>
 </resources>

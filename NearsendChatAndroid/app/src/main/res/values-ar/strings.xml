@@ -205,4 +205,8 @@
     <string name="card_added">تمت الإضافة</string>
     <string name="bat_title">توفير البطارية</string>
     <string name="bat_body">خلفية سوداء تمامًا وبدون حركات. يوفّر البطارية في شاشات OLED. لا يزال البلوتوث يستهلك الطاقة.</string>
+    <string name="avatar_title">صورتك</string>
+    <string name="avatar_hint">اختر رمزًا تعبيريًا ولونًا. يراه الأشخاص القريبون بجانب اسمك.</string>
+    <string name="avatar_initial">استخدام الحرف الأول</string>
+    <string name="avatar_tap">المس للتغيير</string>
 </resources>

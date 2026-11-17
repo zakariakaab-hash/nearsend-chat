@@ -50,6 +50,7 @@ JSON object, optional fields omitted when absent.
 | `ct` | `msg`: base64 sealed text · `vfy`: base64 sealed one-time code (section 4) · `gm`: base64 sealed group JSON (section 5) |
 | `tx` | `pub`, `post`: plain text · `sos`: optional plain note |
 | `ref` | `ack`: id of the acknowledged packet · `sos`/`sosx`: alarm id (the same on every repeat) · `post`: announcement id |
+| `av` | `ann`: the sender's picture, `"<emoji>|<colour index 0-7>"` (section 10); absent = show the initial |
 | `loc` | `sos`: `"lat,lon,accuracyMetres"` (decimal degrees, WGS84) when the sender shares a position; absent otherwise |
 | `exp` | `post`: expiry, ms since epoch; receivers cap it at their own clock + 24 h |
 
@@ -224,3 +225,15 @@ forwarding for others, and nobody appears "nearby" because of it.
 - **When it is used:** a packet whose destination is not a neighbour is held as in section 3 *and* published; packets still
   waiting are published again when the first relay connects. Contacts must already have exchanged keys (section 3).
 - Limits: content at most 16,000 characters; the id cache (section 3) drops duplicates that arrive both ways.
+
+## 10. Profile pictures (`av`)
+
+A person's picture is an **emoji and a colour**, not an image: `"<emoji>|<colour index>"`, for example `"🦊|1"`. It is carried in the
+`av` field of every `ann` (and forwarded with it), so it reaches everyone who learns about the person.
+
+- Emojis come from a fixed list of 30 (Android `Avatars.EMOJIS`, in this order: 😀 😎 🤠 🥳 😺 🐶 🦊 🐼 🐸 🦄 🐙 🦋 🌵 🌻 🍀 ⭐ 🔥 ⚡ 🌈 🍕 🎸 ⚽ 🚀 🧭 ⛺ 🎧 📷 🏄 🚲 🌊);
+  colour index 0 to 7 picks a gradient the app defines.
+- A receiver accepts `av` only if it is exactly one of those emojis, `|`, and a colour 0 to 7. Anything else is ignored
+  (the person is shown with their initial), so a sender cannot put arbitrary text or images on other people's screens.
+- Phones that do not know `av` ignore it. Absent `av` means "no picture".
+- Photos are not supported: Bluetooth messages are too small and slow for them (see section 3 for the limits).

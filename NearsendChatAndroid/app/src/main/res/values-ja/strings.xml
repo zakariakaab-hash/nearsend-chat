@@ -205,4 +205,8 @@
     <string name="card_added">追加済み</string>
     <string name="bat_title">バッテリーセーバー</string>
     <string name="bat_body">真っ黒の背景でアニメーションなし。OLED画面で電池を節約します。Bluetoothは引き続き電力を使います。</string>
+    <string name="avatar_title">あなたの画像</string>
+    <string name="avatar_hint">絵文字と色を選んでください。近くの人に名前の横に表示されます。</string>
+    <string name="avatar_initial">頭文字を使う</string>
+    <string name="avatar_tap">タップして変更</string>
 </resources>
