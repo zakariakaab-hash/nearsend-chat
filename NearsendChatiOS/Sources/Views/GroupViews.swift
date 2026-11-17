@@ -59,7 +59,7 @@ struct NewGroupSheet: View {
                         onCreated(store.createGroup(name: name, people: people.filter { picked.contains($0.id) }))
                     }
                     .disabled(!ok).opacity(ok ? 1 : 0.4)
-                }.padding(.horizontal, 20)
+                }.padding(.horizontal, 20).readableWidth(560)
             }
         }
         .presentationDetents([.large])
@@ -102,7 +102,7 @@ struct GroupInfoSheet: View {
                             .frame(maxWidth: .infinity).padding(.vertical, 14).glass(radius: Theme.rButton)
                     }
                     Button("Close") { dismiss() }.foregroundStyle(.white)
-                }.padding(.horizontal, 20)
+                }.padding(.horizontal, 20).readableWidth(560)
             }
         }
         .presentationDetents([.medium, .large])

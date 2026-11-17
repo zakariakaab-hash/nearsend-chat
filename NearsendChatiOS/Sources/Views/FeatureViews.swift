@@ -62,7 +62,7 @@ struct NewPostSheet: View {
                         .disabled(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                         .opacity(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? 0.4 : 1)
                     Button("Cancel") { dismiss() }.foregroundStyle(.white)
-                }.padding(.horizontal, 20)
+                }.padding(.horizontal, 20).readableWidth(560)
             }
         }
         .presentationDetents([.medium, .large])
@@ -106,7 +106,7 @@ struct AvatarPickerSheet: View {
                         }.frame(maxWidth: .infinity)
                     }
                     Button("Close") { dismiss() }.foregroundStyle(.white).padding(.bottom, 20)
-                }.padding(.horizontal, 20)
+                }.padding(.horizontal, 20).readableWidth(560)
             }
         }
         .onAppear { if let c = Avatars.parse(store.myAvatar) { emoji = c.emoji; color = c.color } }

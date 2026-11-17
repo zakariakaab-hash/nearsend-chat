@@ -58,7 +58,7 @@ struct IdentityView: View {
                                     .font(.footnote).foregroundStyle(.white.opacity(0.85))
                             }.frame(maxWidth: .infinity, alignment: .leading)
                         }
-                    }.padding(.horizontal, 20)
+                    }.padding(.horizontal, 20).readableWidth()
                 }
             }
             .toolbar(.hidden, for: .navigationBar)

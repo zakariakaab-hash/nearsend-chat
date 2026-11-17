@@ -36,7 +36,7 @@ struct SosView: View {
                     locationCard
                     alarms
                     beyond
-                }.padding(.horizontal, 20).padding(.bottom, 24)
+                }.padding(.horizontal, 20).padding(.bottom, 24).readableWidth()
             }
         }
         .onAppear { store.useLocation(true) }

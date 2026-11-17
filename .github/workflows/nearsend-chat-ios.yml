@@ -67,6 +67,22 @@ jobs:
           shot 13-nearby-ja -onboarded YES -tab 0 -language ja
           shot 14-thread-de -onboarded YES -tab 1 -openThread YES -threadID a -language de
           shot 15-onboarding-ru -onboarded NO -language ru
+          # Other screen sizes: a small iPhone, a big one and an iPad (artifact only).
+          mkdir -p shots-devices
+          for kind in "iPhone SE" "Pro Max" "iPad Pro"; do
+            DEV=$(xcrun simctl list devices available | grep -E "$kind" | head -1 | grep -oE '[0-9A-F-]{36}')
+            [ -n "$DEV" ] || { echo "no simulator for $kind"; continue; }
+            tag=$(echo "$kind" | tr ' ' '-')
+            xcrun simctl boot $DEV; xcrun simctl bootstatus $DEV -b
+            xcrun simctl install $DEV dd/Build/Products/Debug-iphonesimulator/NearsendChat.app
+            xcrun simctl launch $DEV app.nearsend.chat -onboarded YES -tab 0; sleep 20
+            dshot() { xcrun simctl terminate $DEV app.nearsend.chat || true; xcrun simctl launch $DEV app.nearsend.chat "${@:2}"; sleep 10; xcrun simctl io $DEV screenshot shots-devices/$tag-$1.png; }
+            dshot nearby -onboarded YES -tab 0
+            dshot thread -onboarded YES -tab 1 -openThread YES -threadID a
+            dshot you -onboarded YES -tab 2
+            dshot onboarding -onboarded NO
+            xcrun simctl shutdown $DEV || true
+          done
           xcrun simctl ui $UDID appearance dark
           shot 6-nearby-night -onboarded YES -tab 0
           shot 7-thread-night -onboarded YES -tab 1 -openThread YES -threadID a
@@ -98,3 +114,7 @@ jobs:
         with:
           name: screenshots
           path: NearsendChatiOS/shots
+      - uses: actions/upload-artifact@v4
+        with:
+          name: device-screenshots
+          path: NearsendChatiOS/shots-devices

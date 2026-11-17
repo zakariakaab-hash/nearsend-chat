@@ -82,6 +82,11 @@ struct Glass: ViewModifier {
 }
 extension View { func glass(radius: CGFloat = Theme.rCard) -> some View { modifier(Glass(radius: radius)) } }
 
+/// On wide screens (iPad, landscape) content stays a comfortable column in the middle instead of stretching edge to edge.
+extension View {
+    func readableWidth(_ max: CGFloat = 640) -> some View { frame(maxWidth: max).frame(maxWidth: .infinity) }
+}
+
 struct Card<Content: View>: View {
     var padding: CGFloat = 16
     @ViewBuilder var content: Content

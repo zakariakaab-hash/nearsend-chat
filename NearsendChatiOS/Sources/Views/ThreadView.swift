@@ -38,7 +38,7 @@ struct ThreadView: View {
                                 Bubble(message: m, showSender: isPublic || members != nil, progress: store.photoProgress[m.id],
                                        loadPhoto: { store.loadPhoto($0) }, onOpenPhoto: { bigPhoto = $0 }) { store.retry(m.id, in: conversationID) }.id(m.id)
                             }
-                        }.padding(.horizontal, 16).padding(.top, 8)
+                        }.padding(.horizontal, 16).padding(.top, 8).readableWidth()
                     }
                     .onChange(of: messages.count) { _, _ in
                         if let last = messages.last { withAnimation { proxy.scrollTo(last.id, anchor: .bottom) } }
@@ -132,6 +132,7 @@ struct ThreadView: View {
             .disabled(draft.trimmingCharacters(in: .whitespaces).isEmpty)
         }
         .padding(.horizontal, 12).padding(.vertical, 8)
+        .readableWidth()
         .background(.ultraThinMaterial)
     }
 }
@@ -227,7 +228,7 @@ struct PeerInfoSheet: View {
                 }
                 Button("Close") { dismiss() }.foregroundStyle(.white)
                 Spacer()
-            }.padding(.horizontal, 20)
+            }.padding(.horizontal, 20).readableWidth(560)
         }
         .presentationDetents([.medium, .large])
     }

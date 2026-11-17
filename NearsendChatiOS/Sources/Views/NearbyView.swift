@@ -16,7 +16,7 @@ struct NearbyView: View {
                         Card(padding: 12) { RadarView(peers: store.peers).frame(height: 320) }
                         announcements
                         peerList
-                    }.padding(.horizontal, 20).padding(.bottom, 24)
+                    }.padding(.horizontal, 20).padding(.bottom, 24).readableWidth()
                 }
             }
             .toolbar(.hidden, for: .navigationBar)

@@ -38,7 +38,7 @@ struct ChatsView: View {
                         ForEach(sorted) { c in
                             NavigationLink(value: c.id) { row(c) }.buttonStyle(.plain)
                         }
-                    }.padding(.horizontal, 20)
+                    }.padding(.horizontal, 20).readableWidth()
                 }
             }
             .toolbar(.hidden, for: .navigationBar)
