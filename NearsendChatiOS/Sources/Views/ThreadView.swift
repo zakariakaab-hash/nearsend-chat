@@ -1,3 +1,4 @@
+import PhotosUI
 import SwiftUI
 
 struct ThreadView: View {
@@ -8,6 +9,10 @@ struct ThreadView: View {
     @State private var showInfo = UserDefaults.standard.bool(forKey: "showInfo")   // `-showInfo YES` launch argument (screenshots)
     @FocusState private var focused: Bool
     @Environment(\.dismiss) private var dismiss
+    @State private var showPhotoPicker = false
+    @State private var pickedPhoto: PhotosPickerItem?
+    @State private var bigPhoto: String?
+    @State private var noPosition = false
 
     private var isPublic: Bool { conversationID == publicChannelID }
     private var messages: [Message] { store.conversations.first { $0.id == conversationID }?.messages ?? [] }
@@ -30,7 +35,8 @@ struct ThreadView: View {
                                       systemImage: isPublic ? "megaphone.fill" : "lock.fill").font(.caption)
                             }.scaleEffect(0.92).padding(.vertical, 10)
                             ForEach(messages) { m in
-                                Bubble(message: m, showSender: isPublic || members != nil) { store.retry(m.id, in: conversationID) }.id(m.id)
+                                Bubble(message: m, showSender: isPublic || members != nil, progress: store.photoProgress[m.id],
+                                       loadPhoto: { store.loadPhoto($0) }, onOpenPhoto: { bigPhoto = $0 }) { store.retry(m.id, in: conversationID) }.id(m.id)
                             }
                         }.padding(.horizontal, 16).padding(.top, 8)
                     }
@@ -63,6 +69,22 @@ struct ThreadView: View {
                 }
             }
         }
+        .photosPicker(isPresented: $showPhotoPicker, selection: $pickedPhoto, matching: .images)
+        .onChange(of: pickedPhoto) { _, item in
+            guard let item else { return }
+            Task {
+                if let data = try? await item.loadTransferable(type: Data.self) { store.sendPhoto(data, in: conversationID) } else { store.photoError = true }
+                pickedPhoto = nil
+            }
+        }
+        .alert("Couldn't use this picture", isPresented: $store.photoError) { Button("Close", role: .cancel) {} }
+        .alert("No position yet. Try again outdoors.", isPresented: $noPosition) { Button("Close", role: .cancel) {} }
+        .fullScreenCover(isPresented: Binding(get: { bigPhoto != nil }, set: { if !$0 { bigPhoto = nil } })) {
+            ZStack {
+                Color.black.ignoresSafeArea()
+                if let id = bigPhoto, let img = store.loadPhoto(id) { Image(uiImage: img).resizable().scaledToFit() }
+            }.onTapGesture { bigPhoto = nil }
+        }
         .sheet(isPresented: $showInfo) {
             if let members {
                 GroupInfoSheet(name: livePeer.name, members: members) {
@@ -75,6 +97,7 @@ struct ThreadView: View {
     @ViewBuilder private var subtitle: some View {
         if isPublic { Text("Public channel") }
         else if let members { Text("\(members.count) members") }
+        else if !online && store.canCarryTo(conversationID) { Text("Away · phones nearby carry your messages to them (up to 24 h)") }
         else if !online { Text("Out of range · will send when nearby") }
         else if livePeer.hops == 1 { Text("Direct link") }
         else { Text("\(livePeer.hops) hops") }
@@ -86,6 +109,15 @@ struct ThreadView: View {
                 .lineLimit(1...5).focused($focused).foregroundStyle(Theme.ink)
                 .padding(.horizontal, 16).padding(.vertical, 12)
                 .glass(radius: Theme.rField)
+            if !isPublic {
+                Menu {
+                    if members == nil { Button { showPhotoPicker = true } label: { Label("Photo", systemImage: "photo") } }
+                    Button { store.sendLocation(in: conversationID) { ok in if !ok { noPosition = true } } } label: { Label("Location", systemImage: "mappin.circle") }
+                } label: {
+                    Image(systemName: "plus").font(.system(size: 20, weight: .semibold)).foregroundStyle(Theme.link)
+                        .frame(width: 46, height: 46).glass(radius: 23)
+                }.accessibilityLabel("Attach")
+            }
             Button {
                 let t = draft.trimmingCharacters(in: .whitespacesAndNewlines)
                 guard !t.isEmpty else { return }
@@ -107,6 +139,9 @@ struct ThreadView: View {
 struct Bubble: View {
     let message: Message
     var showSender = false
+    var progress: Double? = nil
+    var loadPhoto: (String) -> UIImage? = { _ in nil }
+    var onOpenPhoto: (String) -> Void = { _ in }
     var onRetry: () -> Void = {}
 
     var body: some View {
@@ -116,10 +151,14 @@ struct Bubble: View {
                 if showSender, !message.mine, let s = message.sender {
                     Text(verbatim: s).font(.caption2.weight(.semibold)).foregroundStyle(.white.opacity(0.9)).padding(.leading, 6)
                 }
-                Text(verbatim: message.text)
-                    .padding(.horizontal, 14).padding(.vertical, 10)
-                    .foregroundStyle(message.mine ? Color.white : Theme.ink)
-                    .modifier(BubbleBackground(mine: message.mine))
+                if let pid = message.photo {
+                    PhotoBubble(image: loadPhoto(pid), progress: progress).onTapGesture { onOpenPhoto(pid) }
+                } else {
+                    Text(verbatim: message.text)
+                        .padding(.horizontal, 14).padding(.vertical, 10)
+                        .foregroundStyle(message.mine ? Color.white : Theme.ink)
+                        .modifier(BubbleBackground(mine: message.mine))
+                }
                 HStack(spacing: 4) {
                     Text(message.date, style: .time)
                     if !message.mine && message.hops > 1 { Text("· \(message.hops) hops") }
@@ -172,7 +211,7 @@ struct PeerInfoSheet: View {
         ZStack {
             SkyBackground()
             VStack(spacing: 16) {
-                Avatar(name: peer.name, size: 80).padding(.top, 24).accessibilityHidden(true)
+                Avatar(name: peer.name, size: 80, avatar: peer.avatar).padding(.top, 24).accessibilityHidden(true)
                 Text(verbatim: peer.name).font(.title2.weight(.semibold)).foregroundStyle(.white)
                 Card {
                     VStack(alignment: .leading, spacing: 10) {

@@ -245,7 +245,7 @@ A person's picture is an **emoji and a colour**, not an image: `"<emoji>|<colour
 Photos go **only to one direct Bluetooth neighbour**, end-to-end encrypted, in small chunks. They are never flooded, carried or sent
 over the internet relays.
 
-- **Compression.** The sender resizes the picture (long side at most 800 px) and encodes it as lossy WebP of at most about 40 KB.
+- **Compression.** The sender resizes the picture (long side at most 800 px) and encodes it as lossy WebP (Android) or JPEG (iPhone) of at most about 40 KB. Receivers decode whatever the platform can read (both read JPEG and WebP).
   Re-encoding drops the camera metadata (GPS position included).
 - **Sealing.** The WebP bytes are sealed like a message (section 4) with the photo id as `aad`: `nonce(12) || ciphertext || tag(16)`.
 - **Chunks.** The sealed bytes are cut into pieces of 700 bytes. Each piece is an `img` packet with `ttl` 1, `dst` = the receiver,

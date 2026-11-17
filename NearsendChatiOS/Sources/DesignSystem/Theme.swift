@@ -130,17 +130,34 @@ struct PrimaryButton: View {
     }
 }
 
+/// The colours people can pick for their picture (top, bottom of the gradient). Index 0 is the app's blue. Same order as Android.
+let avatarColors: [(Color, Color)] = [
+    (Theme.brandBlue, Theme.actionBlueDeep), (Color(hex: 0xFF8A65), Color(hex: 0xE64A19)), (Color(hex: 0xFFCA28), Color(hex: 0xF57F17)),
+    (Color(hex: 0x66BB6A), Color(hex: 0x2E7D32)), (Color(hex: 0x26C6DA), Color(hex: 0x00838F)), (Color(hex: 0x9575CD), Color(hex: 0x512DA8)),
+    (Color(hex: 0xF06292), Color(hex: 0xAD1457)), (Color(hex: 0x78909C), Color(hex: 0x37474F)),
+]
+
+/// A round picture: the person's emoji on their colour, or their initial when they have not chosen one.
 struct Avatar: View {
     let name: String
     var size: CGFloat = 48
     var online = false
+    var avatar: String? = nil
     private var shade: Double { Double(abs(name.hashValue) % 5) / 10 }
+    private var chosen: (emoji: String, color: Int)? { Avatars.parse(avatar) }
+    private var gradient: [Color] {
+        if let chosen { return [avatarColors[chosen.color].0, avatarColors[chosen.color].1] }
+        return [Theme.brandBlue.opacity(1 - shade * 0.3), Theme.actionBlueDeep]
+    }
     var body: some View {
         ZStack(alignment: .bottomTrailing) {
             Circle()
-                .fill(LinearGradient(colors: [Theme.brandBlue.opacity(1 - shade * 0.3), Theme.actionBlueDeep], startPoint: .top, endPoint: .bottom))
+                .fill(LinearGradient(colors: gradient, startPoint: .top, endPoint: .bottom))
                 .frame(width: size, height: size)
-                .overlay(Text(String(name.prefix(1)).uppercased()).font(.system(size: size * 0.4, weight: .semibold, design: .rounded)).foregroundStyle(.white))
+                .overlay {
+                    if let chosen { Text(chosen.emoji).font(.system(size: size * 0.5)) }
+                    else { Text(String(name.prefix(1)).uppercased()).font(.system(size: size * 0.4, weight: .semibold, design: .rounded)).foregroundStyle(.white) }
+                }
             if online {
                 Circle().fill(Color(hex: 0x1F7A4D)).frame(width: size * 0.26, height: size * 0.26)
                     .overlay(Circle().stroke(.white, lineWidth: 2))

@@ -42,7 +42,7 @@ struct NewGroupSheet: View {
                                     if on { picked.remove(p.id) } else { picked.insert(p.id) }
                                 } label: {
                                     HStack(spacing: 12) {
-                                        Avatar(name: p.name, size: 40, online: store.peers.contains { $0.id == p.id } && p.hops == 1)
+                                        Avatar(name: p.name, size: 40, online: store.peers.contains { $0.id == p.id } && p.hops == 1, avatar: p.avatar)
                                         Text(verbatim: p.name).font(.headline).foregroundStyle(Theme.ink)
                                         Spacer()
                                         Image(systemName: on ? "checkmark.circle.fill" : "circle").font(.title3)

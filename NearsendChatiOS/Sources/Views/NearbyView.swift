@@ -3,6 +3,7 @@ import SwiftUI
 struct NearbyView: View {
     @EnvironmentObject var store: ChatStore
     @State private var chat: Peer?
+    @State private var newPost = false
 
     var body: some View {
         NavigationStack {
@@ -13,12 +14,14 @@ struct NearbyView: View {
                         PageTitle(text: "Nearby").padding(.top, 8)
                         header
                         Card(padding: 12) { RadarView(peers: store.peers).frame(height: 320) }
+                        announcements
                         peerList
                     }.padding(.horizontal, 20).padding(.bottom, 24)
                 }
             }
             .toolbar(.hidden, for: .navigationBar)
             .navigationDestination(item: $chat) { p in ThreadView(conversationID: p.id, peer: p) }
+            .sheet(isPresented: $newPost) { NewPostSheet().environmentObject(store) }
         }
     }
 
@@ -61,13 +64,28 @@ struct NearbyView: View {
         }
     }
 
+    private var announcements: some View {
+        VStack(spacing: 12) {
+            HStack {
+                Text("Announcements").textCase(.uppercase).font(Theme.display(24)).foregroundStyle(.white)
+                    .accessibilityAddTraits(.isHeader)
+                Spacer()
+                Button { newPost = true } label: {
+                    HStack(spacing: 2) { Image(systemName: "plus"); Text("Post") }.font(.subheadline.weight(.semibold)).foregroundStyle(.white)
+                }
+            }
+            if store.posts.isEmpty { Card { Text("No announcements nearby.").font(.subheadline).foregroundStyle(Theme.inkSecondary).frame(maxWidth: .infinity, alignment: .leading) } }
+            ForEach(store.posts) { PostCard(post: $0) }
+        }
+    }
+
     private var peerList: some View {
         VStack(spacing: 10) {
             ForEach(store.peers) { p in
                 Button { store.ensureConversation(p); chat = p } label: {
                     Card(padding: 12) {
                         HStack(spacing: 12) {
-                            Avatar(name: p.name, online: true).accessibilityHidden(true)
+                            Avatar(name: p.name, online: true, avatar: p.avatar).accessibilityHidden(true)
                             VStack(alignment: .leading, spacing: 3) {
                                 HStack(spacing: 4) {
                                     Text(verbatim: p.name).font(.headline)

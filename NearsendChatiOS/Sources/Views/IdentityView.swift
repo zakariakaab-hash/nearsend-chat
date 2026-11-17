@@ -3,6 +3,7 @@ import SwiftUI
 struct IdentityView: View {
     @EnvironmentObject var store: ChatStore
     @State private var confirmWipe = false
+    @State private var pickAvatar = false
     @AppStorage("language") private var language = "system"
 
     var body: some View {
@@ -15,7 +16,9 @@ struct IdentityView: View {
                             .onTapGesture(count: 3) { confirmWipe = true }   // panic: triple-tap
                         Card {
                             VStack(spacing: 12) {
-                                Avatar(name: store.nickname, size: 88).accessibilityHidden(true)
+                                Button { pickAvatar = true } label: { Avatar(name: store.nickname, size: 88, avatar: store.myAvatar) }
+                                    .buttonStyle(.plain).accessibilityLabel("Your picture")
+                                Text("Tap to change").font(.caption).foregroundStyle(Theme.link)
                                 TextField("Nickname", text: $store.nickname)
                                     .multilineTextAlignment(.center)
                                     .font(.system(size: 22, weight: .semibold, design: .rounded))
@@ -43,6 +46,7 @@ struct IdentityView: View {
                                 }.pickerStyle(.menu).tint(Theme.link)
                             }
                         }
+                        PrivacyCard()
                         Button(role: .destructive) { confirmWipe = true } label: {
                             Label("Erase everything", systemImage: "trash.fill").font(.subheadline.weight(.semibold))
                                 .foregroundStyle(.red).frame(maxWidth: .infinity).padding(.vertical, 14).glass(radius: Theme.rButton)
@@ -58,6 +62,7 @@ struct IdentityView: View {
                 }
             }
             .toolbar(.hidden, for: .navigationBar)
+            .sheet(isPresented: $pickAvatar) { AvatarPickerSheet().environmentObject(store) }
             .confirmationDialog("Erase all messages, keys and settings on this phone?", isPresented: $confirmWipe, titleVisibility: .visible) {
                 Button("Erase everything", role: .destructive) { store.wipeAll() }
                 Button("Cancel", role: .cancel) {}

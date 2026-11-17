@@ -48,6 +48,18 @@ struct Message: Identifiable, Hashable, Codable {
     var state: DeliveryState = .delivered
     var hops: Int = 1
     var sender: String? = nil      // shown on public-channel and group messages
+    var photo: String? = nil       // id of a photo kept on this phone (the message shows the picture, text is empty)
+}
+
+/// A public announcement, kept by phones nearby until `exp`.
+struct Post: Identifiable, Hashable {
+    var id: String
+    var from: String
+    var name: String
+    var text: String
+    var exp: Date
+    var mine: Bool
+    var hops: Int = 1
 }
 
 /// Someone in a group (the creator included).

@@ -1,12 +1,14 @@
 import CoreLocation
 import Foundation
 import SwiftUI
+import UIKit
 
 private struct SavedState: Codable {
     var nickname: String
     var conversations: [Conversation]
     var verified: [String]
     var leftGroups: [String]?
+    var keys: [String: String]?     // contacts' public keys (base64), to message them while they are away
 }
 
 /// UI-facing state. On a real iPhone it is driven by `BLETransport` + `MeshRouter`; the iOS Simulator has no
@@ -42,6 +44,28 @@ final class ChatStore: ObservableObject {
     private var leftGroups = Set<String>()                  // group ids we left: their messages are dropped
     private var groupPending: [String: Set<String>] = [:]   // group message id -> members not sent to yet
     private var groupAcks: [String: Set<String>] = [:]      // group message id -> members who confirmed
+    private let keyBook = KeyBook()                         // contacts' keys, also read by the router
+    private var handed = Set<String>()                      // message ids the router carries for us this session
+    private var photoSentAt: [String: Date] = [:]           // photo message id -> when all chunks last went out
+    private var photoTries: [String: Int] = [:]
+
+    // Announcements, pictures, photos and privacy settings
+    @Published private(set) var posts: [Post] = []          // newest first (not saved)
+    @Published private(set) var photoProgress: [String: Double] = [:]
+    @Published var photoError = false
+    @Published private(set) var myAvatar: String? = Avatars.valid(UserDefaults.standard.string(forKey: "avatar"))
+    @Published var relayOthers: Bool = UserDefaults.standard.object(forKey: "relay") as? Bool ?? true {
+        didSet { UserDefaults.standard.set(relayOthers, forKey: "relay"); router?.relay = relayOthers }
+    }
+    @Published var receipts: Bool = UserDefaults.standard.object(forKey: "receipts") as? Bool ?? true {
+        didSet { UserDefaults.standard.set(receipts, forKey: "receipts"); router?.sendAcks = receipts }
+    }
+    @Published var hidePreviews = UserDefaults.standard.bool(forKey: "hidePreviews") {
+        didSet { UserDefaults.standard.set(hidePreviews, forKey: "hidePreviews") }
+    }
+    @Published var autoDeleteDays = UserDefaults.standard.integer(forKey: "autoDelete") {
+        didSet { UserDefaults.standard.set(autoDeleteDays, forKey: "autoDelete"); prune() }
+    }
 
     // SOS
     @Published private(set) var alerts: [SosAlert] = []    // alarms heard, newest first (not saved)
@@ -101,6 +125,14 @@ final class ChatStore: ObservableObject {
             Task { @MainActor in self?.receiveSos(from: from, name: name, alarm: alarm, note: note, loc: loc, hops: hops) }
         }
         r.onSosEnd = { [weak self] from, alarm in Task { @MainActor in self?.endSos(from: from, alarm: alarm) } }
+        r.onPost = { [weak self] from, name, post, text, exp, hops in
+            Task { @MainActor in self?.receivePost(from: from, name: name, post: post, text: text, exp: exp, hops: hops) }
+        }
+        r.onPhoto = { [weak self] from, name, photo, bytes in Task { @MainActor in self?.receivePhoto(from: from, name: name, photo: photo, bytes: bytes) } }
+        r.onKey = { [weak self] id, pk in Task { @MainActor in self?.learnKey(id, pk) } }
+        let book = keyBook
+        r.savedKey = { id in book.key(id) }
+        r.relay = relayOthers; r.sendAcks = receipts; r.myAvatar = myAvatar
         t.onNeighbor = { link, id, name, pk in r.neighborConnected(link: link, id: id, name: name, pk: pk) }
         t.onLost = { r.neighborLost(link: $0) }
         t.onPacket = { data, link in r.receive(data, from: link) }
@@ -108,7 +140,10 @@ final class ChatStore: ObservableObject {
         t.onState = { [weak self] s in Task { @MainActor in self?.bluetoothState = s } }
         router = r; transport = t
         if meshActive { t.start() }
-        timer = Timer.scheduledTimer(withTimeInterval: 8, repeats: true) { [weak r] _ in r?.tick() }
+        timer = Timer.scheduledTimer(withTimeInterval: 8, repeats: true) { [weak self, weak r] _ in
+            r?.tick()
+            Task { @MainActor in self?.prune(); self?.flushOutbox() }
+        }
     }
 
     func applyNickname() {
@@ -120,12 +155,15 @@ final class ChatStore: ObservableObject {
     func wipeAll() {
         stopSos()
         leftGroups = []; groupPending = [:]; groupAcks = [:]; alerts = []
+        keyBook.replace([:]); handed = []; posts = []; photoSentAt = [:]; photoTries = [:]; photoProgress = [:]
+        try? FileManager.default.removeItem(at: Self.photosDir)
         transport?.stop(); timer?.invalidate()
         router = nil; transport = nil; started = false; inflight = []
         KeyStore.wipe()
         try? FileManager.default.removeItem(at: Self.fileURL)
         let d = UserDefaults.standard
-        ["nickname", "deviceID", "onboarded", "tab"].forEach { d.removeObject(forKey: $0) }
+        ["nickname", "deviceID", "onboarded", "tab", "relay", "receipts", "hidePreviews", "autoDelete", "avatar"].forEach { d.removeObject(forKey: $0) }
+        relayOthers = true; receipts = true; hidePreviews = false; autoDeleteDays = 0; myAvatar = nil
         deviceID = UUID().uuidString; d.set(deviceID, forKey: "deviceID")
         verified = []; peers = []; conversations = []
         myFingerprint = simulated ? myFingerprint : ""
@@ -181,6 +219,7 @@ final class ChatStore: ObservableObject {
         guard let i = index(id), let j = conversations[i].messages.firstIndex(where: { $0.id == messageID }) else { return }
         conversations[i].messages[j].state = .sending
         conversations[i].messages[j].date = .now
+        photoTries[messageID] = nil; photoSentAt[messageID] = nil
         if id.hasPrefix("g:") { groupPending[messageID] = Set(groupTargets(id)).subtracting(groupAcks[messageID] ?? []) }
         flushOutbox()
     }
@@ -195,8 +234,8 @@ final class ChatStore: ObservableObject {
                 switch outcome {
                 case .sent: self.update(m.id, in: id, .sent)
                 case .failed: self.update(m.id, in: id, .failed)
-                case .carried: self.update(m.id, in: id, .relayed)     // a phone nearby carries it
-                case .held: break                                       // we carry it ourselves
+                case .carried: self.handed.insert(m.id); self.update(m.id, in: id, .relayed)   // a phone nearby carries it
+                case .held: self.handed.insert(m.id)                                            // we carry it ourselves
                 case .unreachable: break          // stays queued until the person comes into range
                 }
             }
@@ -217,8 +256,11 @@ final class ChatStore: ObservableObject {
                 continue
             }
             for m in c.messages where m.mine && m.state == .sending {
-                if Date().timeIntervalSince(m.date) > 600 { update(m.id, in: c.id, .failed) }
-                else if peers.contains(where: { $0.id == c.id }) { trySend(m, to: c.id) }
+                if m.photo != nil { flushPhoto(m, in: c.id); continue }
+                // Contacts whose key we have get a day (phones nearby carry the message); others 10 minutes.
+                let carried = keyBook.key(c.id) != nil
+                if Date().timeIntervalSince(m.date) > (carried ? MeshRouter.holdTime : 600) { update(m.id, in: c.id, .failed) }
+                else if peers.contains(where: { $0.id == c.id }) || (carried && !handed.contains(m.id)) { trySend(m, to: c.id) }
             }
         }
     }
@@ -239,7 +281,7 @@ final class ChatStore: ObservableObject {
         guard let i = index(from), !conversations[i].messages.contains(where: { $0.id == id }) else { return }
         conversations[i].messages.append(Message(id: id, text: text, date: .now, mine: false, hops: hops))
         if activeConversation != from { conversations[i].unread += 1 }
-        Notifier.notify(title: name, body: text)
+        Notifier.notify(title: name, body: preview(text))
         Notifier.messageHaptic()
         save()
     }
@@ -248,7 +290,7 @@ final class ChatStore: ObservableObject {
         guard let i = index(publicChannelID), !conversations[i].messages.contains(where: { $0.id == id }) else { return }
         conversations[i].messages.append(Message(id: id, text: text, date: .now, mine: false, sender: name))
         if activeConversation != publicChannelID { conversations[i].unread += 1 }
-        Notifier.notify(title: "#nearby · \(name)", body: text)
+        Notifier.notify(title: "#nearby · \(name)", body: preview(text))
         save()
     }
 
@@ -268,6 +310,141 @@ final class ChatStore: ObservableObject {
         if conversations[i].messages[j].state == .delivered && s != .delivered { return }   // never downgrade
         conversations[i].messages[j].state = s
         save()
+    }
+
+    // MARK: keys, announcements, pictures, photos, privacy
+
+    private func preview(_ text: String) -> String { hidePreviews ? localized("New message") : text }
+
+    /// True when phones nearby can carry messages to this person while they are away (we have their key).
+    func canCarryTo(_ id: String) -> Bool { keyBook.key(id) != nil }
+
+    private func keepKeysFor() -> Set<String> {
+        var ids = Set<String>()
+        for c in conversations { ids.insert(c.id); for m in c.members ?? [] { ids.insert(m.id) } }
+        ids.remove(deviceID); ids.remove(publicChannelID)
+        return ids
+    }
+
+    /// A key was seen: keep it for people we have a chat or a group with, so we can still write to them when they are away.
+    private func learnKey(_ id: String, _ pk: Data) {
+        guard keyBook.key(id) == nil, keepKeysFor().contains(id) else { return }
+        var all = keyBook.all(); all[id] = pk; keyBook.replace(all)
+        save()
+    }
+
+    func post(_ text: String, hours: Int) {
+        let clean = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !clean.isEmpty else { return }
+        let id = UUID().uuidString
+        let exp = Date().addingTimeInterval(Double(hours) * 3600)
+        router?.sendPost(clean, postID: id, exp: Int64(exp.timeIntervalSince1970 * 1000))
+        posts.insert(Post(id: id, from: deviceID, name: nickname, text: MeshRouter.clip(clean), exp: exp, mine: true), at: 0)
+    }
+
+    private func receivePost(from: String, name sent: String, post: String, text: String, exp: Int64, hops: Int) {
+        guard !posts.contains(where: { $0.id == post }) else { return }
+        let name = peers.first { $0.id == from }?.name ?? sent
+        posts.insert(Post(id: post, from: from, name: name, text: text, exp: Date(timeIntervalSince1970: Double(exp) / 1000), mine: false, hops: hops), at: 0)
+        Notifier.notify(title: "\u{1F4E2} \(name)", body: preview(text))
+    }
+
+    /// Drops expired announcements and, if auto-delete is on, messages older than the chosen number of days.
+    private func prune() {
+        let now = Date()
+        if posts.contains(where: { $0.exp <= now }) { posts.removeAll { $0.exp <= now } }
+        guard autoDeleteDays > 0 else { return }
+        let cutoff = now.addingTimeInterval(-Double(autoDeleteDays) * 86400)
+        guard conversations.contains(where: { $0.messages.contains { $0.date < cutoff } }) else { return }
+        for c in conversations { for m in c.messages where m.date < cutoff { if let p = m.photo { try? FileManager.default.removeItem(at: Self.photoURL(p)) } } }
+        for i in conversations.indices { conversations[i].messages.removeAll { $0.date < cutoff } }
+        save()
+    }
+
+    /// Sets our picture ("<emoji>|<colour>", see Avatars) or clears it (nil = show the initial). Goes out with the next announcement.
+    func changeAvatar(_ a: String?) {
+        myAvatar = a; router?.myAvatar = a
+        if let a { UserDefaults.standard.set(a, forKey: "avatar") } else { UserDefaults.standard.removeObject(forKey: "avatar") }
+    }
+
+    private static var photosDir: URL {
+        FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0].appendingPathComponent("photos", isDirectory: true)
+    }
+    private static func photoURL(_ id: String) -> URL {
+        try? FileManager.default.createDirectory(at: photosDir, withIntermediateDirectories: true)
+        return photosDir.appendingPathComponent(id + ".img")
+    }
+
+    func loadPhoto(_ id: String) -> UIImage? { UIImage(contentsOfFile: Self.photoURL(id).path) }
+
+    /// Shrinks the picture, keeps it on this phone and sends it as soon as the contact is in direct range.
+    func sendPhoto(_ data: Data, in id: String) {
+        guard id != publicChannelID, !id.hasPrefix("g:"), let i = index(id) else { return }
+        guard let bytes = Photos.compress(data) else { photoError = true; return }
+        let pid = UUID().uuidString
+        guard (try? bytes.write(to: Self.photoURL(pid), options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])) != nil else { photoError = true; return }
+        let m = Message(id: pid, text: "", date: .now, mine: true, state: .sending, photo: pid)
+        conversations[i].messages.append(m)
+        save()
+        if simulated {
+            Task {
+                try? await Task.sleep(for: .milliseconds(900)); update(m.id, in: id, .sent)
+                try? await Task.sleep(for: .milliseconds(900)); update(m.id, in: id, .delivered)
+            }
+        } else { flushPhoto(m, in: id) }
+    }
+
+    /// Sends a waiting photo when its person is a direct neighbour; sends it again if no receipt came, then gives up.
+    private func flushPhoto(_ m: Message, in cid: String) {
+        guard let router, let pid = m.photo else { return }
+        if Date().timeIntervalSince(m.date) > MeshRouter.holdTime { update(m.id, in: cid, .failed); return }
+        guard peers.contains(where: { $0.id == cid && $0.hops == 1 }) else { return }
+        if let last = photoSentAt[m.id], Date().timeIntervalSince(last) < 30 { return }           // chunks are out, waiting for the receipt
+        if (photoTries[m.id] ?? 0) >= 4 { update(m.id, in: cid, .failed); return }
+        guard let bytes = try? Data(contentsOf: Self.photoURL(pid)) else { update(m.id, in: cid, .failed); return }
+        let key = "photo." + m.id
+        guard !inflight.contains(key) else { return }
+        inflight.insert(key); photoTries[m.id, default: 0] += 1
+        router.sendPhoto(bytes, to: cid, photoID: m.id, progress: { [weak self] f in Task { @MainActor in self?.photoProgress[m.id] = f } }) { [weak self] outcome in
+            Task { @MainActor in
+                guard let self else { return }
+                self.inflight.remove(key); self.photoProgress[m.id] = nil
+                switch outcome {
+                case .sent: self.photoSentAt[m.id] = Date()
+                case .failed: self.photoSentAt[m.id] = Date().addingTimeInterval(-20)             // try again soon
+                default: self.photoTries[m.id, default: 1] -= 1                                    // person walked away: not a try
+                }
+            }
+        }
+    }
+
+    private func receivePhoto(from: String, name sent: String, photo: String, bytes: Data) {
+        let peer = peers.first { $0.id == from } ?? Peer(id: from, name: sent, hops: 1, rssi: -80)
+        ensureConversation(peer)
+        guard let i = index(from), !conversations[i].messages.contains(where: { $0.id == photo }) else { return }
+        guard (try? bytes.write(to: Self.photoURL(photo), options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])) != nil else { return }
+        conversations[i].messages.append(Message(id: photo, text: "", date: .now, mine: false, photo: photo))
+        if activeConversation != from { conversations[i].unread += 1 }
+        Notifier.notify(title: peer.name, body: hidePreviews ? localized("New message") : "\u{1F4F7} " + localized("Photo"))
+        Notifier.messageHaptic()
+        save()
+    }
+
+    /// Sends our last known position as a map link. `done(false)` when there is no permission or no position yet.
+    func sendLocation(in id: String, done: @escaping (Bool) -> Void) {
+        guard hasLocationPermission else { requestLocation(); done(false); return }
+        useLocation(true)
+        Task {
+            for _ in 0..<10 where myLocation == nil { try? await Task.sleep(for: .milliseconds(500)) }
+            var ok = false
+            if let l = myLocation {
+                send(String(format: "\u{1F4CD} https://www.openstreetmap.org/?mlat=%.5f&mlon=%.5f", locale: Locale(identifier: "en_US_POSIX"),
+                            l.coordinate.latitude, l.coordinate.longitude), in: id)
+                ok = true
+            }
+            useLocation(false)
+            done(ok)
+        }
     }
 
     // MARK: groups
@@ -298,7 +475,7 @@ final class ChatStore: ObservableObject {
     private func flushGroup(_ m: Message, in gid: String) {
         guard let router, let c = conversations.first(where: { $0.id == gid }), let pending = groupPending[m.id] else { return }
         let members = (c.members ?? []).map { (id: $0.id, name: $0.id == deviceID ? nickname : $0.name) }
-        for member in pending where peers.contains(where: { $0.id == member }) {
+        for member in pending where peers.contains(where: { $0.id == member }) || keyBook.key(member) != nil {
             let key = "\(m.id).\(member)"
             guard !inflight.contains(key) else { continue }
             inflight.insert(key)
@@ -309,6 +486,7 @@ final class ChatStore: ObservableObject {
                     if outcome != .unreachable { self.groupPending[m.id]?.remove(member) }
                     let sending = self.conversations.first { $0.id == gid }?.messages.first { $0.id == m.id }?.state == .sending
                     if outcome == .sent { self.update(m.id, in: gid, .sent) }
+                    else if outcome == .carried, sending { self.update(m.id, in: gid, .relayed) }
                     else if outcome == .failed, sending, self.groupPending[m.id]?.isEmpty ?? true { self.update(m.id, in: gid, .failed) }
                 }
             }
@@ -326,7 +504,7 @@ final class ChatStore: ObservableObject {
         conversations[i].members = members
         conversations[i].messages.append(Message(id: id, text: text, date: .now, mine: false, hops: hops, sender: name))
         if activeConversation != gid { conversations[i].unread += 1 }
-        Notifier.notify(title: "\(groupName) · \(name)", body: text)
+        Notifier.notify(title: "\(groupName) · \(name)", body: preview(text))
         Notifier.messageHaptic()
         save()
     }
@@ -412,7 +590,9 @@ final class ChatStore: ObservableObject {
 
     private func save() {
         guard !simulated else { return }
-        let state = SavedState(nickname: nickname, conversations: conversations, verified: Array(verified), leftGroups: Array(leftGroups))
+        let keep = keepKeysFor()
+        let keys = keyBook.all().filter { keep.contains($0.key) }.mapValues { $0.base64EncodedString() }
+        let state = SavedState(nickname: nickname, conversations: conversations, verified: Array(verified), leftGroups: Array(leftGroups), keys: keys)
         if let data = try? JSONEncoder().encode(state) {
             try? data.write(to: Self.fileURL, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
         }
@@ -423,6 +603,8 @@ final class ChatStore: ObservableObject {
         conversations = s.conversations
         verified = Set(s.verified)
         leftGroups = Set(s.leftGroups ?? [])
+        keyBook.replace((s.keys ?? [:]).compactMapValues { Data(base64Encoded: $0) })
+        prune()
         // Group messages still "sending" go to every member again (who is pending is not saved).
         for c in conversations where c.isGroup {
             for m in c.messages where m.mine && m.state == .sending { groupPending[m.id] = Set(groupTargets(c.id)) }
@@ -434,11 +616,11 @@ final class ChatStore: ObservableObject {
 
     private func seed() {
         peers = [
-            Peer(id: "a", name: "Maja", hops: 1, rssi: -48, verified: true, fingerprint: "DEMO"),
-            Peer(id: "b", name: "Erik", hops: 1, rssi: -66),
-            Peer(id: "c", name: "Noor", hops: 2, rssi: -78),
-            Peer(id: "d", name: "Luca", hops: 3, rssi: -88),
-            Peer(id: "e", name: "Sofia", hops: 2, rssi: -72, verified: true),
+            Peer(id: "a", name: "Maja", hops: 1, rssi: -48, verified: true, fingerprint: "DEMO", avatar: Avatars.encode(Avatars.emojis[6], 1)),
+            Peer(id: "b", name: "Erik", hops: 1, rssi: -66, avatar: Avatars.encode(Avatars.emojis[21], 3)),
+            Peer(id: "c", name: "Noor", hops: 2, rssi: -78, via: "b", avatar: Avatars.encode(Avatars.emojis[13], 2)),
+            Peer(id: "d", name: "Luca", hops: 3, rssi: -88, via: "c"),
+            Peer(id: "e", name: "Sofia", hops: 2, rssi: -72, verified: true, via: "a", avatar: Avatars.encode(Avatars.emojis[9], 5)),
         ]
         let now = Date()
         conversations = [
@@ -459,6 +641,10 @@ final class ChatStore: ObservableObject {
         ]
         // Near the simulator's default position (Apple Park), so the SOS tab shows a distance and direction.
         myLocation = CLLocation(latitude: 37.3349, longitude: -122.0090)
+        posts = [
+            Post(id: "demo-p1", from: "e", name: "Sofia", text: "Free water refills at the info tent until 18:00", exp: now.addingTimeInterval(5 * 3600), mine: false, hops: 2),
+            Post(id: "demo-p2", from: "d", name: "Luca", text: "Found: blue backpack near stage B. Ask at the info tent.", exp: now.addingTimeInterval(40 * 60), mine: false, hops: 3),
+        ]
         alerts = [SosAlert(alarm: "demo-sos", from: "c", name: "Noor", note: "Twisted ankle by the lake path",
                            lat: 37.3372, lon: -122.0071, accuracy: 9, hops: 2, date: now.addingTimeInterval(-120))]
     }

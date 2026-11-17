@@ -55,7 +55,7 @@ struct ChatsView: View {
         let isPublic = c.id == publicChannelID
         return Card(padding: 12) {
             HStack(spacing: 12) {
-                Avatar(name: isPublic ? "#" : c.peer.name, size: 52, online: !isPublic && !c.isGroup && c.peer.hops == 1).accessibilityHidden(true)
+                Avatar(name: isPublic ? "#" : c.peer.name, size: 52, online: !isPublic && !c.isGroup && c.peer.hops == 1, avatar: c.peer.avatar).accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 4) {
                     HStack {
                         if isPublic { Text("Nearby channel").font(.headline) } else { Text(verbatim: c.peer.name).font(.headline) }
@@ -81,6 +81,7 @@ struct ChatsView: View {
 
     private func preview(_ c: Conversation) -> String {
         guard let m = c.last else { return "" }
+        if m.photo != nil { return "\u{1F4F7} " + localized("Photo") }
         if let s = m.sender { return "\(s): \(m.text)" }
         return m.text
     }
