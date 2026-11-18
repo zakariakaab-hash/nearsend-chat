@@ -212,3 +212,8 @@
 "Last 500 events: who connected, packet types, errors. No messages, photos or keys." = "De senaste 500 händelserna: vem som anslöt, pakettyper, fel. Inga meddelanden, bilder eller nycklar.";
 "Block this person?" = "Blockera den här personen?";
 "Their messages and announcements are hidden and ignored. You can unblock them in their contact info." = "Deras meddelanden och anslag döljs och ignoreras. Du kan avblockera dem i deras kontaktinfo.";
+"Report" = "Rapportera";
+"Contact us" = "Kontakta oss";
+"Copy address" = "Kopiera adress";
+"No email app. Write to us at:" = "Ingen e-postapp. Skriv till oss på:";
+"To report someone, long-press their message or open their contact info and tap Report." = "Rapportera någon genom att trycka länge på deras meddelande eller öppna deras kontaktinfo och trycka på Rapportera.";

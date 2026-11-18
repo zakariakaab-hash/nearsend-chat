@@ -215,4 +215,9 @@
     <string name="log_body">Last 500 events: who connected, packet types, errors. No messages, photos or keys.</string>
     <string name="block_confirm">Block this person?</string>
     <string name="block_confirm_body">Their messages and announcements are hidden and ignored. You can unblock them in their contact info.</string>
+    <string name="report">Report</string>
+    <string name="contact_us">Contact us</string>
+    <string name="copy_address">Copy address</string>
+    <string name="no_mail_app">No email app. Write to us at:</string>
+    <string name="report_hint">To report someone, long-press their message or open their contact info and tap Report.</string>
 </resources>

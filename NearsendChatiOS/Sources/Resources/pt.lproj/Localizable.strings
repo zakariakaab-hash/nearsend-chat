@@ -212,3 +212,8 @@
 "Last 500 events: who connected, packet types, errors. No messages, photos or keys." = "Os últimos 500 eventos: quem se conectou, tipos de pacote, erros. Sem mensagens, fotos ou chaves.";
 "Block this person?" = "Bloquear esta pessoa?";
 "Their messages and announcements are hidden and ignored. You can unblock them in their contact info." = "As mensagens e os avisos dessa pessoa ficam ocultos e são ignorados. Você pode desbloquear nas informações do contato.";
+"Report" = "Denunciar";
+"Contact us" = "Fale conosco";
+"Copy address" = "Copiar endereço";
+"No email app. Write to us at:" = "Nenhum app de e-mail. Escreva para:";
+"To report someone, long-press their message or open their contact info and tap Report." = "Para denunciar alguém, toque e segure a mensagem ou abra as informações de contato e toque em Denunciar.";

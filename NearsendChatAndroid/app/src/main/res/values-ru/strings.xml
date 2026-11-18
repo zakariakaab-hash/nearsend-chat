@@ -214,4 +214,9 @@
     <string name="log_body">Последние 500 событий: кто подключился, типы пакетов, ошибки. Без сообщений, фото и ключей.</string>
     <string name="block_confirm">Заблокировать этого человека?</string>
     <string name="block_confirm_body">Его сообщения и объявления будут скрыты и игнорироваться. Разблокировать можно в информации о контакте.</string>
+    <string name="report">Пожаловаться</string>
+    <string name="contact_us">Связаться с нами</string>
+    <string name="copy_address">Скопировать адрес</string>
+    <string name="no_mail_app">Нет почтового приложения. Напишите нам:</string>
+    <string name="report_hint">Чтобы пожаловаться, нажмите и удерживайте сообщение или откройте контакт и нажмите «Пожаловаться».</string>
 </resources>

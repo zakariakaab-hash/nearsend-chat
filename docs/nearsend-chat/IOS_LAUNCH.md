@@ -15,7 +15,7 @@ Written 18 Nov 2026. Priority is iOS first (see memory/decision of the same date
 | Item | State | Notes |
 |---|---|---|
 | **Block people** | **Written, not yet compiled** (18 Nov) | Contact info has Block/Unblock; long-press on a public-channel or group message, or on an announcement, blocks its sender. Blocked phones' messages, photos, announcements and SOS alerts are dropped and their earlier public/group content is removed. Saved in `chat.json` |
-| **Report content** | **Not built** | Apple guideline 1.2 also asks for a way to report offensive content and a way to contact us. The app has no server and nobody to receive reports. Realistic options: a "Report" that opens a mail to a support address (needs your email), plus a support page. TODO-YOU decide, then ME |
+| **Report content** | **Built, checked in the simulator** (18 Nov) | Long-press any received message or announcement → Report, or Report in contact info. Opens a prefilled email (person, id, time, content); with no mail app it shows the address with a Copy button. "Contact us" on the You tab. **TODO-YOU:** the address is the placeholder `support@nearsend.app` in `Support.email` (`FeatureViews.swift`); make it a real inbox or change it. A support web page is still needed for the store listing |
 | Real-iPhone Bluetooth test | TODO-YOU (+ tablet) | Never run. See REAL_PHONE_TEST_PLAN.md. Reviewers will run it on real phones too |
 | Review notes and a demo path | TODO-ME | One reviewer with one phone cannot see a mesh. Ship a demo mode and explain it in the review notes, or Apple may say the app has too little function |
 | SOS wording | TODO-ME | Must not promise rescue or replace emergency calls. Check the text in the app and store page |

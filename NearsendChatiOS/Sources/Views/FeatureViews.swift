@@ -14,7 +14,52 @@ struct ChipButton<Label: View>: View {
     }
 }
 
+/// Reporting and contact (App Store guideline 1.2). The app has no server, so a report is an email the user sends themself.
+enum Support {
+    /// PLACEHOLDER: replace with the real support address before release (also in docs/nearsend-chat/PRIVACY.md).
+    static let email = "support@nearsend.app"
+
+    static var contactURL: URL? { mail(subject: "Nearsend Chat", body: "") }
+
+    /// A prefilled email reporting `text` (or a whole person when `text` is nil) sent by `name` / `id`.
+    static func reportURL(name: String, id: String?, text: String?, date: Date? = nil) -> URL? {
+        var body = "Reported person: \(name)\nTheir id: \(id ?? "unknown")\n"
+        if let date { body += "Time: \(ISO8601DateFormatter().string(from: date))\n" }
+        if let text { body += "Content:\n\(text)\n" }
+        body += "\nWhy I am reporting this:\n"
+        return mail(subject: "Nearsend Chat report", body: body)
+    }
+
+    private static func mail(subject: String, body: String) -> URL? {
+        var c = URLComponents()
+        c.scheme = "mailto"; c.path = email
+        c.queryItems = [URLQueryItem(name: "subject", value: subject)] + (body.isEmpty ? [] : [URLQueryItem(name: "body", value: body)])
+        return c.url
+    }
+}
+
+private struct MailOpener: ViewModifier {
+    @Binding var pending: URL?
+    @Environment(\.openURL) private var openURL
+    @State private var noMail = false
+    func body(content: Content) -> some View {
+        content
+            .onChange(of: pending) { _, url in
+                guard let url else { return }
+                pending = nil
+                openURL(url) { ok in if !ok { noMail = true } }
+            }
+            .alert("No email app. Write to us at:", isPresented: $noMail) {
+                Button("Copy address") { UIPasteboard.general.string = Support.email }
+                Button("Close", role: .cancel) {}
+            } message: { Text(verbatim: Support.email) }
+    }
+}
+
 extension View {
+    /// Opens the mail URL put in `pending` (a report or "Contact us"); if there is no mail app, shows the address instead.
+    func opensMail(_ pending: Binding<URL?>) -> some View { modifier(MailOpener(pending: pending)) }
+
     /// Asks before blocking the phone whose id is in `target`, then blocks it (see `ChatStore.toggleBlocked`).
     @MainActor func blockConfirmation(for target: Binding<String?>, store: ChatStore) -> some View {
         confirmationDialog("Block this person?", isPresented: Binding(get: { target.wrappedValue != nil }, set: { if !$0 { target.wrappedValue = nil } }),
@@ -31,6 +76,7 @@ struct PostCard: View {
     @EnvironmentObject var store: ChatStore
     let post: Post
     @State private var blockTarget: String?
+    @State private var report: URL?
     var body: some View {
         Card(padding: 14) {
             HStack(alignment: .top, spacing: 12) {
@@ -48,10 +94,12 @@ struct PostCard: View {
         }
         .contextMenu {
             if !post.mine {
+                Button { report = Support.reportURL(name: post.name, id: post.from, text: post.text) } label: { Label("Report", systemImage: "flag.fill") }
                 Button(role: .destructive) { blockTarget = post.from } label: { Label("Block", systemImage: "hand.raised.fill") }
             }
         }
         .blockConfirmation(for: $blockTarget, store: store)
+        .opensMail($report)
     }
     @ViewBuilder private var left: some View {
         let secs = post.exp.timeIntervalSinceNow

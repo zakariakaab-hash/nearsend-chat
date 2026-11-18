@@ -214,4 +214,9 @@
     <string name="log_body">Os últimos 500 eventos: quem se conectou, tipos de pacote, erros. Sem mensagens, fotos ou chaves.</string>
     <string name="block_confirm">Bloquear esta pessoa?</string>
     <string name="block_confirm_body">As mensagens e os avisos dessa pessoa ficam ocultos e são ignorados. Você pode desbloquear nas informações do contato.</string>
+    <string name="report">Denunciar</string>
+    <string name="contact_us">Fale conosco</string>
+    <string name="copy_address">Copiar endereço</string>
+    <string name="no_mail_app">Nenhum app de e-mail. Escreva para:</string>
+    <string name="report_hint">Para denunciar alguém, toque e segure a mensagem ou abra as informações de contato e toque em Denunciar.</string>
 </resources>

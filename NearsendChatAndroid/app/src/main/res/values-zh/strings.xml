@@ -214,4 +214,9 @@
     <string name="log_body">最近 500 条事件：谁连接了、数据包类型、错误。不含消息、照片或密钥。</string>
     <string name="block_confirm">要屏蔽此人吗？</string>
     <string name="block_confirm_body">对方的消息和公告将被隐藏并忽略。你可以在其联系人信息中解除屏蔽。</string>
+    <string name="report">举报</string>
+    <string name="contact_us">联系我们</string>
+    <string name="copy_address">复制地址</string>
+    <string name="no_mail_app">没有邮件应用。请写信至：</string>
+    <string name="report_hint">要举报某人，请长按其消息，或打开其联系人信息并点按“举报”。</string>
 </resources>

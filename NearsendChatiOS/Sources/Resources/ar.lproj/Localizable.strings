@@ -212,3 +212,8 @@
 "Last 500 events: who connected, packet types, errors. No messages, photos or keys." = "آخر 500 حدث: من اتصل، أنواع الحزم، الأخطاء. بدون رسائل أو صور أو مفاتيح.";
 "Block this person?" = "حظر هذا الشخص؟";
 "Their messages and announcements are hidden and ignored. You can unblock them in their contact info." = "ستُخفى رسائله وإعلاناته ويتم تجاهلها. يمكنك إلغاء الحظر من معلومات جهة الاتصال.";
+"Report" = "إبلاغ";
+"Contact us" = "اتصل بنا";
+"Copy address" = "نسخ العنوان";
+"No email app. Write to us at:" = "لا يوجد تطبيق بريد. راسلنا على:";
+"To report someone, long-press their message or open their contact info and tap Report." = "للإبلاغ عن شخص، اضغط مطولاً على رسالته أو افتح معلومات الاتصال الخاصة به واضغط إبلاغ.";

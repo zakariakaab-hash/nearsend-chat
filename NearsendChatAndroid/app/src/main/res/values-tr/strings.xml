@@ -214,4 +214,9 @@
     <string name="log_body">Son 500 olay: kimin bağlandığı, paket türleri, hatalar. Mesaj, fotoğraf veya anahtar yok.</string>
     <string name="block_confirm">Bu kişi engellensin mi?</string>
     <string name="block_confirm_body">Mesajları ve duyuruları gizlenir ve yok sayılır. Kişi bilgilerinden engeli kaldırabilirsiniz.</string>
+    <string name="report">Bildir</string>
+    <string name="contact_us">Bize ulaşın</string>
+    <string name="copy_address">Adresi kopyala</string>
+    <string name="no_mail_app">E-posta uygulaması yok. Bize şu adresten yazın:</string>
+    <string name="report_hint">Birini bildirmek için mesajına uzun basın veya kişi bilgilerini açıp Bildir\'e dokunun.</string>
 </resources>

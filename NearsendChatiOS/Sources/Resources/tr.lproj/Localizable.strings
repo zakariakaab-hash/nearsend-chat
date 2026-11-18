@@ -212,3 +212,8 @@
 "Last 500 events: who connected, packet types, errors. No messages, photos or keys." = "Son 500 olay: kimin bağlandığı, paket türleri, hatalar. Mesaj, fotoğraf veya anahtar yok.";
 "Block this person?" = "Bu kişi engellensin mi?";
 "Their messages and announcements are hidden and ignored. You can unblock them in their contact info." = "Mesajları ve duyuruları gizlenir ve yok sayılır. Kişi bilgilerinden engeli kaldırabilirsiniz.";
+"Report" = "Bildir";
+"Contact us" = "Bize ulaşın";
+"Copy address" = "Adresi kopyala";
+"No email app. Write to us at:" = "E-posta uygulaması yok. Bize şu adresten yazın:";
+"To report someone, long-press their message or open their contact info and tap Report." = "Birini bildirmek için mesajına uzun basın veya kişi bilgilerini açıp Bildir'e dokunun.";

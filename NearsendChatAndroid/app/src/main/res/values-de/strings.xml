@@ -214,4 +214,9 @@
     <string name="log_body">Die letzten 500 Ereignisse: wer sich verbunden hat, Pakettypen, Fehler. Keine Nachrichten, Fotos oder Schlüssel.</string>
     <string name="block_confirm">Diese Person blockieren?</string>
     <string name="block_confirm_body">Ihre Nachrichten und Ankündigungen werden ausgeblendet und ignoriert. Du kannst die Blockierung in den Kontaktinfos aufheben.</string>
+    <string name="report">Melden</string>
+    <string name="contact_us">Kontakt</string>
+    <string name="copy_address">Adresse kopieren</string>
+    <string name="no_mail_app">Keine E-Mail-App. Schreib uns an:</string>
+    <string name="report_hint">Um jemanden zu melden, drück lange auf die Nachricht oder öffne die Kontaktinfo und tippe auf Melden.</string>
 </resources>

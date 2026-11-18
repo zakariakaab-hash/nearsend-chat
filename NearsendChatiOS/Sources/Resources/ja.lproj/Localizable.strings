@@ -212,3 +212,8 @@
 "Last 500 events: who connected, packet types, errors. No messages, photos or keys." = "直近500件のイベント：接続した相手、パケットの種類、エラー。メッセージ・写真・鍵は含まれません。";
 "Block this person?" = "この人をブロックしますか？";
 "Their messages and announcements are hidden and ignored. You can unblock them in their contact info." = "相手のメッセージとお知らせは非表示になり、無視されます。連絡先情報でブロックを解除できます。";
+"Report" = "報告";
+"Contact us" = "お問い合わせ";
+"Copy address" = "アドレスをコピー";
+"No email app. Write to us at:" = "メールアプリがありません。こちらにご連絡ください：";
+"To report someone, long-press their message or open their contact info and tap Report." = "報告するには、メッセージを長押しするか、連絡先情報を開いて「報告」をタップします。";

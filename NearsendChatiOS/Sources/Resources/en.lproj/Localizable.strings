@@ -212,3 +212,8 @@
 "Last 500 events: who connected, packet types, errors. No messages, photos or keys." = "Last 500 events: who connected, packet types, errors. No messages, photos or keys.";
 "Block this person?" = "Block this person?";
 "Their messages and announcements are hidden and ignored. You can unblock them in their contact info." = "Their messages and announcements are hidden and ignored. You can unblock them in their contact info.";
+"Report" = "Report";
+"Contact us" = "Contact us";
+"Copy address" = "Copy address";
+"No email app. Write to us at:" = "No email app. Write to us at:";
+"To report someone, long-press their message or open their contact info and tap Report." = "To report someone, long-press their message or open their contact info and tap Report.";

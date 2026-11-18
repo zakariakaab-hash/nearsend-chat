@@ -14,6 +14,7 @@ struct ThreadView: View {
     @State private var bigPhoto: String?
     @State private var noPosition = false
     @State private var blockTarget: String?
+    @State private var report: URL?
 
     private var isPublic: Bool { conversationID == publicChannelID }
     private var messages: [Message] { store.conversations.first { $0.id == conversationID }?.messages ?? [] }
@@ -39,7 +40,12 @@ struct ThreadView: View {
                                 Bubble(message: m, showSender: isPublic || members != nil, progress: store.photoProgress[m.id],
                                        loadPhoto: { store.loadPhoto($0) }, onOpenPhoto: { bigPhoto = $0 },
                                        onRetry: { store.retry(m.id, in: conversationID) },
-                                       onBlock: (!m.mine && m.senderID != nil && (isPublic || members != nil)) ? { blockTarget = m.senderID } : nil).id(m.id)
+                                       onBlock: (!m.mine && m.senderID != nil && (isPublic || members != nil)) ? { blockTarget = m.senderID } : nil,
+                                       onReport: m.mine ? nil : {
+                                           let direct = !isPublic && members == nil   // 1:1 chat: the sender is the other person
+                                           report = Support.reportURL(name: m.sender ?? livePeer.name, id: m.senderID ?? (direct ? livePeer.id : nil),
+                                                                      text: m.photo != nil ? "[photo]" : m.text, date: m.date)
+                                       }).id(m.id)
                             }
                         }.padding(.horizontal, 16).padding(.top, 8).readableWidth()
                     }
@@ -81,6 +87,7 @@ struct ThreadView: View {
             }
         }
         .blockConfirmation(for: $blockTarget, store: store)
+        .opensMail($report)
         .alert("Couldn't use this picture", isPresented: $store.photoError) { Button("Close", role: .cancel) {} }
         .alert("No position yet. Try again outdoors.", isPresented: $noPosition) { Button("Close", role: .cancel) {} }
         .fullScreenCover(isPresented: Binding(get: { bigPhoto != nil }, set: { if !$0 { bigPhoto = nil } })) {
@@ -149,6 +156,7 @@ struct Bubble: View {
     var onOpenPhoto: (String) -> Void = { _ in }
     var onRetry: () -> Void = {}
     var onBlock: (() -> Void)? = nil       // set for other people's public-channel and group messages: long-press to block the sender
+    var onReport: (() -> Void)? = nil      // set for every message from someone else: long-press to report it by email
 
     var body: some View {
         HStack {
@@ -176,6 +184,7 @@ struct Bubble: View {
         }
         .onTapGesture { if message.state == .failed { onRetry() } }
         .contextMenu {
+            if let onReport { Button { onReport() } label: { Label("Report", systemImage: "flag.fill") } }
             if let onBlock { Button(role: .destructive) { onBlock() } label: { Label("Block", systemImage: "hand.raised.fill") } }
         }
     }
@@ -216,6 +225,7 @@ struct PeerInfoSheet: View {
     @Environment(\.dismiss) private var dismiss
     let peer: Peer
     @State private var blockTarget: String?
+    @State private var report: URL?
 
     var body: some View {
         ZStack {
@@ -241,11 +251,16 @@ struct PeerInfoSheet: View {
                     Text(LocalizedStringKey(isBlocked ? "Unblock" : "Block")).font(.subheadline.weight(.semibold))
                         .foregroundStyle(isBlocked ? Theme.link : .red).frame(maxWidth: .infinity).padding(.vertical, 14).glass(radius: Theme.rButton)
                 }
+                Button { report = Support.reportURL(name: peer.name, id: peer.id, text: nil) } label: {
+                    Label("Report", systemImage: "flag.fill").font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.red).frame(maxWidth: .infinity).padding(.vertical, 14).glass(radius: Theme.rButton)
+                }
                 Button("Close") { dismiss() }.foregroundStyle(.white)
                 Spacer()
             }.padding(.horizontal, 20).readableWidth(560)
         }
         .blockConfirmation(for: $blockTarget, store: store)
+        .opensMail($report)
         .presentationDetents([.medium, .large])
     }
 }

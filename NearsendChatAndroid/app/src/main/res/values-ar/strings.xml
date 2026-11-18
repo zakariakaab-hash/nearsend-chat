@@ -214,4 +214,9 @@
     <string name="log_body">آخر 500 حدث: من اتصل، أنواع الحزم، الأخطاء. بدون رسائل أو صور أو مفاتيح.</string>
     <string name="block_confirm">حظر هذا الشخص؟</string>
     <string name="block_confirm_body">ستُخفى رسائله وإعلاناته ويتم تجاهلها. يمكنك إلغاء الحظر من معلومات جهة الاتصال.</string>
+    <string name="report">إبلاغ</string>
+    <string name="contact_us">اتصل بنا</string>
+    <string name="copy_address">نسخ العنوان</string>
+    <string name="no_mail_app">لا يوجد تطبيق بريد. راسلنا على:</string>
+    <string name="report_hint">للإبلاغ عن شخص، اضغط مطولاً على رسالته أو افتح معلومات الاتصال الخاصة به واضغط إبلاغ.</string>
 </resources>

@@ -212,3 +212,8 @@
 "Last 500 events: who connected, packet types, errors. No messages, photos or keys." = "最近 500 条事件：谁连接了、数据包类型、错误。不含消息、照片或密钥。";
 "Block this person?" = "要屏蔽此人吗？";
 "Their messages and announcements are hidden and ignored. You can unblock them in their contact info." = "对方的消息和公告将被隐藏并忽略。你可以在其联系人信息中解除屏蔽。";
+"Report" = "举报";
+"Contact us" = "联系我们";
+"Copy address" = "复制地址";
+"No email app. Write to us at:" = "没有邮件应用。请写信至：";
+"To report someone, long-press their message or open their contact info and tap Report." = "要举报某人，请长按其消息，或打开其联系人信息并点按“举报”。";
