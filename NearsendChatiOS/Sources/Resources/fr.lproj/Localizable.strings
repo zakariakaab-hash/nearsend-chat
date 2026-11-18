@@ -208,3 +208,7 @@
 "Use my initial" = "Utiliser mon initiale";
 "Tap to change" = "Touchez pour changer";
 "Couldn't use this picture" = "Impossible d'utiliser cette image";
+"Share debug log" = "Partager le journal de débogage";
+"Last 500 events: who connected, packet types, errors. No messages, photos or keys." = "Les 500 derniers événements : qui s'est connecté, types de paquets, erreurs. Aucun message, photo ni clé.";
+"Block this person?" = "Bloquer cette personne ?";
+"Their messages and announcements are hidden and ignored. You can unblock them in their contact info." = "Leurs messages et annonces sont masqués et ignorés. Vous pouvez les débloquer dans leurs infos de contact.";

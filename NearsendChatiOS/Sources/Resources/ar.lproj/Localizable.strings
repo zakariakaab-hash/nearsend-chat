@@ -208,3 +208,7 @@
 "Use my initial" = "استخدام الحرف الأول";
 "Tap to change" = "المس للتغيير";
 "Couldn't use this picture" = "تعذّر استخدام هذه الصورة";
+"Share debug log" = "مشاركة سجل التصحيح";
+"Last 500 events: who connected, packet types, errors. No messages, photos or keys." = "آخر 500 حدث: من اتصل، أنواع الحزم، الأخطاء. بدون رسائل أو صور أو مفاتيح.";
+"Block this person?" = "حظر هذا الشخص؟";
+"Their messages and announcements are hidden and ignored. You can unblock them in their contact info." = "ستُخفى رسائله وإعلاناته ويتم تجاهلها. يمكنك إلغاء الحظر من معلومات جهة الاتصال.";

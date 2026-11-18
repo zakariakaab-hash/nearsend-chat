@@ -210,4 +210,8 @@
     <string name="avatar_initial">Meinen Anfangsbuchstaben verwenden</string>
     <string name="avatar_tap">Zum Ändern tippen</string>
     <string name="photo_error">Bild konnte nicht verwendet werden</string>
+    <string name="log_share">Debug-Protokoll teilen</string>
+    <string name="log_body">Die letzten 500 Ereignisse: wer sich verbunden hat, Pakettypen, Fehler. Keine Nachrichten, Fotos oder Schlüssel.</string>
+    <string name="block_confirm">Diese Person blockieren?</string>
+    <string name="block_confirm_body">Ihre Nachrichten und Ankündigungen werden ausgeblendet und ignoriert. Du kannst die Blockierung in den Kontaktinfos aufheben.</string>
 </resources>

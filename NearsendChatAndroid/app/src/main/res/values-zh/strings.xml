@@ -210,4 +210,8 @@
     <string name="avatar_initial">使用我的首字母</string>
     <string name="avatar_tap">点按更改</string>
     <string name="photo_error">无法使用这张图片</string>
+    <string name="log_share">分享调试日志</string>
+    <string name="log_body">最近 500 条事件：谁连接了、数据包类型、错误。不含消息、照片或密钥。</string>
+    <string name="block_confirm">要屏蔽此人吗？</string>
+    <string name="block_confirm_body">对方的消息和公告将被隐藏并忽略。你可以在其联系人信息中解除屏蔽。</string>
 </resources>

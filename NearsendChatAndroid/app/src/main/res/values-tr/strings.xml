@@ -210,4 +210,8 @@
     <string name="avatar_initial">Baş harfimi kullan</string>
     <string name="avatar_tap">Değiştirmek için dokun</string>
     <string name="photo_error">Bu resim kullanılamadı</string>
+    <string name="log_share">Hata ayıklama günlüğünü paylaş</string>
+    <string name="log_body">Son 500 olay: kimin bağlandığı, paket türleri, hatalar. Mesaj, fotoğraf veya anahtar yok.</string>
+    <string name="block_confirm">Bu kişi engellensin mi?</string>
+    <string name="block_confirm_body">Mesajları ve duyuruları gizlenir ve yok sayılır. Kişi bilgilerinden engeli kaldırabilirsiniz.</string>
 </resources>

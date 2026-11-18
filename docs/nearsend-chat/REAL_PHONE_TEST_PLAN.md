@@ -32,9 +32,12 @@ keep both screens on at first.
 
 ## What to record for every failure
 Which test, which phone was sender, time, what you saw, and whether turning Bluetooth off and on fixes it.
-The apps have almost no logging yet (Android has one log line), so note what you see on screen and take screenshots.
-Adding a simple debug log (link up/down, packets in/out, hops) is the first fix to make if a test fails. Android: `adb logcat`.
-iPhone: Xcode → Window → Devices and Simulators → Open Console.
+Both apps keep a debug log of the last 500 events (who connected, packet types, hops, errors; never message text,
+photos or keys). Right after a failure open **You → Share debug log** on both phones and send the text to yourself
+(mail, Notes, AirDrop). The log restarts when the app is closed, so share it before you quit the app.
+Line times (`+12.345`) are seconds since the app started, so note the clock time of the test too.
+With a computer attached: Android `adb logcat -s Nearsend`; iPhone: Xcode → Window → Devices and Simulators → Open Console
+(filter `app.nearsend.chat`). Take screenshots as well.
 
 ## After the run
 Put the table in an issue or a new file with the date. Fix only what failed, in this order: discovery, delivery,

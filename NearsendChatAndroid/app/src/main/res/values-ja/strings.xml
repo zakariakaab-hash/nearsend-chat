@@ -210,4 +210,8 @@
     <string name="avatar_initial">頭文字を使う</string>
     <string name="avatar_tap">タップして変更</string>
     <string name="photo_error">この画像は使用できません</string>
+    <string name="log_share">デバッグログを共有</string>
+    <string name="log_body">直近500件のイベント：接続した相手、パケットの種類、エラー。メッセージ・写真・鍵は含まれません。</string>
+    <string name="block_confirm">この人をブロックしますか？</string>
+    <string name="block_confirm_body">相手のメッセージとお知らせは非表示になり、無視されます。連絡先情報でブロックを解除できます。</string>
 </resources>

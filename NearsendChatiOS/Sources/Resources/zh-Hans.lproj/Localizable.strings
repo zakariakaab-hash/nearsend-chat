@@ -208,3 +208,7 @@
 "Use my initial" = "使用我的首字母";
 "Tap to change" = "点按更改";
 "Couldn't use this picture" = "无法使用这张图片";
+"Share debug log" = "分享调试日志";
+"Last 500 events: who connected, packet types, errors. No messages, photos or keys." = "最近 500 条事件：谁连接了、数据包类型、错误。不含消息、照片或密钥。";
+"Block this person?" = "要屏蔽此人吗？";
+"Their messages and announcements are hidden and ignored. You can unblock them in their contact info." = "对方的消息和公告将被隐藏并忽略。你可以在其联系人信息中解除屏蔽。";

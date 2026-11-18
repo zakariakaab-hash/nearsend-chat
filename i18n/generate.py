@@ -14,7 +14,7 @@ repo = os.path.dirname(root)
 def rows(path):
     out = []
     for line in open(path, encoding="utf-8"):
-        line = line.rstrip("\n")
+        line = line.rstrip("\r\n")
         if line and not line.startswith("#"): out.append(line.split("|"))
     return out
 

@@ -211,4 +211,8 @@
     <string name="avatar_initial">Use my initial</string>
     <string name="avatar_tap">Tap to change</string>
     <string name="photo_error">Couldn\'t use this picture</string>
+    <string name="log_share">Share debug log</string>
+    <string name="log_body">Last 500 events: who connected, packet types, errors. No messages, photos or keys.</string>
+    <string name="block_confirm">Block this person?</string>
+    <string name="block_confirm_body">Their messages and announcements are hidden and ignored. You can unblock them in their contact info.</string>
 </resources>

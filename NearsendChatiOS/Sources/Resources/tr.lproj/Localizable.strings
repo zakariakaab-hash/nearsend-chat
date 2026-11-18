@@ -208,3 +208,7 @@
 "Use my initial" = "Baş harfimi kullan";
 "Tap to change" = "Değiştirmek için dokun";
 "Couldn't use this picture" = "Bu resim kullanılamadı";
+"Share debug log" = "Hata ayıklama günlüğünü paylaş";
+"Last 500 events: who connected, packet types, errors. No messages, photos or keys." = "Son 500 olay: kimin bağlandığı, paket türleri, hatalar. Mesaj, fotoğraf veya anahtar yok.";
+"Block this person?" = "Bu kişi engellensin mi?";
+"Their messages and announcements are hidden and ignored. You can unblock them in their contact info." = "Mesajları ve duyuruları gizlenir ve yok sayılır. Kişi bilgilerinden engeli kaldırabilirsiniz.";

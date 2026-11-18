@@ -208,3 +208,7 @@
 "Use my initial" = "Use my initial";
 "Tap to change" = "Tap to change";
 "Couldn't use this picture" = "Couldn't use this picture";
+"Share debug log" = "Share debug log";
+"Last 500 events: who connected, packet types, errors. No messages, photos or keys." = "Last 500 events: who connected, packet types, errors. No messages, photos or keys.";
+"Block this person?" = "Block this person?";
+"Their messages and announcements are hidden and ignored. You can unblock them in their contact info." = "Their messages and announcements are hidden and ignored. You can unblock them in their contact info.";

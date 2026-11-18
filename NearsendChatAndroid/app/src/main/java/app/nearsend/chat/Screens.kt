@@ -932,6 +932,18 @@ fun IdentityScreen(store: ChatStore, startQr: Boolean = false) {
             Card { SettingSwitch(R.string.bat_title, R.string.bat_body, store.batterySaver) { store.changeBatterySaver(it) } }
         }
         item {
+            val ctx = LocalContext.current
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Box(Modifier.fillMaxWidth().glass(12.dp).clickable { shareDebugLog(ctx) }.padding(vertical = 14.dp), contentAlignment = Alignment.Center) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Icon(Icons.Filled.Share, null, tint = p.ink, modifier = Modifier.size(16.dp))
+                        Text(stringResource(R.string.log_share), color = p.ink, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                    }
+                }
+                Text(stringResource(R.string.log_body), color = p.inkSecondary, fontSize = 12.sp, modifier = Modifier.padding(horizontal = 8.dp))
+            }
+        }
+        item {
             Box(Modifier.fillMaxWidth().glass(12.dp).clickable { confirmWipe = true }.padding(vertical = 14.dp), contentAlignment = Alignment.Center) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     Icon(Icons.Filled.Delete, null, tint = Color(0xFFD93025), modifier = Modifier.size(16.dp))
@@ -959,6 +971,17 @@ fun IdentityScreen(store: ChatStore, startQr: Boolean = false) {
         confirmButton = { TextButton({ confirmWipe = false; store.wipeAll() }) { Text(stringResource(R.string.erase), color = Color(0xFFD93025)) } },
         dismissButton = { TextButton({ confirmWipe = false }) { Text(stringResource(R.string.cancel)) } },
     )
+}
+
+/** Opens the phone's share sheet with the debug log as text (mail, messenger, notes...). */
+private fun shareDebugLog(ctx: android.content.Context) {
+    val head = "Nearsend Chat debug log\n${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}, Android ${android.os.Build.VERSION.RELEASE} (API ${android.os.Build.VERSION.SDK_INT})\n\n"
+    val send = Intent(Intent.ACTION_SEND).apply {
+        type = "text/plain"
+        putExtra(Intent.EXTRA_SUBJECT, "Nearsend Chat debug log")
+        putExtra(Intent.EXTRA_TEXT, head + NLog.dump().ifEmpty { "(no events yet)" })
+    }
+    runCatching { ctx.startActivity(Intent.createChooser(send, null)) }
 }
 
 @Composable

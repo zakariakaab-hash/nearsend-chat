@@ -210,4 +210,8 @@
     <string name="avatar_initial">استخدام الحرف الأول</string>
     <string name="avatar_tap">المس للتغيير</string>
     <string name="photo_error">تعذّر استخدام هذه الصورة</string>
+    <string name="log_share">مشاركة سجل التصحيح</string>
+    <string name="log_body">آخر 500 حدث: من اتصل، أنواع الحزم، الأخطاء. بدون رسائل أو صور أو مفاتيح.</string>
+    <string name="block_confirm">حظر هذا الشخص؟</string>
+    <string name="block_confirm_body">ستُخفى رسائله وإعلاناته ويتم تجاهلها. يمكنك إلغاء الحظر من معلومات جهة الاتصال.</string>
 </resources>

@@ -208,3 +208,7 @@
 "Use my initial" = "Использовать мою букву";
 "Tap to change" = "Нажмите, чтобы изменить";
 "Couldn't use this picture" = "Не удалось использовать это изображение";
+"Share debug log" = "Поделиться журналом отладки";
+"Last 500 events: who connected, packet types, errors. No messages, photos or keys." = "Последние 500 событий: кто подключился, типы пакетов, ошибки. Без сообщений, фото и ключей.";
+"Block this person?" = "Заблокировать этого человека?";
+"Their messages and announcements are hidden and ignored. You can unblock them in their contact info." = "Его сообщения и объявления будут скрыты и игнорироваться. Разблокировать можно в информации о контакте.";

@@ -9,6 +9,7 @@ private struct SavedState: Codable {
     var verified: [String]
     var leftGroups: [String]?
     var keys: [String: String]?     // contacts' public keys (base64), to message them while they are away
+    var blocked: [String]?          // phones whose messages are ignored
 }
 
 /// UI-facing state. On a real iPhone it is driven by `BLETransport` + `MeshRouter`; the iOS Simulator has no
@@ -32,6 +33,7 @@ final class ChatStore: ObservableObject {
     @Published var bluetoothState = "starting"   // starting | ready | off | unauthorized | unsupported
     @Published private(set) var myFingerprint = "A3F1 9C02 7BD4 E58A\n11C0 4F6E 92AB 3D77"
     @Published private(set) var verified: Set<String> = []
+    @Published private(set) var blocked: Set<String> = []      // peer ids: everything new from them is dropped
 
     let simulated: Bool
     var activeConversation: String?
@@ -176,7 +178,7 @@ final class ChatStore: ObservableObject {
         ["nickname", "deviceID", "onboarded", "tab", "relay", "receipts", "hidePreviews", "autoDelete", "avatar"].forEach { d.removeObject(forKey: $0) }
         relayOthers = true; receipts = true; hidePreviews = false; autoDeleteDays = 0; myAvatar = nil
         deviceID = UUID().uuidString; d.set(deviceID, forKey: "deviceID")
-        verified = []; peers = []; conversations = []
+        verified = []; blocked = []; peers = []; conversations = []
         myFingerprint = simulated ? myFingerprint : ""
         nickname = "anon-\(Int.random(in: 1000...9999))"
         ensurePublicChannel()
@@ -199,6 +201,20 @@ final class ChatStore: ObservableObject {
         guard !peer.fingerprint.isEmpty else { return }
         if verified.contains(peer.fingerprint) { verified.remove(peer.fingerprint) } else { verified.insert(peer.fingerprint) }
         peers = peers.map { var p = $0; p.verified = verified.contains(p.fingerprint); return p }
+        save()
+    }
+
+    /// Blocks (or unblocks) a phone. Blocking drops everything new from it and removes what it already put on the public
+    /// channel, in groups, as announcements and as SOS alerts. Direct chats stay (hidden messages would confuse), but nothing new arrives.
+    func toggleBlocked(_ id: String) {
+        if blocked.contains(id) { blocked.remove(id); save(); return }
+        blocked.insert(id)
+        for i in conversations.indices where conversations[i].id == publicChannelID || conversations[i].isGroup {
+            conversations[i].messages.removeAll { $0.senderID == id }
+        }
+        posts.removeAll { $0.from == id }
+        alerts.removeAll { $0.from == id }
+        peers.removeAll { $0.id == id }
         save()
     }
 
@@ -278,7 +294,7 @@ final class ChatStore: ObservableObject {
 
     private func setPeers(_ list: [Peer]) {
         let known = Set(peers.map { $0.id })
-        var mapped = list.map { p -> Peer in var q = p; q.verified = verified.contains(q.fingerprint); return q }
+        var mapped = list.filter { !blocked.contains($0.id) }.map { p -> Peer in var q = p; q.verified = verified.contains(q.fingerprint); return q }
         mapped.sort { $0.hops == $1.hops ? $0.rssi > $1.rssi : $0.hops < $1.hops }
         if mapped.contains(where: { !known.contains($0.id) }) { Notifier.peerHaptic() }
         peers = mapped
@@ -287,6 +303,7 @@ final class ChatStore: ObservableObject {
     }
 
     private func receiveText(from: String, name: String, text: String, hops: Int, id: String) {
+        guard !blocked.contains(from) else { return }
         let peer = peers.first { $0.id == from } ?? Peer(id: from, name: name, hops: hops, rssi: -80)
         ensureConversation(peer)
         guard let i = index(from), !conversations[i].messages.contains(where: { $0.id == id }) else { return }
@@ -298,8 +315,8 @@ final class ChatStore: ObservableObject {
     }
 
     private func receivePublic(from: String, name: String, text: String, id: String) {
-        guard let i = index(publicChannelID), !conversations[i].messages.contains(where: { $0.id == id }) else { return }
-        conversations[i].messages.append(Message(id: id, text: text, date: .now, mine: false, sender: name))
+        guard !blocked.contains(from), let i = index(publicChannelID), !conversations[i].messages.contains(where: { $0.id == id }) else { return }
+        conversations[i].messages.append(Message(id: id, text: text, date: .now, mine: false, sender: name, senderID: from))
         if activeConversation != publicChannelID { conversations[i].unread += 1 }
         Notifier.notify(title: "#nearby · \(name)", body: preview(text))
         save()
@@ -354,7 +371,7 @@ final class ChatStore: ObservableObject {
     }
 
     private func receivePost(from: String, name sent: String, post: String, text: String, exp: Int64, hops: Int) {
-        guard !posts.contains(where: { $0.id == post }) else { return }
+        guard !blocked.contains(from), !posts.contains(where: { $0.id == post }) else { return }
         let name = peers.first { $0.id == from }?.name ?? sent
         posts.insert(Post(id: post, from: from, name: name, text: text, exp: Date(timeIntervalSince1970: Double(exp) / 1000), mine: false, hops: hops), at: 0)
         Notifier.notify(title: "\u{1F4E2} \(name)", body: preview(text))
@@ -444,6 +461,7 @@ final class ChatStore: ObservableObject {
     }
 
     private func receivePhoto(from: String, name sent: String, photo: String, bytes: Data) {
+        guard !blocked.contains(from) else { return }
         let peer = peers.first { $0.id == from } ?? Peer(id: from, name: sent, hops: 1, rssi: -80)
         ensureConversation(peer)
         guard let i = index(from), !conversations[i].messages.contains(where: { $0.id == photo }) else { return }
@@ -519,7 +537,7 @@ final class ChatStore: ObservableObject {
     }
 
     private func receiveGroup(from: String, name sent: String, group gid: String, groupName: String, members: [Member], text: String, hops: Int, id: String) {
-        guard !leftGroups.contains(gid), members.contains(where: { $0.id == deviceID }) else { return }
+        guard !blocked.contains(from), !leftGroups.contains(gid), members.contains(where: { $0.id == deviceID }) else { return }
         let name = peers.first { $0.id == from }?.name ?? sent
         if index(gid) == nil {
             conversations.append(Conversation(id: gid, peer: Peer(id: gid, name: groupName, hops: 1, rssi: -50), messages: [], members: members))
@@ -527,7 +545,7 @@ final class ChatStore: ObservableObject {
         guard let i = index(gid), !conversations[i].messages.contains(where: { $0.id == id }) else { return }
         conversations[i].peer.name = groupName
         conversations[i].members = members
-        conversations[i].messages.append(Message(id: id, text: text, date: .now, mine: false, hops: hops, sender: name))
+        conversations[i].messages.append(Message(id: id, text: text, date: .now, mine: false, hops: hops, sender: name, senderID: from))
         if activeConversation != gid { conversations[i].unread += 1 }
         Notifier.notify(title: "\(groupName) · \(name)", body: preview(text))
         Notifier.messageHaptic()
@@ -580,6 +598,7 @@ final class ChatStore: ObservableObject {
     }
 
     private func receiveSos(from: String, name sent: String, alarm: String, note: String?, loc: String?, hops: Int) {
+        guard !blocked.contains(from) else { return }
         let parts = loc?.split(separator: ",").compactMap { Double($0.trimmingCharacters(in: .whitespaces)) }
         let p = parts?.count == 3 ? parts : nil
         let name = peers.first { $0.id == from }?.name ?? sent
@@ -629,7 +648,7 @@ final class ChatStore: ObservableObject {
         guard !simulated else { return }
         let keep = keepKeysFor()
         let keys = keyBook.all().filter { keep.contains($0.key) }.mapValues { $0.base64EncodedString() }
-        let state = SavedState(nickname: nickname, conversations: conversations, verified: Array(verified), leftGroups: Array(leftGroups), keys: keys)
+        let state = SavedState(nickname: nickname, conversations: conversations, verified: Array(verified), leftGroups: Array(leftGroups), keys: keys, blocked: Array(blocked))
         if let data = try? JSONEncoder().encode(state) {
             try? data.write(to: Self.fileURL, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
         }
@@ -640,6 +659,7 @@ final class ChatStore: ObservableObject {
         conversations = s.conversations
         verified = Set(s.verified)
         leftGroups = Set(s.leftGroups ?? [])
+        blocked = Set(s.blocked ?? [])
         keyBook.replace((s.keys ?? [:]).compactMapValues { Data(base64Encoded: $0) })
         prune()
         // Group messages still "sending" go to every member again (who is pending is not saved).

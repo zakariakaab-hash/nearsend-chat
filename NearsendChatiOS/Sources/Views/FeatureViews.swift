@@ -14,8 +14,23 @@ struct ChipButton<Label: View>: View {
     }
 }
 
+extension View {
+    /// Asks before blocking the phone whose id is in `target`, then blocks it (see `ChatStore.toggleBlocked`).
+    @MainActor func blockConfirmation(for target: Binding<String?>, store: ChatStore) -> some View {
+        confirmationDialog("Block this person?", isPresented: Binding(get: { target.wrappedValue != nil }, set: { if !$0 { target.wrappedValue = nil } }),
+                           titleVisibility: .visible, presenting: target.wrappedValue) { id in
+            Button("Block", role: .destructive) { store.toggleBlocked(id) }
+            Button("Cancel", role: .cancel) {}
+        } message: { _ in
+            Text("Their messages and announcements are hidden and ignored. You can unblock them in their contact info.")
+        }
+    }
+}
+
 struct PostCard: View {
+    @EnvironmentObject var store: ChatStore
     let post: Post
+    @State private var blockTarget: String?
     var body: some View {
         Card(padding: 14) {
             HStack(alignment: .top, spacing: 12) {
@@ -31,6 +46,12 @@ struct PostCard: View {
                 Spacer(minLength: 0)
             }.frame(maxWidth: .infinity, alignment: .leading)
         }
+        .contextMenu {
+            if !post.mine {
+                Button(role: .destructive) { blockTarget = post.from } label: { Label("Block", systemImage: "hand.raised.fill") }
+            }
+        }
+        .blockConfirmation(for: $blockTarget, store: store)
     }
     @ViewBuilder private var left: some View {
         let secs = post.exp.timeIntervalSinceNow

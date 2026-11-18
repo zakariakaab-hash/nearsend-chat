@@ -13,6 +13,7 @@ struct ThreadView: View {
     @State private var pickedPhoto: PhotosPickerItem?
     @State private var bigPhoto: String?
     @State private var noPosition = false
+    @State private var blockTarget: String?
 
     private var isPublic: Bool { conversationID == publicChannelID }
     private var messages: [Message] { store.conversations.first { $0.id == conversationID }?.messages ?? [] }
@@ -36,7 +37,9 @@ struct ThreadView: View {
                             }.scaleEffect(0.92).padding(.vertical, 10)
                             ForEach(messages) { m in
                                 Bubble(message: m, showSender: isPublic || members != nil, progress: store.photoProgress[m.id],
-                                       loadPhoto: { store.loadPhoto($0) }, onOpenPhoto: { bigPhoto = $0 }) { store.retry(m.id, in: conversationID) }.id(m.id)
+                                       loadPhoto: { store.loadPhoto($0) }, onOpenPhoto: { bigPhoto = $0 },
+                                       onRetry: { store.retry(m.id, in: conversationID) },
+                                       onBlock: (!m.mine && m.senderID != nil && (isPublic || members != nil)) ? { blockTarget = m.senderID } : nil).id(m.id)
                             }
                         }.padding(.horizontal, 16).padding(.top, 8).readableWidth()
                     }
@@ -77,6 +80,7 @@ struct ThreadView: View {
                 pickedPhoto = nil
             }
         }
+        .blockConfirmation(for: $blockTarget, store: store)
         .alert("Couldn't use this picture", isPresented: $store.photoError) { Button("Close", role: .cancel) {} }
         .alert("No position yet. Try again outdoors.", isPresented: $noPosition) { Button("Close", role: .cancel) {} }
         .fullScreenCover(isPresented: Binding(get: { bigPhoto != nil }, set: { if !$0 { bigPhoto = nil } })) {
@@ -144,6 +148,7 @@ struct Bubble: View {
     var loadPhoto: (String) -> UIImage? = { _ in nil }
     var onOpenPhoto: (String) -> Void = { _ in }
     var onRetry: () -> Void = {}
+    var onBlock: (() -> Void)? = nil       // set for other people's public-channel and group messages: long-press to block the sender
 
     var body: some View {
         HStack {
@@ -170,6 +175,9 @@ struct Bubble: View {
             if !message.mine { Spacer(minLength: 60) }
         }
         .onTapGesture { if message.state == .failed { onRetry() } }
+        .contextMenu {
+            if let onBlock { Button(role: .destructive) { onBlock() } label: { Label("Block", systemImage: "hand.raised.fill") } }
+        }
     }
     private var icon: String {
         switch message.state {
@@ -207,6 +215,7 @@ struct PeerInfoSheet: View {
     @EnvironmentObject var store: ChatStore
     @Environment(\.dismiss) private var dismiss
     let peer: Peer
+    @State private var blockTarget: String?
 
     var body: some View {
         ZStack {
@@ -226,10 +235,17 @@ struct PeerInfoSheet: View {
                 PrimaryButton(title: peer.verified ? "Remove verification" : "Mark as verified") {
                     store.toggleVerified(peer); dismiss()
                 }
+                let isBlocked = store.blocked.contains(peer.id)
+                if isBlocked { StatusPill(text: "Blocked · their messages are ignored", color: .red) }
+                Button { if isBlocked { store.toggleBlocked(peer.id) } else { blockTarget = peer.id } } label: {
+                    Text(LocalizedStringKey(isBlocked ? "Unblock" : "Block")).font(.subheadline.weight(.semibold))
+                        .foregroundStyle(isBlocked ? Theme.link : .red).frame(maxWidth: .infinity).padding(.vertical, 14).glass(radius: Theme.rButton)
+                }
                 Button("Close") { dismiss() }.foregroundStyle(.white)
                 Spacer()
             }.padding(.horizontal, 20).readableWidth(560)
         }
+        .blockConfirmation(for: $blockTarget, store: store)
         .presentationDetents([.medium, .large])
     }
 }

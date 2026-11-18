@@ -49,6 +49,7 @@ struct Message: Identifiable, Hashable, Codable {
     var hops: Int = 1
     var sender: String? = nil      // shown on public-channel and group messages
     var photo: String? = nil       // id of a photo kept on this phone (the message shows the picture, text is empty)
+    var senderID: String? = nil    // who sent a public-channel or group message, so they can be blocked
 }
 
 /// A public announcement, kept by phones nearby until `exp`.

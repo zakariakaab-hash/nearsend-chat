@@ -4,6 +4,7 @@ struct IdentityView: View {
     @EnvironmentObject var store: ChatStore
     @State private var confirmWipe = false
     @State private var pickAvatar = false
+    @State private var shareLog = false
     @AppStorage("language") private var language = "system"
 
     var body: some View {
@@ -47,6 +48,14 @@ struct IdentityView: View {
                             }
                         }
                         PrivacyCard()
+                        VStack(spacing: 6) {
+                            Button { shareLog = true } label: {
+                                Label("Share debug log", systemImage: "square.and.arrow.up").font(.subheadline.weight(.semibold))
+                                    .foregroundStyle(Theme.link).frame(maxWidth: .infinity).padding(.vertical, 14).glass(radius: Theme.rButton)
+                            }
+                            Text("Last 500 events: who connected, packet types, errors. No messages, photos or keys.")
+                                .font(.footnote).foregroundStyle(Theme.inkSecondary).padding(.horizontal, 8)
+                        }
                         Button(role: .destructive) { confirmWipe = true } label: {
                             Label("Erase everything", systemImage: "trash.fill").font(.subheadline.weight(.semibold))
                                 .foregroundStyle(.red).frame(maxWidth: .infinity).padding(.vertical, 14).glass(radius: Theme.rButton)
@@ -63,6 +72,10 @@ struct IdentityView: View {
             }
             .toolbar(.hidden, for: .navigationBar)
             .sheet(isPresented: $pickAvatar) { AvatarPickerSheet().environmentObject(store) }
+            .sheet(isPresented: $shareLog) {
+                let head = "Nearsend Chat debug log\n\(UIDevice.current.model), iOS \(UIDevice.current.systemVersion)\n\n"
+                ShareSheet(items: [head + (NLog.dump().isEmpty ? "(no events yet)" : NLog.dump())])
+            }
             .confirmationDialog("Erase all messages, keys and settings on this phone?", isPresented: $confirmWipe, titleVisibility: .visible) {
                 Button("Erase everything", role: .destructive) { store.wipeAll() }
                 Button("Cancel", role: .cancel) {}

@@ -210,4 +210,8 @@
     <string name="avatar_initial">Использовать мою букву</string>
     <string name="avatar_tap">Нажмите, чтобы изменить</string>
     <string name="photo_error">Не удалось использовать это изображение</string>
+    <string name="log_share">Поделиться журналом отладки</string>
+    <string name="log_body">Последние 500 событий: кто подключился, типы пакетов, ошибки. Без сообщений, фото и ключей.</string>
+    <string name="block_confirm">Заблокировать этого человека?</string>
+    <string name="block_confirm_body">Его сообщения и объявления будут скрыты и игнорироваться. Разблокировать можно в информации о контакте.</string>
 </resources>

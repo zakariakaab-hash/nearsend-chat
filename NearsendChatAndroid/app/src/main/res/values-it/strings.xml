@@ -210,4 +210,8 @@
     <string name="avatar_initial">Usa la mia iniziale</string>
     <string name="avatar_tap">Tocca per cambiare</string>
     <string name="photo_error">Impossibile usare questa immagine</string>
+    <string name="log_share">Condividi log di debug</string>
+    <string name="log_body">Gli ultimi 500 eventi: chi si è connesso, tipi di pacchetto, errori. Nessun messaggio, foto o chiave.</string>
+    <string name="block_confirm">Bloccare questa persona?</string>
+    <string name="block_confirm_body">I suoi messaggi e annunci vengono nascosti e ignorati. Puoi sbloccarla nelle info del contatto.</string>
 </resources>

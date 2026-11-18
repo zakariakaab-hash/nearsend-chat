@@ -210,4 +210,8 @@
     <string name="avatar_initial">Använd min initial</string>
     <string name="avatar_tap">Tryck för att ändra</string>
     <string name="photo_error">Kunde inte använda bilden</string>
+    <string name="log_share">Dela felsökningslogg</string>
+    <string name="log_body">De senaste 500 händelserna: vem som anslöt, pakettyper, fel. Inga meddelanden, bilder eller nycklar.</string>
+    <string name="block_confirm">Blockera den här personen?</string>
+    <string name="block_confirm_body">Deras meddelanden och anslag döljs och ignoreras. Du kan avblockera dem i deras kontaktinfo.</string>
 </resources>
