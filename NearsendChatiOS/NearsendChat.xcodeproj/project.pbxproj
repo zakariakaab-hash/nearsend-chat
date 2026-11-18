@@ -10,6 +10,7 @@
 		0059D5DCB4708411765D6F61 /* SosView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 673E83108438FED95148260B /* SosView.swift */; };
 		02D7F83D3E0DAF299FEDBE53 /* MeshCrypto.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0FD3D663C778C0215AE098E /* MeshCrypto.swift */; };
 		118D7104DACC4D20E1EB6C53 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = C024C0EBE3FB187254C293DC /* Theme.swift */; };
+		B7C254E9F18777956D19479F /* PowerMode.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53F808313974F4C5A3675831 /* PowerMode.swift */; };
 		2113AC1F1814AC65798D9AA6 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27189BBA0B50CECDDF775F67 /* Models.swift */; };
 		23E6DC6F8C707B6C7FAABD7B /* NearbyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28CEAE65B3A970BA018742F3 /* NearbyView.swift */; };
 		24B9C5BF1EE779DA9AA1EB75 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 06C2AC2B316ACA9FD7CCFBA6 /* Assets.xcassets */; };
@@ -25,9 +26,11 @@
 		AB66BB44A63B667FC433FF7E /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = D9AB179AB7D0AE6D8D7DCFF5 /* InfoPlist.strings */; };
 		B158B62F5C0459D1305A682B /* MeshRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = EABB9A6E8D239B7DB6FB97D9 /* MeshRouter.swift */; };
 		BC55CF1D950DBF3637488042 /* ThreadView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A8156C4CF0D5D5CDE983A47 /* ThreadView.swift */; };
+		FDE0E33B7E5BD3077DD9467B /* ShareSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 52CA2C589CFEC6E0B48B454C /* ShareSheet.swift */; };
 		C718AC7AD68C0EC4CD32DB90 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D241971198B28D215DA0998F /* OnboardingView.swift */; };
 		D52B97E33BE72926F55921D1 /* BLETransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF6E2160A336370766CF8911 /* BLETransport.swift */; };
 		E259DC715A0201B116936F54 /* MeshService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2FE7E11464E41C885097BF69 /* MeshService.swift */; };
+		DAB12F9989026C69B0C97EBD /* NLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = B84E752A9C411A0068C3642A /* NLog.swift */; };
 		ED9459A47ECD6E0BAC374148 /* Framing.swift in Sources */ = {isa = PBXBuildFile; fileRef = 76CAF4DF9CBE52D59A76D02E /* Framing.swift */; };
 		F228ABAD441CEA143F2105D8 /* Photos.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73E4BAF73843F626F41F1F98 /* Photos.swift */; };
 		F861B1D61D3F1B6D29567FE3 /* Anton-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 232B4FB3BF6F535A13312310 /* Anton-Regular.ttf */; };
@@ -47,7 +50,9 @@
 		28CEAE65B3A970BA018742F3 /* NearbyView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NearbyView.swift; sourceTree = "<group>"; };
 		28D23FEEE99206B50AA5D8BE /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 		2A8156C4CF0D5D5CDE983A47 /* ThreadView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThreadView.swift; sourceTree = "<group>"; };
+		52CA2C589CFEC6E0B48B454C /* ShareSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareSheet.swift; sourceTree = "<group>"; };
 		2FE7E11464E41C885097BF69 /* MeshService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeshService.swift; sourceTree = "<group>"; };
+		B84E752A9C411A0068C3642A /* NLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NLog.swift; sourceTree = "<group>"; };
 		4B4DC2A22C1D63D0A2DB198E /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		54703935BF10B9442B84A047 /* ja */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ja; path = ja.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 		648BCDE5F19E5D99938EF769 /* es */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = es; path = es.lproj/Localizable.strings; sourceTree = "<group>"; };
@@ -71,6 +76,7 @@
 		B6DFF40B583D776D7A8C0765 /* tr */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = tr; path = tr.lproj/Localizable.strings; sourceTree = "<group>"; };
 		BAC423338EB2B34CADC8E0B8 /* de */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = de; path = de.lproj/Localizable.strings; sourceTree = "<group>"; };
 		C024C0EBE3FB187254C293DC /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
+		53F808313974F4C5A3675831 /* PowerMode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PowerMode.swift; sourceTree = "<group>"; };
 		C1CA4237D0D8C254B3DC3F73 /* ar */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ar; path = ar.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 		C7A977CC9AA1F1EAA1B1CA87 /* pt */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = pt; path = pt.lproj/Localizable.strings; sourceTree = "<group>"; };
 		CADD5E0A258746B2B1943DC9 /* it */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = it; path = it.lproj/Localizable.strings; sourceTree = "<group>"; };
@@ -93,6 +99,7 @@
 				B0FD3D663C778C0215AE098E /* MeshCrypto.swift */,
 				EABB9A6E8D239B7DB6FB97D9 /* MeshRouter.swift */,
 				2FE7E11464E41C885097BF69 /* MeshService.swift */,
+				B84E752A9C411A0068C3642A /* NLog.swift */,
 				73E4BAF73843F626F41F1F98 /* Photos.swift */,
 				A2C5BABD63D9698F3E56778E /* Platform.swift */,
 			);
@@ -141,6 +148,7 @@
 			isa = PBXGroup;
 			children = (
 				C024C0EBE3FB187254C293DC /* Theme.swift */,
+				53F808313974F4C5A3675831 /* PowerMode.swift */,
 			);
 			path = DesignSystem;
 			sourceTree = "<group>";
@@ -167,6 +175,7 @@
 				D241971198B28D215DA0998F /* OnboardingView.swift */,
 				673E83108438FED95148260B /* SosView.swift */,
 				2A8156C4CF0D5D5CDE983A47 /* ThreadView.swift */,
+				52CA2C589CFEC6E0B48B454C /* ShareSheet.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -271,6 +280,7 @@
 				02D7F83D3E0DAF299FEDBE53 /* MeshCrypto.swift in Sources */,
 				B158B62F5C0459D1305A682B /* MeshRouter.swift in Sources */,
 				E259DC715A0201B116936F54 /* MeshService.swift in Sources */,
+				DAB12F9989026C69B0C97EBD /* NLog.swift in Sources */,
 				2113AC1F1814AC65798D9AA6 /* Models.swift in Sources */,
 				23E6DC6F8C707B6C7FAABD7B /* NearbyView.swift in Sources */,
 				5C78597EA3F1F9CF377B3DF4 /* NearsendChatApp.swift in Sources */,
@@ -279,7 +289,9 @@
 				2805A4A18DC1E6078505BED7 /* Platform.swift in Sources */,
 				0059D5DCB4708411765D6F61 /* SosView.swift in Sources */,
 				118D7104DACC4D20E1EB6C53 /* Theme.swift in Sources */,
+				B7C254E9F18777956D19479F /* PowerMode.swift in Sources */,
 				BC55CF1D950DBF3637488042 /* ThreadView.swift in Sources */,
+				FDE0E33B7E5BD3077DD9467B /* ShareSheet.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
