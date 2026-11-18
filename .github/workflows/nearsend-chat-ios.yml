@@ -9,6 +9,7 @@ permissions:
 jobs:
   build:
     runs-on: macos-15-intel
+    timeout-minutes: 60
     defaults:
       run:
         working-directory: NearsendChatiOS
@@ -42,6 +43,7 @@ jobs:
           grep -E "error:" build.log | sort -u | head -20 | while IFS= read -r l; do echo "::error::${l//%/%25}"; done
           exit $code
       - name: Screenshots
+        timeout-minutes: 25   # a hung simulator once held the runner for 4 hours
         run: |
           set -x
           xcrun simctl boot $UDID; xcrun simctl bootstatus $UDID -b
