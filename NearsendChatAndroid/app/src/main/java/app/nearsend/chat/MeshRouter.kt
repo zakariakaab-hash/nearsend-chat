@@ -133,6 +133,7 @@ class MeshRouter(val myId: String, var myName: String, private val crypto: MeshC
         if (id == myId || pk.size != 32) return
         links[link] = id
         peers[id] = PeerInfo(name, pk, 1, now(), true)
+        NLog.i("mesh", "neighbour up ${NLog.s(id)} link=${NLog.l(link)} sayHello=$sayHello (${links.size} link(s))")
         onKey?.invoke(id, pk)
         emitPeers()
         if (sayHello) sendHello(link)
@@ -157,6 +158,7 @@ class MeshRouter(val myId: String, var myName: String, private val crypto: MeshC
     private fun deliverHeld(id: String) {
         for ((p, _) in held.values.toList()) if (p.dst == id) {
             val direct = bestLink(id) != null
+            NLog.i("mesh", "deliver held ${p.t} ${NLog.s(p.id)} to ${NLog.s(id)} direct=$direct")
             route(p.withTtl(START_TTL), null) { if (it == SendOutcome.Sent && direct) held.remove(p.id) }
         }
     }
@@ -164,6 +166,7 @@ class MeshRouter(val myId: String, var myName: String, private val crypto: MeshC
     private fun hold(p: Packet) {
         if (p.dst == null || p.dst == myId) return
         held.remove(p.id)
+        NLog.i("mesh", "hold ${p.t} ${NLog.s(p.id)} for ${NLog.s(p.dst)} (${held.size + 1} held)")
         held[p.id] = p to minOf(p.ts, now()) + HOLD_MS     // a sender clock in the future cannot keep it longer
         while (held.size > MAX_HELD) held.remove(held.keys.first())
     }
@@ -192,15 +195,16 @@ class MeshRouter(val myId: String, var myName: String, private val crypto: MeshC
         if (peers[dst]?.direct != true || bestLink(dst) == null) return completion(SendOutcome.Unreachable)
         val sealed = runCatching { crypto.sealData(bytes, pk, myId, dst, photoId) }.getOrNull() ?: return completion(SendOutcome.Failed)
         val cnt = (sealed.size + PHOTO_CHUNK - 1) / PHOTO_CHUNK
+        NLog.i("photo", "send to ${NLog.s(dst)}: ${bytes.size} bytes, $cnt chunk(s)")
         if (cnt > MAX_PHOTO_CHUNKS) return completion(SendOutcome.Failed)
         fun next(i: Int) {
-            if (i == cnt) return completion(SendOutcome.Sent)
-            val link = bestLink(dst) ?: return completion(SendOutcome.Unreachable)
+            if (i == cnt) { NLog.i("photo", "send done, $cnt chunk(s) handed to Bluetooth"); return completion(SendOutcome.Sent) }
+            val link = bestLink(dst) ?: run { NLog.i("photo", "send stopped at chunk $i/$cnt: peer gone"); return completion(SendOutcome.Unreachable) }
             val part = sealed.copyOfRange(i * PHOTO_CHUNK, minOf(sealed.size, (i + 1) * PHOTO_CHUNK))
             val p = Packet("img", UUID.randomUUID().toString(), myId, dst, 1, now(), n = myName, ct = b64.encodeToString(part), ref = photoId, ix = i, cnt = cnt)
             remember(p.id)
             val t = transmit ?: return completion(SendOutcome.Failed)
-            t(link, p.toBytes()) { ok -> if (ok) { progress((i + 1f) / cnt); next(i + 1) } else completion(SendOutcome.Failed) }
+            t(link, p.toBytes()) { ok -> if (ok) { progress((i + 1f) / cnt); next(i + 1) } else { NLog.i("photo", "chunk $i/$cnt write failed"); completion(SendOutcome.Failed) } }
         }
         next(0)
     }
@@ -208,7 +212,7 @@ class MeshRouter(val myId: String, var myName: String, private val crypto: MeshC
     private fun receiveImg(p: Packet) {
         val ref = p.ref ?: return; val ix = p.ix ?: return; val cnt = p.cnt ?: return
         if (cnt !in 1..MAX_PHOTO_CHUNKS || ix !in 0 until cnt || ref in donePhotos) return
-        val pk = keyOf(p.src) ?: return                      // only from people whose key we have
+        val pk = keyOf(p.src) ?: return NLog.i("photo", "chunk from ${NLog.s(p.src)} ignored: no key")                      // only from people whose key we have
         val part = runCatching { unb64.decode(p.ct ?: return) }.getOrNull() ?: return
         if (part.isEmpty() || part.size > PHOTO_CHUNK + 16) return
         val inc = incoming.getOrPut(ref) { if (incoming.size >= 4) return; Incoming(p.src, cnt, arrayOfNulls(cnt), now()) }
@@ -217,7 +221,8 @@ class MeshRouter(val myId: String, var myName: String, private val crypto: MeshC
         if (inc.parts.any { it == null }) return
         incoming.remove(ref)
         val sealed = inc.parts.fold(ByteArray(0)) { a, b -> a + b!! }
-        val bytes = runCatching { crypto.openData(sealed, pk, myId, p.src, ref) }.getOrNull() ?: return
+        val bytes = runCatching { crypto.openData(sealed, pk, myId, p.src, ref) }.getOrNull() ?: return NLog.i("photo", "from ${NLog.s(p.src)}: all $cnt chunk(s) arrived but could not be opened")
+        NLog.i("photo", "received from ${NLog.s(p.src)}: ${bytes.size} bytes in $cnt chunk(s)")
         donePhotos += ref; if (donePhotos.size > 100) donePhotos.remove(donePhotos.first())
         onPhoto?.invoke(p.src, p.n ?: peers[p.src]?.name ?: "?", ref, bytes)
         // A photo is confirmed even when delivery receipts are off: without it the sender cannot tell a lost chunk from success.
@@ -234,6 +239,7 @@ class MeshRouter(val myId: String, var myName: String, private val crypto: MeshC
 
     fun neighborLost(link: String) {
         val id = links.remove(link) ?: return
+        NLog.i("mesh", "neighbour down ${NLog.s(id)} link=${NLog.l(link)} (${links.size} link(s) left)")
         if (!links.containsValue(id)) { peers.remove(id); rssi.remove(id) }
         emitPeers()
     }
@@ -358,6 +364,7 @@ class MeshRouter(val myId: String, var myName: String, private val crypto: MeshC
         if (p.src == myId || p.id in seen) return
         remember(p.id)
         val hops = maxOf(1, START_TTL + 1 - p.ttl)
+        if (p.t != "ann") NLog.i("mesh", "rx ${p.t} ${NLog.s(p.id)} from ${NLog.s(p.src)} to ${if (p.dst == null) "all" else if (p.dst == myId) "me" else NLog.s(p.dst)} ttl=${p.ttl} hops=$hops via ${NLog.l(from)}")
         when (p.t) {
             "hi" -> {            // a phone that connected to us introduces itself; we can now reply over that connection
                 val link = from ?: return
@@ -372,13 +379,13 @@ class MeshRouter(val myId: String, var myName: String, private val crypto: MeshC
                 peers[p.src] = PeerInfo(p.n ?: "?", pk, if (direct) 1 else hops, now(), direct, if (direct) null else from?.let { links[it] }, Avatars.valid(p.av))
                 onKey?.invoke(p.src, pk)
                 emitPeers()
-                if (!wasKnown) deliverHeld(p.src)
+                if (!wasKnown) { NLog.i("mesh", "new peer ${NLog.s(p.src)} via announcement, ${hops} hop(s)"); deliverHeld(p.src) }
                 forward(p, from)
             }
             "msg" -> if (p.dst == myId) {
-                val pk = keyOf(p.src) ?: return
+                val pk = keyOf(p.src) ?: return NLog.i("mesh", "msg from ${NLog.s(p.src)} dropped: no key")
                 val ct = runCatching { unb64.decode(p.ct ?: return) }.getOrNull() ?: return
-                val text = runCatching { crypto.open(ct, pk, myId, p.src, p.id) }.getOrNull() ?: return
+                val text = runCatching { crypto.open(ct, pk, myId, p.src, p.id) }.getOrNull() ?: return NLog.i("mesh", "msg ${NLog.s(p.id)} from ${NLog.s(p.src)} could not be opened (wrong key or damaged)")
                 onText?.invoke(p.src, p.n ?: peers[p.src]?.name ?: "?", text, hops, p.id)
                 ack(p)
             } else passOn(p, from)
@@ -393,9 +400,9 @@ class MeshRouter(val myId: String, var myName: String, private val crypto: MeshC
                 forward(p, from)
             }
             "gm" -> if (p.dst == myId) {
-                val pk = keyOf(p.src) ?: return
+                val pk = keyOf(p.src) ?: return NLog.i("mesh", "group msg from ${NLog.s(p.src)} dropped: no key")
                 val ct = runCatching { unb64.decode(p.ct ?: return) }.getOrNull() ?: return
-                val o = runCatching { JSONObject(crypto.open(ct, pk, myId, p.src, p.id)) }.getOrNull() ?: return
+                val o = runCatching { JSONObject(crypto.open(ct, pk, myId, p.src, p.id)) }.getOrNull() ?: return NLog.i("mesh", "group msg ${NLog.s(p.id)} from ${NLog.s(p.src)} could not be opened")
                 val group = o.optString("g"); val text = o.optString("tx")
                 if (!group.startsWith("g:") || text.isEmpty()) return
                 val ms = o.optJSONArray("m") ?: JSONArray()
@@ -452,11 +459,13 @@ class MeshRouter(val myId: String, var myName: String, private val crypto: MeshC
     private fun route(p: Packet, except: String?, completion: ((SendOutcome) -> Unit)?) {
         var targets = allBestLinks(except?.let { links[it] })
         p.dst?.let { dst -> bestLink(dst)?.let { targets = listOf(it) } }
-        if (targets.isEmpty()) { completion?.invoke(SendOutcome.Unreachable); return }
+        if (targets.isEmpty()) { if (p.t != "ann") NLog.i("mesh", "tx ${p.t} ${NLog.s(p.id)}: nobody in range"); completion?.invoke(SendOutcome.Unreachable); return }
+        if (p.t != "ann") NLog.i("mesh", "tx ${p.t} ${NLog.s(p.id)} to ${if (p.dst == null) "all" else NLog.s(p.dst)} ttl=${p.ttl} over ${targets.size} link(s)")
         val data = p.toBytes()
         var pending = targets.size; var ok = false
         for (l in targets) {
             transmit?.invoke(l, data) { success ->
+                if (!success) NLog.i("mesh", "tx ${p.t} ${NLog.s(p.id)} failed on ${NLog.l(l)}")
                 if (success) ok = true
                 pending--
                 if (pending == 0) completion?.invoke(if (ok) SendOutcome.Sent else SendOutcome.Failed)

@@ -79,9 +79,10 @@ class BleTransport(private val ctx: Context, private val id: String, private var
 
     fun start() {
         val adapter = btManager?.adapter
-        if (adapter == null) { onState?.invoke("unsupported"); return }
-        if (!adapter.isEnabled) { onState?.invoke("off"); return }
+        if (adapter == null) { NLog.i("ble", "no Bluetooth adapter"); onState?.invoke("unsupported"); return }
+        if (!adapter.isEnabled) { NLog.i("ble", "Bluetooth is off"); onState?.invoke("off"); return }
         if (running) return
+        NLog.i("ble", "start: advertising + scanning, my id ${NLog.s(id)}")
         running = true
         server = btManager.openGattServer(ctx, serverCb)
         val svc = BluetoothGattService(SERVICE, BluetoothGattService.SERVICE_TYPE_PRIMARY)
@@ -100,6 +101,7 @@ class BleTransport(private val ctx: Context, private val id: String, private var
     }
 
     fun stop() {
+        NLog.i("ble", "stop")
         running = false
         main.removeCallbacks(rssiTick)
         val adapter = btManager?.adapter
@@ -157,7 +159,7 @@ class BleTransport(private val ctx: Context, private val id: String, private var
                 link.gatt.writeCharacteristic(ch)
             }
         }
-        if (!ok) { link.busy = false; link.inflight = null; done(false); pump(link) }
+        if (!ok) { NLog.i("ble", "write refused by the phone (${data.size} bytes)"); link.busy = false; link.inflight = null; done(false); pump(link) }
     }
 
     // ---- notifying a phone that connected to us ("in" links)
@@ -180,11 +182,12 @@ class BleTransport(private val ctx: Context, private val id: String, private var
         } else {
             @Suppress("DEPRECATION") run { ch.value = frag; server?.notifyCharacteristicChanged(device, ch, false) == true }
         }
-        if (!ok) { notifying = false; notifyQueue.removeFirst(); out.done(false); pumpNotify() }
+        if (!ok) { NLog.i("ble", "notify refused for ${NLog.l("in:" + out.addr)}"); notifying = false; notifyQueue.removeFirst(); out.done(false); pumpNotify() }
     }
 
     private fun removeSubscriber(addr: String) {
         if (subscribers.remove(addr) == null) return
+        NLog.i("ble", "subscriber left ${NLog.l("in:$addr")}")
         mtus.remove(addr); notifySeq.remove(addr)
         if (notifying && notifyQueue.firstOrNull()?.addr == addr) notifying = false   // its completion callback will never come
         val it = notifyQueue.iterator()
@@ -208,9 +211,9 @@ class BleTransport(private val ctx: Context, private val id: String, private var
         val addr = gatt.device.address
         val link = links[addr] ?: return
         link.busy = false
-        val o = runCatching { JSONObject(String(bytes ?: return)) }.getOrNull() ?: return
+        val o = runCatching { JSONObject(String(bytes ?: return)) }.getOrNull() ?: return NLog.i("ble", "identity from ${NLog.l("out:$addr")} is not valid JSON")
         val pid = o.optString("id")
-        val pk = runCatching { Base64.getDecoder().decode(o.optString("pk")) }.getOrNull() ?: return
+        val pk = runCatching { Base64.getDecoder().decode(o.optString("pk")) }.getOrNull() ?: return NLog.i("ble", "identity from ${NLog.l("out:$addr")} has a bad key")
         if (pid.isEmpty() || pid == id || pk.size != 32) return
         link.identity = Triple(pid, o.optString("name"), pk)
         maybeAnnounce(addr, link)
@@ -226,6 +229,7 @@ class BleTransport(private val ctx: Context, private val id: String, private var
             links.remove(e.key); e.value.failAll(); runCatching { e.value.gatt.close() }; onLost?.invoke("out:${e.key}")
         }
         link.announced = true
+        NLog.i("ble", "link ready out:${NLog.s(ident.first)} ${NLog.l("out:$addr")} (notifications on, identity read)")
         link.peerId = ident.first
         onNeighbor?.invoke("out:$addr", ident.first, ident.second, ident.third)
         link.gatt.readRemoteRssi()
@@ -234,6 +238,7 @@ class BleTransport(private val ctx: Context, private val id: String, private var
     private fun drop(gatt: BluetoothGatt) {
         val addr = gatt.device.address
         val link = links.remove(addr)
+        NLog.i("ble", "drop ${NLog.l("out:$addr")} announced=${link?.announced}")
         link?.failAll()
         runCatching { gatt.close() }
         if (link?.announced == true) onLost?.invoke("out:$addr")
@@ -246,20 +251,27 @@ class BleTransport(private val ctx: Context, private val id: String, private var
     }
 
     private val scanCb = object : ScanCallback() {
+        override fun onScanFailed(errorCode: Int) { NLog.i("ble", "scan FAILED, error $errorCode") }
+
         override fun onScanResult(callbackType: Int, result: ScanResult) {
             main.post {
                 if (!running) return@post
                 val addr = result.device.address
                 if (links.containsKey(addr)) return@post
+                NLog.i("ble", "found ${NLog.l("out:$addr")} rssi=${result.rssi}, connecting")
                 links[addr] = Link(result.device.connectGatt(ctx, false, gattCb, BluetoothDevice.TRANSPORT_LE))
             }
         }
     }
 
-    private val advCb = object : AdvertiseCallback() {}
+    private val advCb = object : AdvertiseCallback() {
+        override fun onStartSuccess(settingsInEffect: AdvertiseSettings) { NLog.i("ble", "advertising started") }
+        override fun onStartFailure(errorCode: Int) { NLog.i("ble", "advertising FAILED, error $errorCode (1=too large 2=too many advertisers 3=already started 4=internal 5=unsupported)") }
+    }
 
     private val gattCb = object : BluetoothGattCallback() {
         override fun onConnectionStateChange(gatt: BluetoothGatt, status: Int, newState: Int) {
+            NLog.i("ble", "out ${NLog.l("out:" + gatt.device.address)} state=$newState status=$status")
             main.post {
                 if (newState == BluetoothProfile.STATE_CONNECTED && status == BluetoothGatt.GATT_SUCCESS) {
                     if (!gatt.requestMtu(247)) gatt.discoverServices()
@@ -270,13 +282,14 @@ class BleTransport(private val ctx: Context, private val id: String, private var
         }
 
         override fun onMtuChanged(gatt: BluetoothGatt, mtu: Int, status: Int) {
+            NLog.i("ble", "out ${NLog.l("out:" + gatt.device.address)} mtu=$mtu status=$status")
             main.post { gatt.discoverServices() }
         }
 
         override fun onServicesDiscovered(gatt: BluetoothGatt, status: Int) {
             main.post {
                 val link = links[gatt.device.address] ?: return@post
-                val svc = gatt.getService(SERVICE) ?: return@post
+                val svc = gatt.getService(SERVICE) ?: return@post NLog.i("ble", "out ${NLog.l("out:" + gatt.device.address)} has no Nearsend service (status $status)")
                 link.msgChar = svc.getCharacteristic(MSG_CHAR)
                 link.identityChar = svc.getCharacteristic(ID_CHAR)
                 link.notifyChar = svc.getCharacteristic(NOTIFY_CHAR)
@@ -342,6 +355,7 @@ class BleTransport(private val ctx: Context, private val id: String, private var
             main.post {
                 val link = links[gatt.device.address] ?: return@post
                 link.busy = false
+                if (status != BluetoothGatt.GATT_SUCCESS) NLog.i("ble", "write to ${NLog.l("out:" + gatt.device.address)} failed, status $status")
                 val cb = link.inflight; link.inflight = null
                 cb?.invoke(status == BluetoothGatt.GATT_SUCCESS)
                 pump(link)
@@ -351,7 +365,7 @@ class BleTransport(private val ctx: Context, private val id: String, private var
 
     private val serverCb = object : BluetoothGattServerCallback() {
         override fun onServiceAdded(status: Int, service: BluetoothGattService) {
-            if (status != BluetoothGatt.GATT_SUCCESS) return
+            if (status != BluetoothGatt.GATT_SUCCESS) { NLog.i("ble", "adding the GATT service FAILED, status $status"); return }
             val settings = AdvertiseSettings.Builder()
                 .setAdvertiseMode(AdvertiseSettings.ADVERTISE_MODE_BALANCED)
                 .setTxPowerLevel(AdvertiseSettings.ADVERTISE_TX_POWER_MEDIUM)
@@ -361,6 +375,7 @@ class BleTransport(private val ctx: Context, private val id: String, private var
         }
 
         override fun onConnectionStateChange(device: BluetoothDevice, status: Int, newState: Int) {
+            NLog.i("ble", "in ${NLog.l("in:" + device.address)} state=$newState status=$status")
             if (newState == BluetoothProfile.STATE_DISCONNECTED) main.post { removeSubscriber(device.address) }
         }
 
@@ -372,7 +387,7 @@ class BleTransport(private val ctx: Context, private val id: String, private var
         ) {
             if (descriptor.uuid == CCCD && descriptor.characteristic.uuid == NOTIFY_CHAR) {
                 val on = value != null && value.isNotEmpty() && value[0].toInt() != 0
-                main.post { if (on) subscribers[device.address] = device else removeSubscriber(device.address) }
+                main.post { if (on) { subscribers[device.address] = device; NLog.i("ble", "subscriber joined ${NLog.l("in:" + device.address)}") } else removeSubscriber(device.address) }
             }
             if (responseNeeded) server?.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, offset, value)
         }
@@ -382,7 +397,7 @@ class BleTransport(private val ctx: Context, private val id: String, private var
                 notifying = false
                 val out = notifyQueue.firstOrNull()
                 if (out != null) {
-                    if (status != BluetoothGatt.GATT_SUCCESS) { notifyQueue.removeFirst(); out.done(false) } else out.frags.removeFirstOrNull()
+                    if (status != BluetoothGatt.GATT_SUCCESS) { NLog.i("ble", "notify to ${NLog.l("in:" + out.addr)} failed, status $status"); notifyQueue.removeFirst(); out.done(false) } else out.frags.removeFirstOrNull()
                 }
                 pumpNotify()
             }

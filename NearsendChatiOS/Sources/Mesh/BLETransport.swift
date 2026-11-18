@@ -63,6 +63,7 @@ final class BLETransport: NSObject {
 
     func start() {
         guard central == nil else { return }
+        NLog.i("ble", "start: advertising + scanning, my id \(NLog.s(identity.id))")
         central = CBCentralManager(delegate: self, queue: .main, options: [CBCentralManagerOptionRestoreIdentifierKey: Self.centralRestoreID])
         peripheralManager = CBPeripheralManager(delegate: self, queue: .main, options: [CBPeripheralManagerOptionRestoreIdentifierKey: Self.peripheralRestoreID])
         // Reading signal strength keeps the radio busy: every 6 s, or every 15 s in Low Power Mode.
@@ -75,6 +76,7 @@ final class BLETransport: NSObject {
     }
 
     func stop() {
+        NLog.i("ble", "stop")
         timer?.invalidate(); timer = nil
         central?.stopScan()
         links.values.forEach { central?.cancelPeripheralConnection($0.peripheral) }
@@ -108,6 +110,7 @@ final class BLETransport: NSObject {
             outgoing.append(Outgoing(centralID: uuid, frags: frags, done: done))
             pumpNotify()
         } else {
+            NLog.i("ble", "write refused: no such link \(NLog.l(link))")
             done(false)
         }
     }
@@ -141,6 +144,7 @@ final class BLETransport: NSObject {
         guard let l = links[p.identifier], !l.announced, l.notifyReady, let id = l.identity,
               let pk = Data(base64Encoded: id.pk), pk.count == 32, id.id != identity.id else { return }
         l.announced = true
+        NLog.i("ble", "link ready out:\(NLog.s(id.id)) \(NLog.l("out:\(p.identifier.uuidString)")) (notifications on, identity read)")
         onNeighbor?("out:\(p.identifier.uuidString)", id.id, id.name, pk)
         p.readRSSI()
     }
@@ -158,6 +162,7 @@ final class BLETransport: NSObject {
 
 extension BLETransport: CBCentralManagerDelegate {
     func centralManagerDidUpdateState(_ c: CBCentralManager) {
+        NLog.i("ble", "central state: \(stateName(c.state))")
         onState?(stateName(c.state))
         if c.state == .poweredOn { startScan() }
     }
@@ -178,14 +183,24 @@ extension BLETransport: CBCentralManagerDelegate {
 
     func centralManager(_ c: CBCentralManager, didDiscover p: CBPeripheral, advertisementData: [String: Any], rssi RSSI: NSNumber) {
         guard links[p.identifier] == nil else { return }
+        NLog.i("ble", "found \(NLog.l("out:\(p.identifier.uuidString)")) rssi=\(RSSI), connecting")
         links[p.identifier] = Link(p)
         p.delegate = self
         c.connect(p)
     }
 
-    func centralManager(_ c: CBCentralManager, didConnect p: CBPeripheral) { p.discoverServices([Self.service]) }
-    func centralManager(_ c: CBCentralManager, didFailToConnect p: CBPeripheral, error: Error?) { drop(p) }
-    func centralManager(_ c: CBCentralManager, didDisconnectPeripheral p: CBPeripheral, error: Error?) { drop(p) }
+    func centralManager(_ c: CBCentralManager, didConnect p: CBPeripheral) {
+        NLog.i("ble", "connected \(NLog.l("out:\(p.identifier.uuidString)")), discovering services")
+        p.discoverServices([Self.service])
+    }
+    func centralManager(_ c: CBCentralManager, didFailToConnect p: CBPeripheral, error: Error?) {
+        NLog.i("ble", "connect FAILED \(NLog.l("out:\(p.identifier.uuidString)")): \(error?.localizedDescription ?? "no error")")
+        drop(p)
+    }
+    func centralManager(_ c: CBCentralManager, didDisconnectPeripheral p: CBPeripheral, error: Error?) {
+        NLog.i("ble", "disconnected \(NLog.l("out:\(p.identifier.uuidString)")): \(error?.localizedDescription ?? "clean")")
+        drop(p)
+    }
 
     private func drop(_ p: CBPeripheral) {
         guard let l = links.removeValue(forKey: p.identifier) else { return }
@@ -198,7 +213,9 @@ extension BLETransport: CBCentralManagerDelegate {
 
 extension BLETransport: CBPeripheralDelegate {
     func peripheral(_ p: CBPeripheral, didDiscoverServices error: Error?) {
-        guard let svc = p.services?.first(where: { $0.uuid == Self.service }) else { return }
+        guard let svc = p.services?.first(where: { $0.uuid == Self.service }) else {
+            NLog.i("ble", "\(NLog.l("out:\(p.identifier.uuidString)")) has no Nearsend service: \(error?.localizedDescription ?? "not offered")"); return
+        }
         p.discoverCharacteristics([Self.identityChar, Self.messageChar, Self.notifyChar], for: svc)
     }
 
@@ -236,6 +253,7 @@ extension BLETransport: CBPeripheralDelegate {
 
     func peripheral(_ p: CBPeripheral, didWriteValueFor ch: CBCharacteristic, error: Error?) {
         guard let link = links[p.identifier], !link.writes.isEmpty else { return }
+        if let error { NLog.i("ble", "write to \(NLog.l("out:\(p.identifier.uuidString)")) failed: \(error.localizedDescription)") }
         link.writes.removeFirst()(error == nil)
     }
 }
@@ -246,23 +264,32 @@ extension BLETransport: CBPeripheralManagerDelegate {
     func peripheralManager(_ pm: CBPeripheralManager, willRestoreState dict: [String: Any]) {}
 
     func peripheralManagerDidUpdateState(_ pm: CBPeripheralManager) {
+        NLog.i("ble", "peripheral state: \(pm.state == .poweredOn ? "ready" : "not ready")")
         guard pm.state == .poweredOn else { return }
         pm.stopAdvertising(); pm.removeAllServices()
         addService()
     }
 
     func peripheralManager(_ pm: CBPeripheralManager, didAdd service: CBService, error: Error?) {
-        guard error == nil else { return }
+        guard error == nil else { NLog.i("ble", "adding the GATT service FAILED: \(error?.localizedDescription ?? "")"); return }
         pm.startAdvertising([CBAdvertisementDataServiceUUIDsKey: [Self.service]])
     }
 
+    func peripheralManagerDidStartAdvertising(_ pm: CBPeripheralManager, error: Error?) {
+        if let error { NLog.i("ble", "advertising FAILED: \(error.localizedDescription)") } else { NLog.i("ble", "advertising started") }
+    }
+
     func peripheralManager(_ pm: CBPeripheralManager, central: CBCentral, didSubscribeTo characteristic: CBCharacteristic) {
-        if characteristic.uuid == Self.notifyChar { subscribers[central.identifier] = central }
+        if characteristic.uuid == Self.notifyChar {
+            subscribers[central.identifier] = central
+            NLog.i("ble", "subscriber joined \(NLog.l("in:\(central.identifier.uuidString)")) (max \(central.maximumUpdateValueLength) bytes per notify)")
+        }
     }
 
     func peripheralManager(_ pm: CBPeripheralManager, central: CBCentral, didUnsubscribeFrom characteristic: CBCharacteristic) {
         guard characteristic.uuid == Self.notifyChar, subscribers.removeValue(forKey: central.identifier) != nil else { return }
         notifySeq.removeValue(forKey: central.identifier)
+        NLog.i("ble", "subscriber left \(NLog.l("in:\(central.identifier.uuidString)"))")
         onLost?("in:\(central.identifier.uuidString)")
         pumpNotify()
     }

@@ -117,6 +117,7 @@ final class MeshRouter {
         guard id != myID, pk.count == 32 else { return }
         links[link] = id
         peers[id] = PeerInfo(name: name, pk: pk, hops: 1, lastSeen: now(), direct: true)
+        NLog.i("mesh", "neighbour up \(NLog.s(id)) link=\(NLog.l(link)) sayHello=\(sayHello) (\(links.count) link(s))")
         onKey?(id, pk)
         emitPeers()
         if sayHello { sendHello(to: link) }
@@ -126,6 +127,7 @@ final class MeshRouter {
 
     func neighborLost(link: String) {
         guard let id = links.removeValue(forKey: link) else { return }
+        NLog.i("mesh", "neighbour down \(NLog.s(id)) link=\(NLog.l(link)) (\(links.count) link(s) left)")
         if !links.values.contains(id) { peers.removeValue(forKey: id); rssi.removeValue(forKey: id) }
         emitPeers()
     }
@@ -172,6 +174,7 @@ final class MeshRouter {
     private func deliverHeld(to id: String) {
         for p in heldPackets() where p.dst == id {
             let direct = bestLink(for: id) != nil
+            NLog.i("mesh", "deliver held \(p.t) \(NLog.s(p.id)) to \(NLog.s(id)) direct=\(direct)")
             var q = p; q.ttl = Self.startTTL
             route(q, except: nil) { [weak self] r in if r == .sent && direct { self?.dropHeld(p.id) } }
         }
@@ -180,6 +183,7 @@ final class MeshRouter {
     private func hold(_ p: Packet) {
         guard let dst = p.dst, dst != myID else { return }
         dropHeld(p.id)
+        NLog.i("mesh", "hold \(p.t) \(NLog.s(p.id)) for \(NLog.s(dst)) (\(held.count + 1) held)")
         let sent = Date(timeIntervalSince1970: Double(p.ts) / 1000)
         held[p.id] = (p, min(sent, now()).addingTimeInterval(Self.holdTime))   // a sender clock in the future cannot keep it longer
         heldOrder.append(p.id)
@@ -311,17 +315,18 @@ final class MeshRouter {
         guard peers[dst]?.direct == true, bestLink(for: dst) != nil else { completion(.unreachable); return }
         guard let sealed = try? crypto.sealData(bytes, peerPK: pk, myID: myID, peerID: dst, aad: photoID) else { completion(.failed); return }
         let cnt = (sealed.count + Self.photoChunk - 1) / Self.photoChunk
+        NLog.i("photo", "send to \(NLog.s(dst)): \(bytes.count) bytes, \(cnt) chunk(s)")
         guard cnt <= Self.maxPhotoChunks else { completion(.failed); return }
         func next(_ i: Int) {
-            if i == cnt { completion(.sent); return }
-            guard let link = bestLink(for: dst) else { completion(.unreachable); return }
+            if i == cnt { NLog.i("photo", "send done, \(cnt) chunk(s) handed to Bluetooth"); completion(.sent); return }
+            guard let link = bestLink(for: dst) else { NLog.i("photo", "send stopped at chunk \(i)/\(cnt): peer gone"); completion(.unreachable); return }
             let lo = i * Self.photoChunk, hi = min(sealed.count, (i + 1) * Self.photoChunk)
             var p = Packet(t: "img", id: UUID().uuidString, src: myID, dst: dst, ttl: 1, ts: ms())
             p.n = myName; p.ct = sealed.subdata(in: lo..<hi).base64EncodedString(); p.ref = photoID; p.ix = i; p.cnt = cnt
             remember(p.id)
             guard let data = try? encoder.encode(p), let t = transmit else { completion(.failed); return }
             t(link, data) { ok in
-                if ok { progress(Double(i + 1) / Double(cnt)); next(i + 1) } else { completion(.failed) }
+                if ok { progress(Double(i + 1) / Double(cnt)); next(i + 1) } else { NLog.i("photo", "chunk \(i)/\(cnt) write failed"); completion(.failed) }
             }
         }
         next(0)
@@ -345,7 +350,10 @@ final class MeshRouter {
         incoming.removeValue(forKey: ref)
         var sealed = Data()
         for piece in inc.parts { if let piece { sealed.append(piece) } }
-        guard let bytes = try? crypto.openData(sealed, peerPK: pk, myID: myID, peerID: p.src, aad: ref) else { return }
+        guard let bytes = try? crypto.openData(sealed, peerPK: pk, myID: myID, peerID: p.src, aad: ref) else {
+            NLog.i("photo", "from \(NLog.s(p.src)): all \(cnt) chunk(s) arrived but could not be opened"); return
+        }
+        NLog.i("photo", "received from \(NLog.s(p.src)): \(bytes.count) bytes in \(cnt) chunk(s)")
         donePhotos.append(ref); if donePhotos.count > 100 { donePhotos.removeFirst() }
         onPhoto?(p.src, p.n ?? peers[p.src]?.name ?? "?", ref, bytes)
         // A photo is confirmed even when delivery receipts are off: without it the sender cannot tell a lost chunk from success.
@@ -358,6 +366,9 @@ final class MeshRouter {
         guard let p = try? decoder.decode(Packet.self, from: data), p.v == 2, p.src != myID, !seen.contains(p.id) else { return }
         remember(p.id)
         let hops = max(1, Self.startTTL + 1 - p.ttl)
+        if p.t != "ann" {
+            NLog.i("mesh", "rx \(p.t) \(NLog.s(p.id)) from \(NLog.s(p.src)) to \(p.dst == nil ? "all" : (p.dst == myID ? "me" : NLog.s(p.dst))) ttl=\(p.ttl) hops=\(hops) via \(NLog.l(link))")
+        }
         switch p.t {
         case "hi":                       // a phone that connected to us introduces itself; we can now reply over that connection
             guard let link, let s = p.pk, let pk = Data(base64Encoded: s), pk.count == 32 else { return }
@@ -370,12 +381,14 @@ final class MeshRouter {
                                     via: direct ? nil : link.flatMap { links[$0] }, avatar: Avatars.valid(p.av))
             onKey?(p.src, pk)
             emitPeers()
-            if !wasKnown { deliverHeld(to: p.src) }
+            if !wasKnown { NLog.i("mesh", "new peer \(NLog.s(p.src)) via announcement, \(hops) hop(s)"); deliverHeld(to: p.src) }
             forward(p, from: link)
         case "msg":
             if p.dst == myID {
                 guard let pk = keyOf(p.src), let s = p.ct, let ct = Data(base64Encoded: s),
-                      let text = try? crypto.open(ct, peerPK: pk, myID: myID, peerID: p.src, aad: p.id) else { return }
+                      let text = try? crypto.open(ct, peerPK: pk, myID: myID, peerID: p.src, aad: p.id) else {
+                    NLog.i("mesh", "msg \(NLog.s(p.id)) from \(NLog.s(p.src)) dropped: no key, wrong key or damaged"); return
+                }
                 onText?(p.src, p.n ?? peers[p.src]?.name ?? "?", text, hops, p.id)
                 ack(p)
             } else { passOn(p, from: link) }
@@ -395,7 +408,9 @@ final class MeshRouter {
                 guard let pk = keyOf(p.src), let s = p.ct, let ct = Data(base64Encoded: s),
                       let str = try? crypto.open(ct, peerPK: pk, myID: myID, peerID: p.src, aad: p.id),
                       let body = try? decoder.decode(GroupBody.self, from: Data(str.utf8)),
-                      body.g.hasPrefix("g:"), !body.tx.isEmpty else { return }
+                      body.g.hasPrefix("g:"), !body.tx.isEmpty else {
+                    NLog.i("mesh", "group msg \(NLog.s(p.id)) from \(NLog.s(p.src)) dropped: no key, wrong key or damaged"); return
+                }
                 let members = (body.m ?? []).filter { !$0.id.isEmpty }.map { (id: $0.id, name: $0.n) }
                 let gn = body.gn.flatMap { $0.isEmpty ? nil : $0 } ?? "?"
                 onGroup?(p.src, p.n ?? peers[p.src]?.name ?? "?", body.g, gn, members, body.tx, hops, String(p.id.split(separator: ".").first ?? ""))
@@ -464,10 +479,15 @@ final class MeshRouter {
     private func route(_ p: Packet, except: String?, completion: ((SendOutcome) -> Void)?) {
         var targets = allBestLinks(except: except.flatMap { links[$0] })
         if let dst = p.dst, let direct = bestLink(for: dst) { targets = [direct] }
-        guard !targets.isEmpty, let data = try? encoder.encode(p) else { completion?(targets.isEmpty ? .unreachable : .failed); return }
+        guard !targets.isEmpty, let data = try? encoder.encode(p) else {
+            if p.t != "ann" { NLog.i("mesh", "tx \(p.t) \(NLog.s(p.id)): \(targets.isEmpty ? "nobody in range" : "could not encode")") }
+            completion?(targets.isEmpty ? .unreachable : .failed); return
+        }
+        if p.t != "ann" { NLog.i("mesh", "tx \(p.t) \(NLog.s(p.id)) to \(p.dst == nil ? "all" : NLog.s(p.dst)) ttl=\(p.ttl) over \(targets.count) link(s)") }
         var pending = targets.count; var ok = false
         for l in targets {
             transmit?(l, data) { success in
+                if !success { NLog.i("mesh", "tx \(p.t) \(NLog.s(p.id)) failed on \(NLog.l(l))") }
                 if success { ok = true }
                 pending -= 1
                 if pending == 0 { completion?(ok ? .sent : .failed) }
