@@ -127,7 +127,7 @@
     <string name="lbl_friend">Vän</string>
     <string name="lbl_waiting">väntar</string>
     <string name="tab_sos">SOS</string>
-    <string name="sos_reach">Larmet når alla telefoner i närheten, även via andra telefoner.</string>
+    <string name="sos_reach">Larmet når telefoner i närheten som har Nearsend Chat, även via andra telefoner. Det ringer inte larmnumret.</string>
     <string name="sos_hold">håll in</string>
     <string name="sos_hold_desc">Håll in i 2 sekunder för att skicka ett SOS-larm</string>
     <string name="sos_on">SOS är på · skickas igen var 15:e s</string>

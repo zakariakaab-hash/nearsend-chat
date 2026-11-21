@@ -23,7 +23,7 @@ struct SosView: View {
             ScrollView {
                 VStack(spacing: 16) {
                     PageTitle(text: "SOS").padding(.top, 8)
-                    SkyPill { Text("The alarm reaches every phone nearby, also through other phones.").font(.subheadline) }
+                    SkyPill { Text("The alarm reaches phones nearby that have Nearsend Chat, also through other phones. It does not call emergency services.").font(.subheadline) }
                         .frame(maxWidth: .infinity, alignment: .leading)
                     SosButton(active: store.mySos != nil) { store.startSos() }.padding(.vertical, 8)
                     if store.mySos != nil {

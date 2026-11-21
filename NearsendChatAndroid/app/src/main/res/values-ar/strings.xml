@@ -127,7 +127,7 @@
     <string name="lbl_friend">صديق</string>
     <string name="lbl_waiting">بانتظار</string>
     <string name="tab_sos">SOS</string>
-    <string name="sos_reach">يصل الإنذار إلى كل الهواتف القريبة، وعبر هواتف أخرى أيضًا.</string>
+    <string name="sos_reach">يصل التنبيه إلى الهواتف القريبة التي لديها Nearsend Chat، وعبر هواتف أخرى أيضًا. لا يتصل بخدمات الطوارئ.</string>
     <string name="sos_hold">اضغط مطولًا</string>
     <string name="sos_hold_desc">اضغط مطولًا لمدة ثانيتين لإرسال إنذار SOS</string>
     <string name="sos_on">SOS مُفعّل · يُعاد إرساله كل 15 ث</string>

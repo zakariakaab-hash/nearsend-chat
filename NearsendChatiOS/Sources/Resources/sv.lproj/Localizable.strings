@@ -125,7 +125,7 @@
 "Friend" = "Vän";
 "waiting" = "väntar";
 "SOS" = "SOS";
-"The alarm reaches every phone nearby, also through other phones." = "Larmet når alla telefoner i närheten, även via andra telefoner.";
+"The alarm reaches phones nearby that have Nearsend Chat, also through other phones. It does not call emergency services." = "Larmet når telefoner i närheten som har Nearsend Chat, även via andra telefoner. Det ringer inte larmnumret.";
 "hold" = "håll in";
 "Hold for 2 seconds to send an SOS alarm" = "Håll in i 2 sekunder för att skicka ett SOS-larm";
 "SOS is on · sent again every 15 s" = "SOS är på · skickas igen var 15:e s";

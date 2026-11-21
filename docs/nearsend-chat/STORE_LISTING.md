@@ -39,7 +39,7 @@ GOOD TO KNOW
 • This is an early version. It has not been security audited, so do not rely on it where your safety depends on it.
 • SOS alerts only reach phones that run Nearsend Chat nearby. In an emergency call your local emergency number.
 
-Questions or feedback: <your contact email>
+Questions or feedback: support@nearsend.app
 ```
 
 ## App Store (iPhone)

@@ -127,7 +127,7 @@
     <string name="lbl_friend">朋友</string>
     <string name="lbl_waiting">等待中</string>
     <string name="tab_sos">SOS</string>
-    <string name="sos_reach">警报会发送到附近所有手机，也会经由其他手机转发。</string>
+    <string name="sos_reach">警报会发送到附近装有 Nearsend Chat 的手机，也可经其他手机转发。它不会呼叫紧急服务。</string>
     <string name="sos_hold">长按</string>
     <string name="sos_hold_desc">长按 2 秒发送 SOS 警报</string>
     <string name="sos_on">SOS 已开启 · 每 15 秒重发</string>

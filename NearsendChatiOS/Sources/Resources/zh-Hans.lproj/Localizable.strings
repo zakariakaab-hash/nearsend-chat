@@ -125,7 +125,7 @@
 "Friend" = "朋友";
 "waiting" = "等待中";
 "SOS" = "SOS";
-"The alarm reaches every phone nearby, also through other phones." = "警报会发送到附近所有手机，也会经由其他手机转发。";
+"The alarm reaches phones nearby that have Nearsend Chat, also through other phones. It does not call emergency services." = "警报会发送到附近装有 Nearsend Chat 的手机，也可经其他手机转发。它不会呼叫紧急服务。";
 "hold" = "长按";
 "Hold for 2 seconds to send an SOS alarm" = "长按 2 秒发送 SOS 警报";
 "SOS is on · sent again every 15 s" = "SOS 已开启 · 每 15 秒重发";

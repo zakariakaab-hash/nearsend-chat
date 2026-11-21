@@ -127,7 +127,7 @@
     <string name="lbl_friend">友だち</string>
     <string name="lbl_waiting">待機中</string>
     <string name="tab_sos">SOS</string>
-    <string name="sos_reach">アラームは近くのすべてのスマホに届きます（他のスマホ経由でも）。</string>
+    <string name="sos_reach">アラームは Nearsend Chat を入れた近くのスマートフォンに、他の端末経由でも届きます。緊急通報はしません。</string>
     <string name="sos_hold">長押し</string>
     <string name="sos_hold_desc">2秒長押しで SOS アラームを送信</string>
     <string name="sos_on">SOS 送信中・15秒ごとに再送</string>

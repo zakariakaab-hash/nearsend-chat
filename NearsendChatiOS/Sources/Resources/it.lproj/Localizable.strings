@@ -125,7 +125,7 @@
 "Friend" = "Amico";
 "waiting" = "in attesa";
 "SOS" = "SOS";
-"The alarm reaches every phone nearby, also through other phones." = "L'allarme raggiunge tutti i telefoni vicini, anche tramite altri telefoni.";
+"The alarm reaches phones nearby that have Nearsend Chat, also through other phones. It does not call emergency services." = "L'allarme raggiunge i telefoni vicini che hanno Nearsend Chat, anche tramite altri telefoni. Non chiama i servizi di emergenza.";
 "hold" = "tieni premuto";
 "Hold for 2 seconds to send an SOS alarm" = "Tieni premuto 2 secondi per inviare un allarme SOS";
 "SOS is on · sent again every 15 s" = "SOS attivo · reinviato ogni 15 s";

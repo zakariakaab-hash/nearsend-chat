@@ -1,0 +1,105 @@
+#!/usr/bin/env python3
+"""Builds the Nearsend Chat privacy and support web pages from the Markdown in docs/nearsend-chat/.
+
+Output (upload these to nearsend.app so the URLs below work; App Store Connect needs both):
+  docs/nearsend-chat/web/chat/privacy/index.html  ->  https://nearsend.app/chat/privacy
+  docs/nearsend-chat/web/chat/support/index.html  ->  https://nearsend.app/chat/support
+
+Run from the repo root:  python3 scripts/build_chat_web_pages.py
+Handles only the Markdown these two files use: #/## headings, paragraphs, "- " lists, > quotes, **bold**, `code`, links.
+"""
+import html
+import os
+import re
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+DOCS = os.path.join(ROOT, "docs", "nearsend-chat")
+PAGES = [("PRIVACY.md", "chat/privacy", "Nearsend Chat privacy policy"),
+         ("SUPPORT.md", "chat/support", "Nearsend Chat support")]
+
+CSS = """
+:root{--bg:#f6f8fc;--card:#ffffff;--ink:#13223f;--muted:#4b5b78;--link:#1d4fb8;--line:#dbe3f0}
+@media (prefers-color-scheme: dark){:root{--bg:#0b1428;--card:#111d36;--ink:#eef2fa;--muted:#a9b6cf;--link:#8cb4ff;--line:#22324f}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,sans-serif}
+main{max-width:720px;margin:0 auto;padding:40px 16px 64px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:28px 24px}
+h1{font-size:30px;line-height:1.2;margin:0 0 16px}
+h2{font-size:21px;margin:32px 0 8px}
+p,li{color:var(--ink)}
+ul{padding-left:22px}
+li{margin:4px 0}
+blockquote{margin:16px 0;padding:8px 16px;border-left:4px solid var(--line);color:var(--muted)}
+code{font:15px ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--bg);padding:1px 5px;border-radius:6px}
+a{color:var(--link)}
+footer{margin-top:24px;color:var(--muted);font-size:14px;text-align:center}
+"""
+
+
+def inline(text):
+    t = html.escape(text, quote=False)
+    t = re.sub(r"`([^`]+)`", r"<code>\1</code>", t)
+    t = re.sub(r"\*\*([^*]+)\*\*", r"<strong>\1</strong>", t)
+    t = re.sub(r"_([^_]+)_", r"<em>\1</em>", t)
+    t = re.sub(r"(https?://[^\s<)]+)", r'<a href="\1">\1</a>', t)
+    t = re.sub(r"\b([\w.+-]+@[\w-]+\.[\w.]+)\b", r'<a href="mailto:\1">\1</a>', t)
+    return t
+
+
+def convert(md):
+    out, para, items, quote = [], [], [], []
+
+    def flush():
+        if para: out.append("<p>" + inline(" ".join(para)) + "</p>"); para.clear()
+        if items: out.append("<ul>" + "".join("<li>" + inline(i) + "</li>" for i in items) + "</ul>"); items.clear()
+        if quote: out.append("<blockquote><p>" + inline(" ".join(quote)) + "</p></blockquote>"); quote.clear()
+
+    for raw in md.splitlines():
+        line = raw.rstrip()
+        if not line.strip():
+            flush(); continue
+        if line.startswith("# "):
+            flush(); out.append("<h1>" + inline(line[2:]) + "</h1>")
+        elif line.startswith("## "):
+            flush(); out.append("<h2>" + inline(line[3:]) + "</h2>")
+        elif line.startswith("- "):
+            if para or quote: flush()
+            items.append(line[2:])
+        elif line.startswith("> "):
+            if para or items: flush()
+            quote.append(line[2:])
+        elif items and raw.startswith("  "):
+            items[-1] += " " + line.strip()
+        else:
+            if items or quote: flush()
+            para.append(line.strip())
+    flush()
+    return "\n".join(out)
+
+
+for src, path, title in PAGES:
+    body = convert(open(os.path.join(DOCS, src), encoding="utf-8").read())
+    page = f"""<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{html.escape(title)}</title>
+<meta name="description" content="{html.escape(title)}: Nearsend Chat, offline chat with people nearby over Bluetooth.">
+<link rel="canonical" href="https://nearsend.app/{path}">
+<style>{CSS}</style>
+</head>
+<body>
+<main>
+<div class="card">
+{body}
+</div>
+<footer><a href="https://nearsend.app/chat/privacy">Privacy</a> · <a href="https://nearsend.app/chat/support">Support</a> · <a href="https://nearsend.app/">nearsend.app</a></footer>
+</main>
+</body>
+</html>
+"""
+    dest = os.path.join(DOCS, "web", path, "index.html")
+    os.makedirs(os.path.dirname(dest), exist_ok=True)
+    open(dest, "w", encoding="utf-8").write(page)
+    print("wrote", os.path.relpath(dest, ROOT))

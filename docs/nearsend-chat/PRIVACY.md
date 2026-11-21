@@ -1,7 +1,7 @@
 # Nearsend Chat — Privacy Policy
 
-**Last updated:** 17 November 2026
-**Contact:** `<your contact email>` — _fill this in before you publish_
+**Last updated:** 21 November 2026
+**Contact:** support@nearsend.app
 **Project:** Nearsend Chat, an open-source app (GPL-3.0). Source code: https://github.com/zakariakaab-hash/nearsend-chat
 
 > This is a plain-language policy written by the project owner. It is not legal advice. Update it whenever the app starts
@@ -15,6 +15,11 @@
   contacts who are out of Bluetooth range go through **public relay servers that we do not run**. They stay end-to-end
   encrypted, but those servers can see your IP address and when you send. See "Internet option" below.
 - Everything the app keeps stays **on your phone**. "Erase everything" deletes it.
+
+## iPhone and Android
+
+This policy covers both apps. The **iPhone app has no Internet option and no QR scanning**, so the
+"Internet option" section and the Camera and Internet permissions below apply to the Android app only.
 
 ## What the app keeps on your phone
 
@@ -84,7 +89,8 @@ only if you switch on "Internet".
 ## Your choices and rights
 
 All your data is on your phone, so you control it: delete messages, remove contacts, block people, switch features off, or
-erase everything. If you are in the EU/EEA or the UK and want to exercise a data protection right, note that we hold no
+erase everything. To report abusive content or a person, long-press their message (or open their contact info) and tap
+Report; this opens an email to support@nearsend.app with the details you choose to send. If you are in the EU/EEA or the UK and want to exercise a data protection right, note that we hold no
 data about you; the relay operators (if you used "Internet") are separate from us and you can contact them.
 
 ## Security

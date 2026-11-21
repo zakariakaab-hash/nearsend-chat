@@ -127,7 +127,7 @@
     <string name="lbl_friend">Amigo</string>
     <string name="lbl_waiting">esperando</string>
     <string name="tab_sos">SOS</string>
-    <string name="sos_reach">La alarma llega a todos los teléfonos cercanos, también a través de otros.</string>
+    <string name="sos_reach">La alarma llega a los teléfonos cercanos que tienen Nearsend Chat, también a través de otros teléfonos. No llama a los servicios de emergencia.</string>
     <string name="sos_hold">mantén</string>
     <string name="sos_hold_desc">Mantén pulsado 2 segundos para enviar una alarma SOS</string>
     <string name="sos_on">SOS activado · se reenvía cada 15 s</string>

@@ -127,7 +127,7 @@
     <string name="lbl_friend">Arkadaş</string>
     <string name="lbl_waiting">bekliyor</string>
     <string name="tab_sos">SOS</string>
-    <string name="sos_reach">Alarm yakındaki tüm telefonlara, diğer telefonlar üzerinden de ulaşır.</string>
+    <string name="sos_reach">Alarm, Nearsend Chat yüklü yakındaki telefonlara, diğer telefonlar üzerinden de ulaşır. Acil servisleri aramaz.</string>
     <string name="sos_hold">basılı tut</string>
     <string name="sos_hold_desc">SOS alarmı göndermek için 2 saniye basılı tut</string>
     <string name="sos_on">SOS açık · her 15 sn\'de yeniden gönderilir</string>

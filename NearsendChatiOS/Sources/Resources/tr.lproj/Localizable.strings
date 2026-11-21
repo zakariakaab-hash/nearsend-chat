@@ -125,7 +125,7 @@
 "Friend" = "Arkadaş";
 "waiting" = "bekliyor";
 "SOS" = "SOS";
-"The alarm reaches every phone nearby, also through other phones." = "Alarm yakındaki tüm telefonlara, diğer telefonlar üzerinden de ulaşır.";
+"The alarm reaches phones nearby that have Nearsend Chat, also through other phones. It does not call emergency services." = "Alarm, Nearsend Chat yüklü yakındaki telefonlara, diğer telefonlar üzerinden de ulaşır. Acil servisleri aramaz.";
 "hold" = "basılı tut";
 "Hold for 2 seconds to send an SOS alarm" = "SOS alarmı göndermek için 2 saniye basılı tut";
 "SOS is on · sent again every 15 s" = "SOS açık · her 15 sn'de yeniden gönderilir";

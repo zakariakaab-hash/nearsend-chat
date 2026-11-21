@@ -125,7 +125,7 @@
 "Friend" = "Друг";
 "waiting" = "ждёт";
 "SOS" = "SOS";
-"The alarm reaches every phone nearby, also through other phones." = "Сигнал получат все телефоны рядом, в том числе через другие телефоны.";
+"The alarm reaches phones nearby that have Nearsend Chat, also through other phones. It does not call emergency services." = "Сигнал доходит до телефонов рядом, на которых есть Nearsend Chat, в том числе через другие телефоны. Он не вызывает экстренные службы.";
 "hold" = "удерживайте";
 "Hold for 2 seconds to send an SOS alarm" = "Удерживайте 2 секунды, чтобы отправить SOS";
 "SOS is on · sent again every 15 s" = "SOS включён · повтор каждые 15 с";

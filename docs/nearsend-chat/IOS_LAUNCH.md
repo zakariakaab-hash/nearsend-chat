@@ -17,12 +17,12 @@ Written 18 Nov 2026. Priority is iOS first (see memory/decision of the same date
 | **Block people** | **Written, not yet compiled** (18 Nov) | Contact info has Block/Unblock; long-press on a public-channel or group message, or on an announcement, blocks its sender. Blocked phones' messages, photos, announcements and SOS alerts are dropped and their earlier public/group content is removed. Saved in `chat.json` |
 | **Report content** | **Built, checked in the simulator** (18 Nov) | Long-press any received message or announcement → Report, or Report in contact info. Opens a prefilled email (person, id, time, content); with no mail app it shows the address with a Copy button. "Contact us" on the You tab. **TODO-YOU:** the address is the placeholder `support@nearsend.app` in `Support.email` (`FeatureViews.swift`); make it a real inbox or change it. A support web page is still needed for the store listing |
 | Real-iPhone Bluetooth test | TODO-YOU (+ tablet) | Never run. See REAL_PHONE_TEST_PLAN.md. Reviewers will run it on real phones too |
-| Review notes and a demo path | TODO-ME | One reviewer with one phone cannot see a mesh. Ship a demo mode and explain it in the review notes, or Apple may say the app has too little function |
-| SOS wording | TODO-ME | Must not promise rescue or replace emergency calls. Check the text in the app and store page |
-| Privacy policy page | TODO-YOU + ME | `PRIVACY.md` still has the placeholder `<your contact email>`; it needs a public URL (could live on nearsend.app) |
-| Privacy "nutrition label" answers | TODO-ME to draft | Mostly "data not collected"; internet relays on Android only |
-| Unused local-network permission text | TODO-ME | `NSLocalNetworkUsageDescription` is declared but the iOS app has no local-network feature; remove it to avoid review questions |
-| Version | 0.1.0 (build 1) | Fine for TestFlight |
+| Review notes and a demo path | **Notes written** (21 Nov) | `APP_REVIEW_NOTES.md`: paste-ready notes, two-phone test steps, background-mode reason. TODO-YOU: record a two-phone video. Demo data exists only in the simulator, so a one-phone reviewer sees an empty app |
+| SOS wording | **DONE** (21 Nov) | SOS screen now says the alarm reaches phones with the app and does not call emergency services (12 languages); store text says the same |
+| Privacy policy page | **Written** (21 Nov); TODO-YOU: upload | Contact filled in (support@nearsend.app), iPhone note added. Web pages for `/chat/privacy` and `/chat/support` are in `docs/nearsend-chat/web/` (rebuild: `python3 scripts/build_chat_web_pages.py`); upload them to nearsend.app |
+| Privacy "nutrition label" answers | **Drafted** (21 Nov) | "Data not collected", no tracking: `APP_REVIEW_NOTES.md`. Privacy manifest `PrivacyInfo.xcprivacy` added (UserDefaults, CA92.1) |
+| Unused local-network permission text | **DONE** (21 Nov) | Removed from `Info.plist` and `project.yml` |
+| Version | **1.0 (build 1)** | `Info.plist` now reads `MARKETING_VERSION` / `CURRENT_PROJECT_VERSION`; raise the build number for each upload |
 
 ## C. Store page
 Icon (exists), screenshots in the sizes Apple asks (6.9-inch iPhone and 13-inch iPad; CI already makes simulator shots, sizes

@@ -125,7 +125,7 @@
 "Friend" = "友だち";
 "waiting" = "待機中";
 "SOS" = "SOS";
-"The alarm reaches every phone nearby, also through other phones." = "アラームは近くのすべてのスマホに届きます（他のスマホ経由でも）。";
+"The alarm reaches phones nearby that have Nearsend Chat, also through other phones. It does not call emergency services." = "アラームは Nearsend Chat を入れた近くのスマートフォンに、他の端末経由でも届きます。緊急通報はしません。";
 "hold" = "長押し";
 "Hold for 2 seconds to send an SOS alarm" = "2秒長押しで SOS アラームを送信";
 "SOS is on · sent again every 15 s" = "SOS 送信中・15秒ごとに再送";

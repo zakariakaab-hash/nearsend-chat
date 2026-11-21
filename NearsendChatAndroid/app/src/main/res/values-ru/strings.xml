@@ -127,7 +127,7 @@
     <string name="lbl_friend">Друг</string>
     <string name="lbl_waiting">ждёт</string>
     <string name="tab_sos">SOS</string>
-    <string name="sos_reach">Сигнал получат все телефоны рядом, в том числе через другие телефоны.</string>
+    <string name="sos_reach">Сигнал доходит до телефонов рядом, на которых есть Nearsend Chat, в том числе через другие телефоны. Он не вызывает экстренные службы.</string>
     <string name="sos_hold">удерживайте</string>
     <string name="sos_hold_desc">Удерживайте 2 секунды, чтобы отправить SOS</string>
     <string name="sos_on">SOS включён · повтор каждые 15 с</string>

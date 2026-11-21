@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nearsend Chat privacy policy</title>
+<meta name="description" content="Nearsend Chat privacy policy: Nearsend Chat, offline chat with people nearby over Bluetooth.">
+<link rel="canonical" href="https://nearsend.app/chat/privacy">
+<style>
+:root{--bg:#f6f8fc;--card:#ffffff;--ink:#13223f;--muted:#4b5b78;--link:#1d4fb8;--line:#dbe3f0}
+@media (prefers-color-scheme: dark){:root{--bg:#0b1428;--card:#111d36;--ink:#eef2fa;--muted:#a9b6cf;--link:#8cb4ff;--line:#22324f}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,sans-serif}
+main{max-width:720px;margin:0 auto;padding:40px 16px 64px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:28px 24px}
+h1{font-size:30px;line-height:1.2;margin:0 0 16px}
+h2{font-size:21px;margin:32px 0 8px}
+p,li{color:var(--ink)}
+ul{padding-left:22px}
+li{margin:4px 0}
+blockquote{margin:16px 0;padding:8px 16px;border-left:4px solid var(--line);color:var(--muted)}
+code{font:15px ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--bg);padding:1px 5px;border-radius:6px}
+a{color:var(--link)}
+footer{margin-top:24px;color:var(--muted);font-size:14px;text-align:center}
+</style>
+</head>
+<body>
+<main>
+<div class="card">
+<h1>Nearsend Chat — Privacy Policy</h1>
+<p><strong>Last updated:</strong> 21 November 2026 <strong>Contact:</strong> <a href="mailto:support@nearsend.app">support@nearsend.app</a> <strong>Project:</strong> Nearsend Chat, an open-source app (GPL-3.0). Source code: <a href="https://github.com/zakariakaab-hash/nearsend-chat">https://github.com/zakariakaab-hash/nearsend-chat</a></p>
+<blockquote><p>This is a plain-language policy written by the project owner. It is not legal advice. Update it whenever the app starts doing something new with data, and change the date above.</p></blockquote>
+<h2>In short</h2>
+<ul><li>Nearsend Chat has <strong>no accounts, no servers of its own, no analytics, no advertising and no tracking</strong>.</li><li>Messages go <strong>directly between phones over Bluetooth</strong>. We never receive them.</li><li>There is one <strong>optional</strong> internet feature ("Internet", off by default). If you switch it on, private messages to contacts who are out of Bluetooth range go through <strong>public relay servers that we do not run</strong>. They stay end-to-end encrypted, but those servers can see your IP address and when you send. See "Internet option" below.</li><li>Everything the app keeps stays <strong>on your phone</strong>. "Erase everything" deletes it.</li></ul>
+<h2>iPhone and Android</h2>
+<p>This policy covers both apps. The <strong>iPhone app has no Internet option and no QR scanning</strong>, so the "Internet option" section and the Camera and Internet permissions below apply to the Android app only.</p>
+<h2>What the app keeps on your phone</h2>
+<ul><li>Your nickname, your picture (emoji and colour), a random device id and your private encryption key (Android: app-private storage; iOS: Keychain).</li><li>Your conversations, including photos you sent or received (small WebP files in the app's private storage), so they are there after a restart. You can set messages to delete themselves after 1, 7 or 30 days (You tab → Privacy).</li><li>Your contacts' public keys and which contacts you verified, so you can message people who are out of range.</li><li>Your settings (for example background running, battery saver, privacy switches).</li><li>Messages and announcements from other people that your phone is carrying for them for a while (up to 24 hours), if "Pass on messages for others" is on. These are kept in memory and are lost when the app restarts. Private messages stay encrypted; you cannot read them.</li></ul>
+<p>"Erase everything" (You tab, or triple-tap the You title) deletes all of this and creates a new identity. Uninstalling the app removes it too. We cannot recover it, because we never had it.</p>
+<h2>What other people nearby can see</h2>
+<p>Bluetooth is a broadcast medium, so people near you can see some things:</p>
+<ul><li>That your phone runs Nearsend Chat, your <strong>nickname</strong>, your <strong>picture</strong> (an emoji and a colour you choose), your random device id and your <strong>public key</strong>.</li><li><strong>Photos</strong> go only to one contact in direct Bluetooth range, end-to-end encrypted. The app shrinks them and removes camera metadata (including the GPS position) before sending. They are never sent over the internet relays.</li><li><strong>Private messages</strong> are end-to-end encrypted. Phones that pass them on cannot read them, but they can see who they are from and to, and when.</li><li><strong>The Nearby channel, announcements and SOS alarms are public and not encrypted.</strong> Everyone in range can read them, and other phones may keep and pass them on. Announcements are kept by nearby phones until they expire (at most 24 hours).</li><li>If you attach a position to an <strong>SOS alarm</strong>, everyone who receives the alarm can see it.</li></ul>
+<h2>Internet option (optional, off by default)</h2>
+<p>If you switch on "Internet" on the Nearby tab, the app connects to these public relay servers (Nostr relays): relay.damus.io, nos.lol, relay.primal.net and offchain.pub. They are run by other people, not by us.</p>
+<ul><li>What is sent: only <strong>private messages and receipts for your contacts</strong>, sealed so that only the receiver can open them, and signed with a throw-away key made for each message. The relays cannot read the text and cannot see who sent it.</li><li>What the relays can see: your <strong>IP address</strong>, <strong>when</strong> you connect or send, the <strong>size</strong> of each message, and a code that identifies the <strong>receiver</strong> (a hash of their public key). The app asks relays to delete messages after 24 hours, but a relay may keep them longer.</li><li>Nothing else uses the internet: the Nearby channel, announcements and SOS never go to relays.</li><li>You can switch it off at any time. Their own privacy policies apply to what they do with the data they receive.</li></ul>
+<h2>Permissions</h2>
+<ul><li><strong>Bluetooth</strong> (nearby devices) — to find nearby phones and exchange messages. Required for the app to work.</li><li><strong>Notifications</strong> — optional; to tell you about new messages. You can hide the message text in notifications (You tab → Privacy).</li><li><strong>Foreground service / run in the background</strong> — optional; keeps Bluetooth running while the app is closed, with a notification. You can switch it off on the You tab. The app can also start again after the phone restarts.</li><li><strong>Location</strong> — optional. Used only to attach your position to an SOS alarm, to share a position in a chat when you choose "Location", and to show how far away an alarm is. Your position is processed on your phone and is sent only to the people you send it to (encrypted in a private chat; <strong>not encrypted</strong> in an SOS alarm). On Android 11 and older, Android also requires the location permission for Bluetooth scanning; the app does not read your position for that.</li><li><strong>Camera</strong> — only when you scan a QR code to add or verify a contact. Images are not saved or sent.</li><li><strong>Internet</strong> — only used when you switch on the "Internet" option.</li></ul>
+<h2>Children</h2>
+<p>Nearsend Chat is not directed at children under 13, and we do not knowingly collect any data from anyone. Because nothing is sent to us, we have nothing to share, keep or delete on our side.</p>
+<h2>Sharing, selling, advertising</h2>
+<p>We do not sell or share personal data, we show no ads and we use no analytics or crash-reporting services. The only third parties that can see anything are (a) people near you on Bluetooth, as described above, and (b) the public relay servers, only if you switch on "Internet".</p>
+<h2>Your choices and rights</h2>
+<p>All your data is on your phone, so you control it: delete messages, remove contacts, block people, switch features off, or erase everything. To report abusive content or a person, long-press their message (or open their contact info) and tap Report; this opens an email to <a href="mailto:support@nearsend.app">support@nearsend.app</a> with the details you choose to send. If you are in the EU/EEA or the UK and want to exercise a data protection right, note that we hold no data about you; the relay operators (if you used "Internet") are separate from us and you can contact them.</p>
+<h2>Security</h2>
+<p>Private messages use X25519 key agreement and ChaCha20-Poly1305 encryption. The project has <strong>not been security audited</strong> and has not been tested on many devices yet. Do not rely on it where your safety depends on it. Public messages and SOS alarms are not encrypted and can be faked by anyone.</p>
+<h2>Changes</h2>
+<p>If this policy changes, the new version and date will be published here.</p>
+</div>
+<footer><a href="https://nearsend.app/chat/privacy">Privacy</a> · <a href="https://nearsend.app/chat/support">Support</a> · <a href="https://nearsend.app/">nearsend.app</a></footer>
+</main>
+</body>
+</html>

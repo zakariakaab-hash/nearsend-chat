@@ -14,6 +14,7 @@
 		2113AC1F1814AC65798D9AA6 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27189BBA0B50CECDDF775F67 /* Models.swift */; };
 		23E6DC6F8C707B6C7FAABD7B /* NearbyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28CEAE65B3A970BA018742F3 /* NearbyView.swift */; };
 		24B9C5BF1EE779DA9AA1EB75 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 06C2AC2B316ACA9FD7CCFBA6 /* Assets.xcassets */; };
+		B2C3D4E5F60718293A4B5C6D /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4B5C /* PrivacyInfo.xcprivacy */; };
 		2805A4A18DC1E6078505BED7 /* Platform.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2C5BABD63D9698F3E56778E /* Platform.swift */; };
 		4D46084F04E7A8207C290724 /* KeyBook.swift in Sources */ = {isa = PBXBuildFile; fileRef = A8CE2AC0A090A12473A63FB7 /* KeyBook.swift */; };
 		59DB2C6EE11E3E9535532BFC /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = 80EE8A74865B7D1BBB9E43C7 /* Localizable.strings */; };
@@ -42,6 +43,7 @@
 		0339C3D02FA80D4A557B11E3 /* ja */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ja; path = ja.lproj/Localizable.strings; sourceTree = "<group>"; };
 		069EF465947E2EDAA6C7A168 /* tr */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = tr; path = tr.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 		06C2AC2B316ACA9FD7CCFBA6 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		A1B2C3D4E5F60718293A4B5C /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		096EDDA50D58441D8A675CA4 /* ru */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ru; path = ru.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 		0C090350B14C2E063700E101 /* pt */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = pt; path = pt.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 		0CFC913F9BA993B9C262C482 /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/Localizable.strings"; sourceTree = "<group>"; };
@@ -158,6 +160,7 @@
 			children = (
 				232B4FB3BF6F535A13312310 /* Anton-Regular.ttf */,
 				06C2AC2B316ACA9FD7CCFBA6 /* Assets.xcassets */,
+				A1B2C3D4E5F60718293A4B5C /* PrivacyInfo.xcprivacy */,
 				D9AB179AB7D0AE6D8D7DCFF5 /* InfoPlist.strings */,
 				80EE8A74865B7D1BBB9E43C7 /* Localizable.strings */,
 			);
@@ -257,6 +260,7 @@
 			files = (
 				F861B1D61D3F1B6D29567FE3 /* Anton-Regular.ttf in Resources */,
 				24B9C5BF1EE779DA9AA1EB75 /* Assets.xcassets in Resources */,
+				B2C3D4E5F60718293A4B5C6D /* PrivacyInfo.xcprivacy in Resources */,
 				AB66BB44A63B667FC433FF7E /* InfoPlist.strings in Resources */,
 				59DB2C6EE11E3E9535532BFC /* Localizable.strings in Resources */,
 			);
@@ -386,7 +390,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				MARKETING_VERSION = 0.1.0;
+				MARKETING_VERSION = 1.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -467,7 +471,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				MARKETING_VERSION = 0.1.0;
+				MARKETING_VERSION = 1.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
