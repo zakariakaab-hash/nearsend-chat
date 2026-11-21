@@ -1,5 +1,9 @@
-// Draws the Nearsend Chat radar icon as iOS 26 dark and tinted variants (1024x1024 PNG).
-// Geometry matches icon-1024.png: rings r=378/257/137, centre dot, sweep to 0° from -62°, three peer dots.
+// Draws the Nearsend Chat app icon ("Bubble arrow": a chat bubble with Nearsend's dot-and-arrow inside)
+// as the three iOS icons, 1024x1024 PNG:
+//   icon-1024.png         light/default: white glyph on solid Nearsend blue, opaque (App Store needs no alpha)
+//   icon-dark-1024.png    dark: blue glyph on a transparent background (iOS supplies the dark backdrop)
+//   icon-tinted-1024.png  tinted: white glyph on black; iOS maps brightness to the user's tint colour
+// Geometry is in a 240x240 design grid (same as the design canvas), scaled to 1024.
 // Usage (from the repo root): swift scripts/draw_ios_icon_variants.swift NearsendChatiOS/Sources/Resources/Assets.xcassets/AppIcon.appiconset
 import CoreGraphics
 import Foundation
@@ -7,51 +11,48 @@ import ImageIO
 import UniformTypeIdentifiers
 
 let size = 1024
-let c = CGPoint(x: 512, y: 512)
+let grid: CGFloat = 240
 
-struct Palette {
-    var background: CGColor?          // nil = transparent (system supplies the backdrop)
-    var ring: [CGColor]               // outer, middle, inner
-    var sweep: CGColor
-    var line: CGColor
-    var dotRing: CGColor
-    var dotFill: CGColor
+func rgb(_ hex: UInt32) -> CGColor {
+    CGColor(srgbRed: CGFloat((hex >> 16) & 0xFF) / 255, green: CGFloat((hex >> 8) & 0xFF) / 255, blue: CGFloat(hex & 0xFF) / 255, alpha: 1)
 }
 
-func rgb(_ r: CGFloat, _ g: CGFloat, _ b: CGFloat, _ a: CGFloat = 1) -> CGColor { CGColor(srgbRed: r, green: g, blue: b, alpha: a) }
-func gray(_ w: CGFloat, _ a: CGFloat = 1) -> CGColor { CGColor(gray: w, alpha: a) }
+/// The bubble outline: a rounded square with its tail at the bottom right.
+func bubblePath() -> CGPath {
+    let p = CGMutablePath()
+    let deg = CGFloat.pi / 180
+    p.move(to: CGPoint(x: 92, y: 58))
+    p.addLine(to: CGPoint(x: 148, y: 58))
+    p.addArc(center: CGPoint(x: 148, y: 98), radius: 40, startAngle: 270 * deg, endAngle: 360 * deg, clockwise: false)
+    p.addLine(to: CGPoint(x: 188, y: 122))
+    p.addArc(center: CGPoint(x: 148, y: 122), radius: 40, startAngle: 0, endAngle: atan2(32, 24), clockwise: false)
+    p.addLine(to: CGPoint(x: 184, y: 186))
+    p.addLine(to: CGPoint(x: 142, y: 162))
+    p.addLine(to: CGPoint(x: 92, y: 162))
+    p.addArc(center: CGPoint(x: 92, y: 122), radius: 40, startAngle: 90 * deg, endAngle: 180 * deg, clockwise: false)
+    p.addLine(to: CGPoint(x: 52, y: 98))
+    p.addArc(center: CGPoint(x: 92, y: 98), radius: 40, startAngle: 180 * deg, endAngle: 270 * deg, clockwise: false)
+    p.closeSubpath()
+    return p
+}
 
-func draw(_ p: Palette, to url: URL) {
+func draw(background: CGColor?, glyph: CGColor, opaque: Bool, to url: URL) {
     let cs = CGColorSpace(name: CGColorSpace.sRGB)!
-    let ctx = CGContext(data: nil, width: size, height: size, bitsPerComponent: 8, bytesPerRow: 0, space: cs,
-                        bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
-    // Work in top-left coordinates like the source artwork.
+    let info = opaque ? CGImageAlphaInfo.noneSkipLast.rawValue : CGImageAlphaInfo.premultipliedLast.rawValue
+    let ctx = CGContext(data: nil, width: size, height: size, bitsPerComponent: 8, bytesPerRow: 0, space: cs, bitmapInfo: info)!
+    // Top-left origin like the SVG design grid, then scale 240 -> 1024.
     ctx.translateBy(x: 0, y: CGFloat(size)); ctx.scaleBy(x: 1, y: -1)
-    if let bg = p.background { ctx.setFillColor(bg); ctx.fill(CGRect(x: 0, y: 0, width: size, height: size)) }
+    ctx.scaleBy(x: CGFloat(size) / grid, y: CGFloat(size) / grid)
+    if let background { ctx.setFillColor(background); ctx.fill(CGRect(x: 0, y: 0, width: grid, height: grid)) }
 
-    // Sweep wedge: from the horizontal line (0°) up to 62° above it.
-    ctx.setFillColor(p.sweep)
-    ctx.move(to: c)
-    ctx.addArc(center: c, radius: 378, startAngle: -62 * .pi / 180, endAngle: 0, clockwise: false)
-    ctx.closePath(); ctx.fillPath()
+    ctx.setStrokeColor(glyph); ctx.setFillColor(glyph)
+    ctx.setLineWidth(14); ctx.setLineJoin(.round); ctx.setLineCap(.round)
+    ctx.addPath(bubblePath()); ctx.strokePath()
 
-    // Rings.
-    for (r, col) in zip([378.0, 257.0, 137.0], p.ring) {
-        ctx.setStrokeColor(col); ctx.setLineWidth(26)
-        ctx.strokeEllipse(in: CGRect(x: c.x - r, y: c.y - r, width: 2 * r, height: 2 * r))
-    }
-    // Sweep line.
-    ctx.setStrokeColor(p.line); ctx.setLineWidth(13); ctx.setLineCap(.butt)
-    ctx.move(to: c); ctx.addLine(to: CGPoint(x: 903, y: 512)); ctx.strokePath()
-
-    func dot(_ x: CGFloat, _ y: CGFloat, outer: CGFloat, inner: CGFloat) {
-        ctx.setFillColor(p.dotRing); ctx.fillEllipse(in: CGRect(x: x - outer, y: y - outer, width: 2 * outer, height: 2 * outer))
-        ctx.setFillColor(p.dotFill); ctx.fillEllipse(in: CGRect(x: x - inner, y: y - inner, width: 2 * inner, height: 2 * inner))
-    }
-    dot(512, 512, outer: 62, inner: 40)
-    dot(741, 318, outer: 30, inner: 18)
-    dot(325, 619, outer: 30, inner: 18)
-    dot(631, 840, outer: 30, inner: 18)
+    ctx.fillEllipse(in: CGRect(x: 94 - 13, y: 110 - 13, width: 26, height: 26))   // Nearsend's dot
+    ctx.move(to: CGPoint(x: 94, y: 110)); ctx.addLine(to: CGPoint(x: 150, y: 110))  // arrow shaft
+    ctx.move(to: CGPoint(x: 132, y: 92)); ctx.addLine(to: CGPoint(x: 150, y: 110)); ctx.addLine(to: CGPoint(x: 132, y: 128))
+    ctx.strokePath()
 
     let img = ctx.makeImage()!
     let dest = CGImageDestinationCreateWithURL(url as CFURL, UTType.png.identifier as CFString, 1, nil)!
@@ -61,21 +62,6 @@ func draw(_ p: Palette, to url: URL) {
 }
 
 let out = URL(fileURLWithPath: CommandLine.arguments[1])
-
-// Dark: transparent background, bright radar so it reads on the system's dark backdrop.
-draw(Palette(background: nil,
-             ring: [rgb(0.55, 0.72, 1.0, 0.45), rgb(0.62, 0.78, 1.0, 0.70), rgb(0.80, 0.88, 1.0, 0.95)],
-             sweep: rgb(0.35, 0.58, 1.0, 0.35),
-             line: rgb(0.92, 0.95, 1.0),
-             dotRing: rgb(0.92, 0.95, 1.0),
-             dotFill: rgb(0.25, 0.52, 1.0)),
-     to: out.appendingPathComponent("icon-dark-1024.png"))
-
-// Tinted: grayscale on black; iOS maps brightness to the user's tint colour.
-draw(Palette(background: gray(0),
-             ring: [gray(0.45), gray(0.65), gray(0.85)],
-             sweep: gray(0.30),
-             line: gray(1),
-             dotRing: gray(1),
-             dotFill: gray(0.55)),
-     to: out.appendingPathComponent("icon-tinted-1024.png"))
+draw(background: rgb(0x2F7BF5), glyph: rgb(0xFFFFFF), opaque: true, to: out.appendingPathComponent("icon-1024.png"))
+draw(background: nil, glyph: rgb(0x5B96F7), opaque: false, to: out.appendingPathComponent("icon-dark-1024.png"))
+draw(background: rgb(0x000000), glyph: rgb(0xFFFFFF), opaque: false, to: out.appendingPathComponent("icon-tinted-1024.png"))
