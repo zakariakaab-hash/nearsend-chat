@@ -5,33 +5,75 @@ Everything here is a draft for you to check; questions marked **YOU DECIDE** are
 
 ## 1. App Review notes (paste into "Notes" under App Review Information)
 
-```
-Nearsend Chat is an offline messenger: phones talk directly to each other over Bluetooth Low Energy, with no internet, no account and no server. Messages are passed phone to phone (up to 5 hops) and are end-to-end encrypted for private chats.
+Final text, checked against the code on 21 Nov 2026 (about 2,400 characters; the field allows 4,000).
+Replace `[VIDEO LINK]` with the link to the video from section 2 before you submit.
 
-HOW TO TEST
-The app needs at least TWO iPhones (or an iPhone and an iPad) with the app installed, Bluetooth on, and the app open.
-1. Open the app on both devices, finish the 3 onboarding screens and allow Bluetooth.
-2. Within a few seconds each device appears on the other's Nearby tab.
-3. Tap the other person to open a private chat and send a message. It is delivered over Bluetooth only (you can turn on Airplane Mode and keep Bluetooth on to confirm).
-4. The Nearby channel (Chats tab) is a public room for everyone in range.
-WITH ONLY ONE DEVICE: open the You tab and turn on "Demo mode". The app then shows sample people, chats, announcements and an SOS alarm, so every screen can be reviewed without a second phone (Bluetooth is off while demo mode is on; turning it off restores normal use). A short video showing two real phones is linked here: [VIDEO LINK]
+```
+Nearsend Chat is an offline messenger. Phones talk directly to each other over Bluetooth Low Energy: no internet, no account, no server. Messages hop from phone to phone (up to 5 hops), and private chats are end-to-end encrypted.
+
+QUICK REVIEW WITH ONE DEVICE (recommended)
+1. Open the app and go through the 3 onboarding screens.
+2. Open the You tab, scroll down and turn on "Demo mode".
+3. The app now shows sample people, chats, a group, announcements and an SOS alarm, so every screen can be reviewed without a second phone. Bluetooth is off while Demo mode is on. Turn it off to return to normal use.
+
+FULL TEST WITH TWO DEVICES
+1. Install the app on two iPhones (or an iPhone and an iPad). Turn Bluetooth on. Airplane Mode can stay on: the app does not need Wi-Fi or cellular.
+2. Open the app on both devices, finish onboarding and allow Bluetooth.
+3. Within a few seconds each device appears on the other's Nearby tab, in the list under the radar.
+4. Tap the other person to open a private chat and send a message. It arrives over Bluetooth only.
+5. The Chats tab also has the "Nearby channel", a public room for everyone in range.
+A 40-second video of two real phones doing this: [VIDEO LINK]
 
 BACKGROUND MODES
-bluetooth-central and bluetooth-peripheral are used so that messages from people nearby are still received, and passed on to others, while the screen is locked. The app uses Core Bluetooth state restoration. It does not use location in the background.
+bluetooth-central and bluetooth-peripheral let the app keep receiving messages from people nearby, and pass them on to others, while the screen is locked. The app uses Core Bluetooth state restoration. It does not use location in the background.
 
-SAFETY
-- Block and Report: long-press any message or announcement, or open a person's contact info. Report opens an email to support@nearsend.app with the details. Blocked people's messages are hidden and ignored.
-- SOS sends an alarm to phones nearby that run the app. The screen states that it does not call emergency services and offers "Call 112" when there is signal.
-- No accounts, no analytics, no ads, no tracking. All data stays on the device; "Erase everything" on the You tab deletes it.
+USER SAFETY (Guideline 1.2)
+- Report: long-press any message or announcement and tap Report, or tap the (i) button in a chat to open contact info. Report opens an email to support@nearsend.app with the details.
+- Block: long-press a message in the Nearby channel or a group, or an announcement, or use the Block button in contact info. Blocked people's messages and announcements are hidden and ignored.
+- Contact us: You tab.
+
+SOS
+SOS sends an alarm only to phones nearby that run Nearsend Chat. The SOS screen states that it does not call emergency services, and offers "Call 112" for when there is cell signal.
+
+PRIVACY
+No accounts, no analytics, no ads, no tracking. All data stays on the device. "Erase everything" on the You tab deletes it. Location is used only when the user attaches it to an SOS alarm.
 
 ENCRYPTION
-Private messages use X25519 + HKDF + ChaCha20-Poly1305 from Apple's CryptoKit.
+Private messages use X25519, HKDF and ChaCha20-Poly1305 from Apple's CryptoKit.
+
+CONTACT
+support@nearsend.app
 ```
 
-## 2. Before you submit: a demo video
+## 2. Demo video script (about 40 seconds, no sound needed)
 
-App Review often tests with one device. Demo mode (You tab) covers the screens; the video proves the real Bluetooth link.
-Record 20 to 40 seconds with two phones: open both, they find each other, send a message, it arrives. Upload it unlisted (YouTube or iCloud link) and put the link where it says `[VIDEO LINK]`.
+**Why:** App Review often has only one device. Demo mode covers the screens; this video proves the real Bluetooth link
+between two phones.
+
+**Before you record**
+- Two iPhones with the TestFlight build. Give them different nicknames on the You tab (for example "Anna" and "Ben").
+- On both: **Airplane Mode on, then Bluetooth back on** (so the video shows there is no internet), Demo mode **off**,
+  Do Not Disturb off so the notification shows.
+- Put both phones side by side on a table. Film from above with a third phone, or use screen recording on both and put
+  the two recordings side by side.
+- No real names, real chats or personal notifications on screen.
+
+**Shot list**
+
+| Time | What you show | On-screen caption (add in iMovie or the Photos editor) |
+|---|---|---|
+| 0–5 s | Both phones side by side. Swipe down Control Center on one to show Airplane Mode on and Bluetooth on. | "Airplane Mode on. Bluetooth on. No internet." |
+| 5–12 s | Open Nearsend Chat on both. Each one appears on the other's Nearby tab within a few seconds. | "The phones find each other over Bluetooth" |
+| 12–20 s | On phone A, tap "Ben" in the list under the radar and type "Hello from Anna". Tap send. | "Private chat, end-to-end encrypted" |
+| 20–27 s | Phone B shows the message (notification or open chat). Reply "Got it!". | "Delivered phone to phone. No server." |
+| 27–34 s | On phone B, long-press Anna's message to show Report, then tap the (i) button to show contact info with Block and Report. Close it. | "Report and Block, always one tap away" |
+| 34–40 s | Open the SOS tab on one phone and show the text under the title. Do NOT send an alarm. | "SOS reaches phones nearby. It does not call emergency services." |
+
+**After recording**
+- Keep it under 1 minute. Export at 1080p.
+- Upload as **unlisted** on YouTube (or share an iCloud link that works without signing in). Test the link in a private
+  browser window.
+- Put the link in place of `[VIDEO LINK]` in the notes above.
 
 ## 3. App Privacy ("nutrition label")
 
