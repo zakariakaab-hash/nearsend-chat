@@ -23,6 +23,7 @@ enum Theme {
     static let secure = Color.adaptive(day: Color(hex: 0x0F6B3F), night: Color(hex: 0x6EE7B7))
 
     static let glassFill = Color.adaptive(day: Color.white.opacity(0.84), night: Color(hex: 0x0C1A36, opacity: 0.74))
+    static let liquidTint = Color.adaptive(day: Color.white.opacity(0.45), night: Color(hex: 0x0C1A36, opacity: 0.45))   // iOS 26 Liquid Glass
     static let glassEdge = Color.adaptive(day: Color.white.opacity(0.95), night: Color.white.opacity(0.14))
     static let glassShadow = Color.adaptive(day: Color(hex: 0x143C78, opacity: 0.20), night: Color.black.opacity(0.35))
 
@@ -78,9 +79,22 @@ struct SkyBackground: View {
     }
 }
 
+/// Cards, buttons and pills. On iOS 26 this is the system's Liquid Glass, tinted with the day/night fill so text stays readable;
+/// earlier versions keep the frosted blur. The `compiler` check lets older Xcode (CI) build without the iOS 26 API.
 struct Glass: ViewModifier {
     var radius: CGFloat = Theme.rCard
     func body(content: Content) -> some View {
+        #if compiler(>=6.2)
+        if #available(iOS 26, *) {
+            content.glassEffect(.regular.tint(Theme.liquidTint), in: RoundedRectangle(cornerRadius: radius, style: .continuous))
+        } else {
+            frosted(content)
+        }
+        #else
+        frosted(content)
+        #endif
+    }
+    private func frosted(_ content: Content) -> some View {
         content
             .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: radius, style: .continuous))
             .background(Theme.glassFill, in: RoundedRectangle(cornerRadius: radius, style: .continuous))
