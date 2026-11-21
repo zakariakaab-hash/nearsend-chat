@@ -42,16 +42,57 @@ GOOD TO KNOW
 Questions or feedback: <your contact email>
 ```
 
-## App Store (later; the iPhone app trails the Android one)
+## App Store (iPhone)
+
+Rewritten 21 Nov 2026 against the iOS code, not the Android one. The iPhone app has **no** QR scanning, Internet switch,
+battery saver or network view, so they are left out. Character counts checked.
 
 | Field | Text |
 |---|---|
-| Name (13) | `Nearsend Chat` |
-| Subtitle (28) | `Offline messenger, no signal` |
-| Keywords (98) | `bluetooth,mesh,nearby,private,encrypted,festival,hiking,sos,group,relay,local,radar,walkie,no wifi` |
-| Promotional text (85) | `Message people nearby with no internet and no signal. Private, encrypted, no account.` |
-| Description | Same as the Play description, minus the Internet and battery-saver lines until the iPhone app has them |
-| Privacy label | Data not collected (the iPhone app has no internet feature) |
+| Name (13 of 30) | `Nearsend Chat` |
+| Subtitle (29 of 30) | `Bluetooth chat with no signal` |
+| Keywords (95 of 100) | `offline,mesh,nearby,private,encrypted,messenger,festival,hiking,camping,sos,group,walkie talkie` |
+| Promotional text (113 of 170) | `Message people nearby with no internet and no signal. Private, end-to-end encrypted, no account, no phone number.` |
+| Category | Social Networking (secondary: Utilities) |
+| Support URL | `https://nearsend.app/contact` until a Nearsend Chat page exists (see SEO_AUDIT.md) |
+| Privacy policy URL | Needed. `nearsend.app/privacy` covers the file-transfer site only (no mention of Bluetooth or Nearsend Chat) |
+| Privacy label | Data not collected |
+
+The keywords skip words already in the name and subtitle (Apple indexes those anyway), and use no spaces after commas.
+
+**Description:**
+
+```
+No signal? No problem.
+
+Nearsend Chat sends messages phone to phone over Bluetooth. Other phones nearby pass your message along, up to 5 hops, until it arrives. No internet, no cell signal, no account and no phone number.
+
+WHAT YOU CAN DO
+• Private chats, end-to-end encrypted. Phones that pass a message along cannot read it.
+• Out of range? Your message waits and is carried by phones nearby for up to 24 hours, then handed over when the person shows up.
+• A public Nearby channel for everyone in range (clearly labelled: not encrypted).
+• Group chats, announcements that stay visible for a few hours, and small photos to a contact in range.
+• SOS: alert every phone nearby, with your position if you choose. It does NOT call emergency services.
+• Emoji and colour profile pictures, and a radar view of who is nearby.
+• Verify a contact by comparing fingerprints in person.
+• Block and report: long-press a message to report it or block the sender.
+• Privacy switches: stop passing on others' messages, turn off delivery receipts, hide message text in notifications, delete messages automatically.
+• "Erase everything" wipes the phone in one tap.
+• 12 languages: English, Svenska, Español, Français, Deutsch, Português, Italiano, العربية, Türkçe, Русский, 简体中文, 日本語.
+
+NO TRACKING
+No accounts, no ads, no analytics, no servers of our own. Messages and keys stay on your phone. The app is open source (GPL-3.0).
+
+GOOD TO KNOW
+• Both phones need the app open or running in the background, and Bluetooth on.
+• Range depends on your phone and the surroundings; every extra phone helps.
+• This is an early version. It has not been security audited, so do not rely on it where your safety depends on it.
+• SOS alerts only reach phones that run Nearsend Chat nearby. In an emergency call your local emergency number.
+
+Questions or feedback: support@nearsend.app
+```
+
+Before submitting, check each line on a real iPhone (none of it has run on hardware yet), and confirm `support@nearsend.app` receives mail.
 
 ## Images
 
