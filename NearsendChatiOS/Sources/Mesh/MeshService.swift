@@ -35,7 +35,8 @@ final class ChatStore: ObservableObject {
     @Published private(set) var verified: Set<String> = []
     @Published private(set) var blocked: Set<String> = []      // peer ids: everything new from them is dropped
 
-    let simulated: Bool
+    /// Demo data instead of Bluetooth: always in the simulator; on a phone while "Demo mode" (You tab) is on.
+    @Published private(set) var simulated: Bool
     var activeConversation: String?
     private var deviceID: String
     private var transport: BLETransport?
@@ -92,11 +93,11 @@ final class ChatStore: ObservableObject {
         deviceID = d.string(forKey: "deviceID") ?? UUID().uuidString
         #if targetEnvironment(simulator)
         simulated = true
-        seed(); drift()
         #else
-        simulated = false
-        load()
+        simulated = d.bool(forKey: "demoMode")
         #endif
+        if simulated { seed() } else { load() }
+        drift()
         ensurePublicChannel()
         locationStatus = location.status
         location.onUpdate = { [weak self] l in Task { @MainActor in self?.myLocation = l } }
@@ -183,6 +184,31 @@ final class ChatStore: ObservableObject {
         nickname = "anon-\(Int.random(in: 1000...9999))"
         ensurePublicChannel()
         if simulated { seed() } else { startIfNeeded() }
+    }
+
+    /// Demo mode on a real phone, for App Review and for trying the app without a second phone: sample people and chats,
+    /// Bluetooth off. Real chats are saved first and nothing is written while it is on; turning it off loads them back.
+    /// The choice is remembered across launches. In the simulator the app is always in demo mode.
+    func setDemo(_ on: Bool) {
+        #if targetEnvironment(simulator)
+        return
+        #else
+        guard on != simulated else { return }
+        UserDefaults.standard.set(on, forKey: "demoMode")
+        if on {
+            stopSos()
+            saveNow()
+            transport?.stop()
+            simulated = true
+            seed()
+        } else {
+            simulated = false
+            peers = []; posts = []; alerts = []; conversations = []; myLocation = nil
+            load()
+            ensurePublicChannel()
+            if started { if meshActive { transport?.start() } } else { startIfNeeded() }
+        }
+        #endif
     }
 
     // MARK: conversations
@@ -293,6 +319,7 @@ final class ChatStore: ObservableObject {
     }
 
     private func setPeers(_ list: [Peer]) {
+        guard !simulated else { return }   // demo mode: Bluetooth input is ignored
         let known = Set(peers.map { $0.id })
         var mapped = list.filter { !blocked.contains($0.id) }.map { p -> Peer in var q = p; q.verified = verified.contains(q.fingerprint); return q }
         mapped.sort { $0.hops == $1.hops ? $0.rssi > $1.rssi : $0.hops < $1.hops }
@@ -303,6 +330,7 @@ final class ChatStore: ObservableObject {
     }
 
     private func receiveText(from: String, name: String, text: String, hops: Int, id: String) {
+        guard !simulated else { return }   // demo mode: Bluetooth input is ignored
         guard !blocked.contains(from) else { return }
         let peer = peers.first { $0.id == from } ?? Peer(id: from, name: name, hops: hops, rssi: -80)
         ensureConversation(peer)
@@ -315,6 +343,7 @@ final class ChatStore: ObservableObject {
     }
 
     private func receivePublic(from: String, name: String, text: String, id: String) {
+        guard !simulated else { return }   // demo mode: Bluetooth input is ignored
         guard !blocked.contains(from), let i = index(publicChannelID), !conversations[i].messages.contains(where: { $0.id == id }) else { return }
         conversations[i].messages.append(Message(id: id, text: text, date: .now, mine: false, sender: name, senderID: from))
         if activeConversation != publicChannelID { conversations[i].unread += 1 }
@@ -323,6 +352,7 @@ final class ChatStore: ObservableObject {
     }
 
     private func markDelivered(_ id: String) {
+        guard !simulated else { return }   // demo mode: Bluetooth input is ignored
         if id.contains(".") {   // a group copy "<message id>.<member>": delivered once every member confirmed
             let parts = id.split(separator: ".", maxSplits: 1).map(String.init)
             guard parts.count == 2, let c = conversations.first(where: { $0.messages.contains { $0.id == parts[0] } }) else { return }
@@ -371,6 +401,7 @@ final class ChatStore: ObservableObject {
     }
 
     private func receivePost(from: String, name sent: String, post: String, text: String, exp: Int64, hops: Int) {
+        guard !simulated else { return }   // demo mode: Bluetooth input is ignored
         guard !blocked.contains(from), !posts.contains(where: { $0.id == post }) else { return }
         let name = peers.first { $0.id == from }?.name ?? sent
         posts.insert(Post(id: post, from: from, name: name, text: text, exp: Date(timeIntervalSince1970: Double(exp) / 1000), mine: false, hops: hops), at: 0)
@@ -461,6 +492,7 @@ final class ChatStore: ObservableObject {
     }
 
     private func receivePhoto(from: String, name sent: String, photo: String, bytes: Data) {
+        guard !simulated else { return }   // demo mode: Bluetooth input is ignored
         guard !blocked.contains(from) else { return }
         let peer = peers.first { $0.id == from } ?? Peer(id: from, name: sent, hops: 1, rssi: -80)
         ensureConversation(peer)
@@ -537,6 +569,7 @@ final class ChatStore: ObservableObject {
     }
 
     private func receiveGroup(from: String, name sent: String, group gid: String, groupName: String, members: [Member], text: String, hops: Int, id: String) {
+        guard !simulated else { return }   // demo mode: Bluetooth input is ignored
         guard !blocked.contains(from), !leftGroups.contains(gid), members.contains(where: { $0.id == deviceID }) else { return }
         let name = peers.first { $0.id == from }?.name ?? sent
         if index(gid) == nil {
@@ -598,6 +631,7 @@ final class ChatStore: ObservableObject {
     }
 
     private func receiveSos(from: String, name sent: String, alarm: String, note: String?, loc: String?, hops: Int) {
+        guard !simulated else { return }   // demo mode: Bluetooth input is ignored
         guard !blocked.contains(from) else { return }
         let parts = loc?.split(separator: ",").compactMap { Double($0.trimmingCharacters(in: .whitespaces)) }
         let p = parts?.count == 3 ? parts : nil
@@ -615,6 +649,7 @@ final class ChatStore: ObservableObject {
     }
 
     private func endSos(from: String, alarm: String) {
+        guard !simulated else { return }   // demo mode: Bluetooth input is ignored
         for i in alerts.indices where alerts[i].from == from && alerts[i].alarm == alarm { alerts[i].active = false }
     }
 
@@ -709,6 +744,7 @@ final class ChatStore: ObservableObject {
     private func drift() {
         Task { while true {
             try? await Task.sleep(for: .seconds(2.5))
+            guard simulated else { continue }
             for i in peers.indices { peers[i].rssi = max(-95, min(-40, peers[i].rssi + Int.random(in: -3...3))) }
         } }
     }

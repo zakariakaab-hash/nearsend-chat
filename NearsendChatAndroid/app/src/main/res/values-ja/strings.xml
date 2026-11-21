@@ -219,4 +219,6 @@
     <string name="copy_address">アドレスをコピー</string>
     <string name="no_mail_app">メールアプリがありません。こちらにご連絡ください：</string>
     <string name="report_hint">報告するには、メッセージを長押しするか、連絡先情報を開いて「報告」をタップします。</string>
+    <string name="demo_mode">デモモード</string>
+    <string name="demo_mode_body">サンプルの人とチャットを表示し、別のスマートフォンなしでアプリを試せます。オンの間は Bluetooth がオフになり、オフにすると自分のチャットが戻ります。</string>
 </resources>

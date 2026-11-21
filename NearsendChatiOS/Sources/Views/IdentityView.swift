@@ -49,6 +49,15 @@ struct IdentityView: View {
                             }
                         }
                         PrivacyCard()
+                        Card {
+                            Toggle(isOn: Binding(get: { store.simulated }, set: { store.setDemo($0) })) {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("Demo mode")
+                                    Text("Shows sample people and chats, so you can try the app without another phone. Bluetooth is off while it is on; your own chats come back when you turn it off.")
+                                        .font(.caption).foregroundStyle(Theme.inkSecondary)
+                                }
+                            }.tint(Theme.actionBlue)
+                        }
                         VStack(spacing: 6) {
                             Button { shareLog = true } label: {
                                 Label("Share debug log", systemImage: "square.and.arrow.up").font(.subheadline.weight(.semibold))

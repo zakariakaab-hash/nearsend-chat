@@ -219,4 +219,6 @@
     <string name="copy_address">Copiar endereço</string>
     <string name="no_mail_app">Nenhum app de e-mail. Escreva para:</string>
     <string name="report_hint">Para denunciar alguém, toque e segure a mensagem ou abra as informações de contato e toque em Denunciar.</string>
+    <string name="demo_mode">Modo demonstração</string>
+    <string name="demo_mode_body">Mostra pessoas e conversas de exemplo para você testar o app sem outro telefone. O Bluetooth fica desligado enquanto ele está ativo; suas conversas voltam quando você o desliga.</string>
 </resources>

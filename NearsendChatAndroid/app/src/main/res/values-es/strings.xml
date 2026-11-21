@@ -219,4 +219,6 @@
     <string name="copy_address">Copiar dirección</string>
     <string name="no_mail_app">No hay app de correo. Escríbenos a:</string>
     <string name="report_hint">Para denunciar a alguien, mantén pulsado su mensaje o abre su información de contacto y toca Denunciar.</string>
+    <string name="demo_mode">Modo demo</string>
+    <string name="demo_mode_body">Muestra personas y chats de ejemplo para que puedas probar la app sin otro teléfono. El Bluetooth está apagado mientras está activo; tus chats vuelven cuando lo desactivas.</string>
 </resources>

@@ -217,3 +217,5 @@
 "Copy address" = "Copiar endereço";
 "No email app. Write to us at:" = "Nenhum app de e-mail. Escreva para:";
 "To report someone, long-press their message or open their contact info and tap Report." = "Para denunciar alguém, toque e segure a mensagem ou abra as informações de contato e toque em Denunciar.";
+"Demo mode" = "Modo demonstração";
+"Shows sample people and chats, so you can try the app without another phone. Bluetooth is off while it is on; your own chats come back when you turn it off." = "Mostra pessoas e conversas de exemplo para você testar o app sem outro telefone. O Bluetooth fica desligado enquanto ele está ativo; suas conversas voltam quando você o desliga.";

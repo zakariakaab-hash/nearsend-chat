@@ -217,3 +217,5 @@
 "Copy address" = "复制地址";
 "No email app. Write to us at:" = "没有邮件应用。请写信至：";
 "To report someone, long-press their message or open their contact info and tap Report." = "要举报某人，请长按其消息，或打开其联系人信息并点按“举报”。";
+"Demo mode" = "演示模式";
+"Shows sample people and chats, so you can try the app without another phone. Bluetooth is off while it is on; your own chats come back when you turn it off." = "显示示例联系人和聊天，无需另一部手机即可试用应用。开启期间蓝牙关闭；关闭后你自己的聊天会恢复。";

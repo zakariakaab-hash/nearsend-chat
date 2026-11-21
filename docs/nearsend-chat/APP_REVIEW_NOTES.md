@@ -14,7 +14,7 @@ The app needs at least TWO iPhones (or an iPhone and an iPad) with the app insta
 2. Within a few seconds each device appears on the other's Nearby tab.
 3. Tap the other person to open a private chat and send a message. It is delivered over Bluetooth only (you can turn on Airplane Mode and keep Bluetooth on to confirm).
 4. The Nearby channel (Chats tab) is a public room for everyone in range.
-With only ONE device the Nearby tab stays empty: there is nobody to talk to. A short video showing two phones is attached / linked here: [VIDEO LINK]
+WITH ONLY ONE DEVICE: open the You tab and turn on "Demo mode". The app then shows sample people, chats, announcements and an SOS alarm, so every screen can be reviewed without a second phone (Bluetooth is off while demo mode is on; turning it off restores normal use). A short video showing two real phones is linked here: [VIDEO LINK]
 
 BACKGROUND MODES
 bluetooth-central and bluetooth-peripheral are used so that messages from people nearby are still received, and passed on to others, while the screen is locked. The app uses Core Bluetooth state restoration. It does not use location in the background.
@@ -30,8 +30,8 @@ Private messages use X25519 + HKDF + ChaCha20-Poly1305 from Apple's CryptoKit.
 
 ## 2. Before you submit: a demo video
 
-App Review often tests with one device. Record 20 to 40 seconds with two phones: open both, they find each other,
-send a message, it arrives. Upload it unlisted (YouTube or iCloud link) and put the link where it says `[VIDEO LINK]`.
+App Review often tests with one device. Demo mode (You tab) covers the screens; the video proves the real Bluetooth link.
+Record 20 to 40 seconds with two phones: open both, they find each other, send a message, it arrives. Upload it unlisted (YouTube or iCloud link) and put the link where it says `[VIDEO LINK]`.
 
 ## 3. App Privacy ("nutrition label")
 

@@ -217,3 +217,5 @@
 "Copy address" = "Kopiera adress";
 "No email app. Write to us at:" = "Ingen e-postapp. Skriv till oss på:";
 "To report someone, long-press their message or open their contact info and tap Report." = "Rapportera någon genom att trycka länge på deras meddelande eller öppna deras kontaktinfo och trycka på Rapportera.";
+"Demo mode" = "Demoläge";
+"Shows sample people and chats, so you can try the app without another phone. Bluetooth is off while it is on; your own chats come back when you turn it off." = "Visar exempelpersoner och chattar, så att du kan prova appen utan en annan telefon. Bluetooth är av medan det är på; dina egna chattar kommer tillbaka när du stänger av det.";

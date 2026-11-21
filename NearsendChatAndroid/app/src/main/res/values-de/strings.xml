@@ -219,4 +219,6 @@
     <string name="copy_address">Adresse kopieren</string>
     <string name="no_mail_app">Keine E-Mail-App. Schreib uns an:</string>
     <string name="report_hint">Um jemanden zu melden, drück lange auf die Nachricht oder öffne die Kontaktinfo und tippe auf Melden.</string>
+    <string name="demo_mode">Demomodus</string>
+    <string name="demo_mode_body">Zeigt Beispielpersonen und -chats, damit du die App ohne ein zweites Handy ausprobieren kannst. Bluetooth ist dabei aus; deine eigenen Chats kommen zurück, wenn du ihn ausschaltest.</string>
 </resources>

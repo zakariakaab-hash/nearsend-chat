@@ -219,4 +219,6 @@
     <string name="copy_address">Adresi kopyala</string>
     <string name="no_mail_app">E-posta uygulaması yok. Bize şu adresten yazın:</string>
     <string name="report_hint">Birini bildirmek için mesajına uzun basın veya kişi bilgilerini açıp Bildir\'e dokunun.</string>
+    <string name="demo_mode">Demo modu</string>
+    <string name="demo_mode_body">Uygulamayı başka bir telefon olmadan denemen için örnek kişiler ve sohbetler gösterir. Açıkken Bluetooth kapalıdır; kapattığında kendi sohbetlerin geri gelir.</string>
 </resources>

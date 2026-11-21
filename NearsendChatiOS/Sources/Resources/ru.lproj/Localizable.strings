@@ -217,3 +217,5 @@
 "Copy address" = "Скопировать адрес";
 "No email app. Write to us at:" = "Нет почтового приложения. Напишите нам:";
 "To report someone, long-press their message or open their contact info and tap Report." = "Чтобы пожаловаться, нажмите и удерживайте сообщение или откройте контакт и нажмите «Пожаловаться».";
+"Demo mode" = "Демо-режим";
+"Shows sample people and chats, so you can try the app without another phone. Bluetooth is off while it is on; your own chats come back when you turn it off." = "Показывает примерных людей и чаты, чтобы можно было попробовать приложение без второго телефона. Пока он включён, Bluetooth выключен; ваши чаты вернутся, когда вы его выключите.";

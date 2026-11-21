@@ -219,4 +219,6 @@
     <string name="copy_address">Copia indirizzo</string>
     <string name="no_mail_app">Nessuna app email. Scrivici a:</string>
     <string name="report_hint">Per segnalare qualcuno, tieni premuto il suo messaggio o apri le sue info di contatto e tocca Segnala.</string>
+    <string name="demo_mode">Modalità demo</string>
+    <string name="demo_mode_body">Mostra persone e chat di esempio, così puoi provare l\'app senza un altro telefono. Il Bluetooth è spento mentre è attiva; le tue chat tornano quando la disattivi.</string>
 </resources>

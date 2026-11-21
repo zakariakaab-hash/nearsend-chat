@@ -219,4 +219,6 @@
     <string name="copy_address">Copier l\'adresse</string>
     <string name="no_mail_app">Aucune app de messagerie. Écrivez-nous à :</string>
     <string name="report_hint">Pour signaler quelqu\'un, appuyez longuement sur son message ou ouvrez ses infos de contact et touchez Signaler.</string>
+    <string name="demo_mode">Mode démo</string>
+    <string name="demo_mode_body">Affiche des personnes et des discussions d\'exemple pour essayer l\'app sans autre téléphone. Le Bluetooth est coupé pendant ce mode ; vos discussions reviennent quand vous le désactivez.</string>
 </resources>

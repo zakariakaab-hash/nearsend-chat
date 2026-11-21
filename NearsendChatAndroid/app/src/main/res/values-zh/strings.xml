@@ -219,4 +219,6 @@
     <string name="copy_address">复制地址</string>
     <string name="no_mail_app">没有邮件应用。请写信至：</string>
     <string name="report_hint">要举报某人，请长按其消息，或打开其联系人信息并点按“举报”。</string>
+    <string name="demo_mode">演示模式</string>
+    <string name="demo_mode_body">显示示例联系人和聊天，无需另一部手机即可试用应用。开启期间蓝牙关闭；关闭后你自己的聊天会恢复。</string>
 </resources>

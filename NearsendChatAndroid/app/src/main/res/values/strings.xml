@@ -220,4 +220,6 @@
     <string name="copy_address">Copy address</string>
     <string name="no_mail_app">No email app. Write to us at:</string>
     <string name="report_hint">To report someone, long-press their message or open their contact info and tap Report.</string>
+    <string name="demo_mode">Demo mode</string>
+    <string name="demo_mode_body">Shows sample people and chats, so you can try the app without another phone. Bluetooth is off while it is on; your own chats come back when you turn it off.</string>
 </resources>

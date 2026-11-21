@@ -219,4 +219,6 @@
     <string name="copy_address">نسخ العنوان</string>
     <string name="no_mail_app">لا يوجد تطبيق بريد. راسلنا على:</string>
     <string name="report_hint">للإبلاغ عن شخص، اضغط مطولاً على رسالته أو افتح معلومات الاتصال الخاصة به واضغط إبلاغ.</string>
+    <string name="demo_mode">وضع العرض التجريبي</string>
+    <string name="demo_mode_body">يعرض أشخاصًا ومحادثات تجريبية لتجربة التطبيق دون هاتف آخر. يكون البلوتوث متوقفًا أثناء تشغيله، وتعود محادثاتك عند إيقافه.</string>
 </resources>

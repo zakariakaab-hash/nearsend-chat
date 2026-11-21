@@ -219,4 +219,6 @@
     <string name="copy_address">Kopiera adress</string>
     <string name="no_mail_app">Ingen e-postapp. Skriv till oss på:</string>
     <string name="report_hint">Rapportera någon genom att trycka länge på deras meddelande eller öppna deras kontaktinfo och trycka på Rapportera.</string>
+    <string name="demo_mode">Demoläge</string>
+    <string name="demo_mode_body">Visar exempelpersoner och chattar, så att du kan prova appen utan en annan telefon. Bluetooth är av medan det är på; dina egna chattar kommer tillbaka när du stänger av det.</string>
 </resources>
