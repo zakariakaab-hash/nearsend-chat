@@ -61,7 +61,7 @@
 "Compare this in person to verify a contact. It changes if you erase everything." = "Comparez-la en personne pour vérifier un contact. Elle change si vous effacez tout.";
 "Erase everything" = "Tout effacer";
 "Project status" = "État du projet";
-"Early development. Not security audited. Not tested on many devices yet. Bitchat compatibility unverified. GPL-3.0." = "Développement précoce. Pas d'audit de sécurité. Peu testé sur des appareils. Compatibilité Bitchat non vérifiée. GPL-3.0.";
+"Not security audited yet. Open source (GPL-3.0)." = "Pas encore audité pour la sécurité. Open source (GPL-3.0).";
 "Erase all messages, keys and settings on this phone?" = "Effacer tous les messages, clés et réglages de ce téléphone ?";
 "This cannot be undone. You will get a new identity." = "Cette action est irréversible. Vous aurez une nouvelle identité.";
 "Cancel" = "Annuler";

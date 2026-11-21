@@ -63,7 +63,7 @@
     <string name="your_fp_hint">قارنها شخصيًا للتحقق من جهة اتصال. تتغير إذا مسحت كل شيء.</string>
     <string name="erase">مسح كل شيء</string>
     <string name="project_status">حالة المشروع</string>
-    <string name="project_status_body">قيد التطوير المبكر. لم يخضع لتدقيق أمني. لم يُختبر على أجهزة كثيرة بعد. التوافق مع Bitchat غير مؤكد. GPL-3.0.</string>
+    <string name="project_status_body">لم يخضع لتدقيق أمني بعد. مفتوح المصدر (GPL-3.0).</string>
     <string name="erase_confirm">مسح كل الرسائل والمفاتيح والإعدادات على هذا الهاتف؟</string>
     <string name="erase_confirm_body">لا يمكن التراجع عن هذا. ستحصل على هوية جديدة.</string>
     <string name="cancel">إلغاء</string>

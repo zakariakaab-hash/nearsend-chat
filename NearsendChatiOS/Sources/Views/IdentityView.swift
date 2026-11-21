@@ -81,7 +81,7 @@ struct IdentityView: View {
                         SkyPill {
                             VStack(alignment: .leading, spacing: 6) {
                                 Label("Project status", systemImage: "hammer.fill").font(.subheadline.weight(.semibold))
-                                Text("Early development. Not security audited. Not tested on many devices yet. Bitchat compatibility unverified. GPL-3.0.")
+                                Text("Not security audited yet. Open source (GPL-3.0).")
                                     .font(.footnote).foregroundStyle(.white.opacity(0.85))
                             }.frame(maxWidth: .infinity, alignment: .leading)
                         }

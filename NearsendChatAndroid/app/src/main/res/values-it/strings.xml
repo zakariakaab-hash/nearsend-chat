@@ -63,7 +63,7 @@
     <string name="your_fp_hint">Confrontala di persona per verificare un contatto. Cambia se cancelli tutto.</string>
     <string name="erase">Cancella tutto</string>
     <string name="project_status">Stato del progetto</string>
-    <string name="project_status_body">Sviluppo iniziale. Nessun audit di sicurezza. Ancora poco testato su dispositivi. Compatibilità con Bitchat non verificata. GPL-3.0.</string>
+    <string name="project_status_body">Non ancora sottoposta a verifica di sicurezza. Open source (GPL-3.0).</string>
     <string name="erase_confirm">Cancellare tutti i messaggi, le chiavi e le impostazioni su questo telefono?</string>
     <string name="erase_confirm_body">Non si può annullare. Avrai una nuova identità.</string>
     <string name="cancel">Annulla</string>

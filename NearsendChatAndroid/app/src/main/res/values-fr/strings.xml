@@ -63,7 +63,7 @@
     <string name="your_fp_hint">Comparez-la en personne pour vérifier un contact. Elle change si vous effacez tout.</string>
     <string name="erase">Tout effacer</string>
     <string name="project_status">État du projet</string>
-    <string name="project_status_body">Développement précoce. Pas d\'audit de sécurité. Peu testé sur des appareils. Compatibilité Bitchat non vérifiée. GPL-3.0.</string>
+    <string name="project_status_body">Pas encore audité pour la sécurité. Open source (GPL-3.0).</string>
     <string name="erase_confirm">Effacer tous les messages, clés et réglages de ce téléphone ?</string>
     <string name="erase_confirm_body">Cette action est irréversible. Vous aurez une nouvelle identité.</string>
     <string name="cancel">Annuler</string>

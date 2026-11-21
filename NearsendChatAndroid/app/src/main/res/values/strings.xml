@@ -64,7 +64,7 @@
     <string name="your_fp_hint">Compare this in person to verify a contact. It changes if you erase everything.</string>
     <string name="erase">Erase everything</string>
     <string name="project_status">Project status</string>
-    <string name="project_status_body">Early development. Not security audited. Not tested on many devices yet. Bitchat compatibility unverified. GPL-3.0.</string>
+    <string name="project_status_body">Not security audited yet. Open source (GPL-3.0).</string>
     <string name="erase_confirm">Erase all messages, keys and settings on this phone?</string>
     <string name="erase_confirm_body">This cannot be undone. You will get a new identity.</string>
     <string name="cancel">Cancel</string>

@@ -63,7 +63,7 @@
     <string name="your_fp_hint">連絡先を確認するため、直接会って照合してください。すべて消去すると変わります。</string>
     <string name="erase">すべて消去</string>
     <string name="project_status">プロジェクトの状況</string>
-    <string name="project_status_body">開発初期です。セキュリティ監査は未実施で、動作確認した端末も少数です。Bitchatとの互換性は未検証です。GPL-3.0。</string>
+    <string name="project_status_body">まだセキュリティ監査を受けていません。オープンソース（GPL-3.0）。</string>
     <string name="erase_confirm">この端末のすべてのメッセージ、鍵、設定を消去しますか？</string>
     <string name="erase_confirm_body">元に戻せません。新しいIDが発行されます。</string>
     <string name="cancel">キャンセル</string>

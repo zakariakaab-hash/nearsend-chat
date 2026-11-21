@@ -63,7 +63,7 @@
     <string name="your_fp_hint">Vergleiche sie persönlich, um einen Kontakt zu verifizieren. Sie ändert sich, wenn du alles löschst.</string>
     <string name="erase">Alles löschen</string>
     <string name="project_status">Projektstatus</string>
-    <string name="project_status_body">Frühe Entwicklung. Kein Sicherheitsaudit. Noch auf wenigen Geräten getestet. Bitchat-Kompatibilität ungeprüft. GPL-3.0.</string>
+    <string name="project_status_body">Noch nicht sicherheitsgeprüft. Open Source (GPL-3.0).</string>
     <string name="erase_confirm">Alle Nachrichten, Schlüssel und Einstellungen auf diesem Handy löschen?</string>
     <string name="erase_confirm_body">Das kann nicht rückgängig gemacht werden. Du erhältst eine neue Identität.</string>
     <string name="cancel">Abbrechen</string>

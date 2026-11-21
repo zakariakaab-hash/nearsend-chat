@@ -61,7 +61,7 @@
 "Compare this in person to verify a contact. It changes if you erase everything." = "Bir kişiyi doğrulamak için bunu yüz yüze karşılaştırın. Her şeyi silerseniz değişir.";
 "Erase everything" = "Her şeyi sil";
 "Project status" = "Proje durumu";
-"Early development. Not security audited. Not tested on many devices yet. Bitchat compatibility unverified. GPL-3.0." = "Erken geliştirme. Güvenlik denetimi yapılmadı. Henüz az cihazda test edildi. Bitchat uyumluluğu doğrulanmadı. GPL-3.0.";
+"Not security audited yet. Open source (GPL-3.0)." = "Henüz güvenlik denetiminden geçmedi. Açık kaynak (GPL-3.0).";
 "Erase all messages, keys and settings on this phone?" = "Bu telefondaki tüm mesajlar, anahtarlar ve ayarlar silinsin mi?";
 "This cannot be undone. You will get a new identity." = "Bu geri alınamaz. Yeni bir kimliğiniz olacak.";
 "Cancel" = "İptal";

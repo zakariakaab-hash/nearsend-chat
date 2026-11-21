@@ -36,7 +36,7 @@ No accounts, no ads, no analytics, no servers of our own. Messages and keys stay
 GOOD TO KNOW
 • Both phones need the app open or running in the background, and Bluetooth on.
 • Range depends on your phone and the surroundings; every extra phone helps.
-• This is an early version. It has not been security audited, so do not rely on it where your safety depends on it.
+• It has not been security audited yet, so do not rely on it where your safety depends on it.
 • SOS alerts only reach phones that run Nearsend Chat nearby. In an emergency call your local emergency number.
 
 Questions or feedback: support@nearsend.app
@@ -86,7 +86,7 @@ No accounts, no ads, no analytics, no servers of our own. Messages and keys stay
 GOOD TO KNOW
 • Both phones need the app open or running in the background, and Bluetooth on.
 • Range depends on your phone and the surroundings; every extra phone helps.
-• This is an early version. It has not been security audited, so do not rely on it where your safety depends on it.
+• It has not been security audited yet, so do not rely on it where your safety depends on it.
 • SOS alerts only reach phones that run Nearsend Chat nearby. In an emergency call your local emergency number.
 
 Questions or feedback: support@nearsend.app

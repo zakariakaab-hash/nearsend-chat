@@ -61,7 +61,7 @@
 "Compare this in person to verify a contact. It changes if you erase everything." = "Jämför detta personligen för att verifiera en kontakt. Det ändras om du raderar allt.";
 "Erase everything" = "Radera allt";
 "Project status" = "Projektstatus";
-"Early development. Not security audited. Not tested on many devices yet. Bitchat compatibility unverified. GPL-3.0." = "Tidig utveckling. Ingen säkerhetsgranskning. Inte testad på många enheter än. Bitchat-kompatibilitet ej verifierad. GPL-3.0.";
+"Not security audited yet. Open source (GPL-3.0)." = "Inte säkerhetsgranskad än. Öppen källkod (GPL-3.0).";
 "Erase all messages, keys and settings on this phone?" = "Radera alla meddelanden, nycklar och inställningar på den här telefonen?";
 "This cannot be undone. You will get a new identity." = "Detta kan inte ångras. Du får en ny identitet.";
 "Cancel" = "Avbryt";

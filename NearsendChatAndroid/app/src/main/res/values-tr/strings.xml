@@ -63,7 +63,7 @@
     <string name="your_fp_hint">Bir kişiyi doğrulamak için bunu yüz yüze karşılaştırın. Her şeyi silerseniz değişir.</string>
     <string name="erase">Her şeyi sil</string>
     <string name="project_status">Proje durumu</string>
-    <string name="project_status_body">Erken geliştirme. Güvenlik denetimi yapılmadı. Henüz az cihazda test edildi. Bitchat uyumluluğu doğrulanmadı. GPL-3.0.</string>
+    <string name="project_status_body">Henüz güvenlik denetiminden geçmedi. Açık kaynak (GPL-3.0).</string>
     <string name="erase_confirm">Bu telefondaki tüm mesajlar, anahtarlar ve ayarlar silinsin mi?</string>
     <string name="erase_confirm_body">Bu geri alınamaz. Yeni bir kimliğiniz olacak.</string>
     <string name="cancel">İptal</string>

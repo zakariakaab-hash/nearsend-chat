@@ -24,6 +24,8 @@ targets:
         NSBluetoothAlwaysUsageDescription: Nearsend Chat uses Bluetooth to find and message people near you without internet.
         NSLocationWhenInUseUsageDescription: Only used when you send an SOS with your location, so people nearby can find you.
         UIBackgroundModes: [bluetooth-central, bluetooth-peripheral]
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
+        UISupportedInterfaceOrientations~ipad: [UIInterfaceOrientationPortrait, UIInterfaceOrientationPortraitUpsideDown, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: app.nearsend.chat

@@ -61,7 +61,7 @@
 "Compare this in person to verify a contact. It changes if you erase everything." = "連絡先を確認するため、直接会って照合してください。すべて消去すると変わります。";
 "Erase everything" = "すべて消去";
 "Project status" = "プロジェクトの状況";
-"Early development. Not security audited. Not tested on many devices yet. Bitchat compatibility unverified. GPL-3.0." = "開発初期です。セキュリティ監査は未実施で、動作確認した端末も少数です。Bitchatとの互換性は未検証です。GPL-3.0。";
+"Not security audited yet. Open source (GPL-3.0)." = "まだセキュリティ監査を受けていません。オープンソース（GPL-3.0）。";
 "Erase all messages, keys and settings on this phone?" = "この端末のすべてのメッセージ、鍵、設定を消去しますか？";
 "This cannot be undone. You will get a new identity." = "元に戻せません。新しいIDが発行されます。";
 "Cancel" = "キャンセル";

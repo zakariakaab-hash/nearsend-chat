@@ -19,7 +19,6 @@ struct OnboardingView: View {
                 HStack {
                     Text(verbatim: "NEARSEND").font(Theme.display(22)).foregroundStyle(.white)
                     Spacer()
-                    SkyPill { Text("Early development").font(.caption.weight(.medium)) }.scaleEffect(0.85, anchor: .trailing)
                 }.padding(.horizontal, 24).padding(.top, 8)
                 TabView(selection: $page) {
                     ForEach(pages.indices, id: \.self) { i in

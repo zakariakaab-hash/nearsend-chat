@@ -63,7 +63,7 @@
     <string name="your_fp_hint">Jämför detta personligen för att verifiera en kontakt. Det ändras om du raderar allt.</string>
     <string name="erase">Radera allt</string>
     <string name="project_status">Projektstatus</string>
-    <string name="project_status_body">Tidig utveckling. Ingen säkerhetsgranskning. Inte testad på många enheter än. Bitchat-kompatibilitet ej verifierad. GPL-3.0.</string>
+    <string name="project_status_body">Inte säkerhetsgranskad än. Öppen källkod (GPL-3.0).</string>
     <string name="erase_confirm">Radera alla meddelanden, nycklar och inställningar på den här telefonen?</string>
     <string name="erase_confirm_body">Detta kan inte ångras. Du får en ny identitet.</string>
     <string name="cancel">Avbryt</string>

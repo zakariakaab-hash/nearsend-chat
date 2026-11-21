@@ -61,7 +61,7 @@
 "Compare this in person to verify a contact. It changes if you erase everything." = "请当面核对以验证联系人。清除所有数据后会改变。";
 "Erase everything" = "清除全部";
 "Project status" = "项目状态";
-"Early development. Not security audited. Not tested on many devices yet. Bitchat compatibility unverified. GPL-3.0." = "早期开发。未经安全审计。尚未在多种设备上测试。与 Bitchat 的兼容性未验证。GPL-3.0。";
+"Not security audited yet. Open source (GPL-3.0)." = "尚未经过安全审计。开源（GPL-3.0）。";
 "Erase all messages, keys and settings on this phone?" = "清除这部手机上的所有消息、密钥和设置？";
 "This cannot be undone. You will get a new identity." = "此操作无法撤销。你将获得新的身份。";
 "Cancel" = "取消";

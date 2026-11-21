@@ -63,7 +63,7 @@
     <string name="your_fp_hint">Сверьте её лично, чтобы подтвердить контакт. Она изменится, если стереть всё.</string>
     <string name="erase">Стереть всё</string>
     <string name="project_status">Состояние проекта</string>
-    <string name="project_status_body">Ранняя разработка. Аудита безопасности не было. Проверено на малом числе устройств. Совместимость с Bitchat не проверена. GPL-3.0.</string>
+    <string name="project_status_body">Аудит безопасности ещё не проводился. Открытый код (GPL-3.0).</string>
     <string name="erase_confirm">Стереть все сообщения, ключи и настройки на этом телефоне?</string>
     <string name="erase_confirm_body">Это нельзя отменить. Вы получите новую личность.</string>
     <string name="cancel">Отмена</string>

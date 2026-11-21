@@ -61,7 +61,7 @@
 "Compare this in person to verify a contact. It changes if you erase everything." = "Compare this in person to verify a contact. It changes if you erase everything.";
 "Erase everything" = "Erase everything";
 "Project status" = "Project status";
-"Early development. Not security audited. Not tested on many devices yet. Bitchat compatibility unverified. GPL-3.0." = "Early development. Not security audited. Not tested on many devices yet. Bitchat compatibility unverified. GPL-3.0.";
+"Not security audited yet. Open source (GPL-3.0)." = "Not security audited yet. Open source (GPL-3.0).";
 "Erase all messages, keys and settings on this phone?" = "Erase all messages, keys and settings on this phone?";
 "This cannot be undone. You will get a new identity." = "This cannot be undone. You will get a new identity.";
 "Cancel" = "Cancel";
