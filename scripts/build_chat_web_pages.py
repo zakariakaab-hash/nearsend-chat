@@ -32,6 +32,8 @@ li{margin:4px 0}
 blockquote{margin:16px 0;padding:8px 16px;border-left:4px solid var(--line);color:var(--muted)}
 code{font:15px ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--bg);padding:1px 5px;border-radius:6px}
 a{color:var(--link)}
+.brand{display:flex;align-items:center;gap:12px;margin:0 0 20px;text-decoration:none;color:var(--ink);font-weight:700;font-size:19px}
+.brand svg{width:44px;height:44px;border-radius:11px;flex:none}
 footer{margin-top:24px;color:var(--muted);font-size:14px;text-align:center}
 """
 
@@ -56,7 +58,7 @@ def convert(md):
 
     for raw in md.splitlines():
         line = raw.rstrip()
-        if not line.strip():
+        if not line.strip() or line.startswith("<!--"):
             flush(); continue
         if line.startswith("# "):
             flush(); out.append("<h1>" + inline(line[2:]) + "</h1>")
@@ -77,6 +79,12 @@ def convert(md):
     return "\n".join(out)
 
 
+LOGO = ('<svg viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14" fill="#2F7BF5"/>'
+        '<path d="M18 16h28a6 6 0 0 1 6 6v16a6 6 0 0 1-6 6H30l-9 8v-8h-3a6 6 0 0 1-6-6V22a6 6 0 0 1 6-6z" '
+        'fill="none" stroke="#fff" stroke-width="3.5" stroke-linejoin="round"/>'
+        '<circle cx="24" cy="30" r="3" fill="#fff"/><path d="M31 30h11m-4-4 4 4-4 4" fill="none" stroke="#fff" '
+        'stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>')
+
 for src, path, title in PAGES:
     body = convert(open(os.path.join(DOCS, src), encoding="utf-8").read())
     page = f"""<!doctype html>
@@ -91,6 +99,7 @@ for src, path, title in PAGES:
 </head>
 <body>
 <main>
+<a class="brand" href="https://nearsend.app/chat/support" aria-label="Nearsend Chat">{LOGO}<span>Nearsend Chat</span></a>
 <div class="card">
 {body}
 </div>

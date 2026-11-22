@@ -21,11 +21,14 @@ li{margin:4px 0}
 blockquote{margin:16px 0;padding:8px 16px;border-left:4px solid var(--line);color:var(--muted)}
 code{font:15px ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--bg);padding:1px 5px;border-radius:6px}
 a{color:var(--link)}
+.brand{display:flex;align-items:center;gap:12px;margin:0 0 20px;text-decoration:none;color:var(--ink);font-weight:700;font-size:19px}
+.brand svg{width:44px;height:44px;border-radius:11px;flex:none}
 footer{margin-top:24px;color:var(--muted);font-size:14px;text-align:center}
 </style>
 </head>
 <body>
 <main>
+<a class="brand" href="https://nearsend.app/chat/support" aria-label="Nearsend Chat"><svg viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14" fill="#2F7BF5"/><path d="M18 16h28a6 6 0 0 1 6 6v16a6 6 0 0 1-6 6H30l-9 8v-8h-3a6 6 0 0 1-6-6V22a6 6 0 0 1 6-6z" fill="none" stroke="#fff" stroke-width="3.5" stroke-linejoin="round"/><circle cx="24" cy="30" r="3" fill="#fff"/><path d="M31 30h11m-4-4 4 4-4 4" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Nearsend Chat</span></a>
 <div class="card">
 <h1>Nearsend Chat — Support</h1>
 <p><strong>Contact:</strong> <a href="mailto:support@nearsend.app">support@nearsend.app</a></p>
@@ -37,6 +40,9 @@ footer{margin-top:24px;color:var(--muted);font-size:14px;text-align:center}
 <p><strong>My message says it is waiting.</strong> The person is out of range. Phones nearby carry the message for up to 24 hours and hand it over when the person comes back in range.</p>
 <p><strong>Are my messages private?</strong> Private chats are end-to-end encrypted: phones that pass them on cannot read them. The Nearby channel, announcements and SOS alarms are public and not encrypted. The app has not been security audited yet.</p>
 <p><strong>Does SOS call the emergency services?</strong> No. An SOS alarm reaches phones nearby that have Nearsend Chat. If you have cell signal, call your local emergency number.</p>
+<p><strong>I turned Bluetooth access off by mistake (iPhone).</strong> Open the iPhone Settings app, tap Nearsend Chat and switch Bluetooth on. On Android: Settings → Apps → Nearsend Chat → Permissions → Nearby devices.</p>
+<p><strong>Can I try the app alone?</strong> Yes. On iPhone open the You tab and turn on <strong>Demo mode</strong>: it shows sample people and chats. Bluetooth is off while it is on, and your own chats come back when you turn it off.</p>
+<p><strong>Does it work when the screen is locked?</strong> Yes. The app keeps receiving and passing on messages in the background. On iPhone, if you swipe the app away in the app switcher, iOS stops it until you open it again.</p>
 <p><strong>How do I delete my data?</strong> You tab, then "Erase everything". It deletes all messages, keys and settings on this phone. We never had a copy.</p>
 <h2>Report a person or content</h2>
 <p>Long-press the message (or open the person's contact info) and tap <strong>Report</strong>. This opens an email to <a href="mailto:support@nearsend.app">support@nearsend.app</a> with the details. You can also <strong>Block</strong> the person: their messages are then hidden and ignored.</p>

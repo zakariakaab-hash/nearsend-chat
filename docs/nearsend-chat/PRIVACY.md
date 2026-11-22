@@ -1,11 +1,12 @@
 # Nearsend Chat — Privacy Policy
 
-**Last updated:** 21 November 2026
+**Last updated:** 22 November 2026
+
 **Contact:** support@nearsend.app
+
 **Project:** Nearsend Chat, an open-source app (GPL-3.0). Source code: https://github.com/zakariakaab-hash/nearsend-chat
 
-> This is a plain-language policy written by the project owner. It is not legal advice. Update it whenever the app starts
-> doing something new with data, and change the date above.
+<!-- Owner note: update this policy whenever the app starts doing something new with data, and change the date. -->
 
 ## In short
 

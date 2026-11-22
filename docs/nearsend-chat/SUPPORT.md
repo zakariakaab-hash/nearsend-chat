@@ -27,6 +27,18 @@ SOS alarms are public and not encrypted. The app has not been security audited y
 **Does SOS call the emergency services?**
 No. An SOS alarm reaches phones nearby that have Nearsend Chat. If you have cell signal, call your local emergency number.
 
+**I turned Bluetooth access off by mistake (iPhone).**
+Open the iPhone Settings app, tap Nearsend Chat and switch Bluetooth on. On Android: Settings → Apps → Nearsend Chat →
+Permissions → Nearby devices.
+
+**Can I try the app alone?**
+Yes. On iPhone open the You tab and turn on **Demo mode**: it shows sample people and chats. Bluetooth is off while it is
+on, and your own chats come back when you turn it off.
+
+**Does it work when the screen is locked?**
+Yes. The app keeps receiving and passing on messages in the background. On iPhone, if you swipe the app away in the app
+switcher, iOS stops it until you open it again.
+
 **How do I delete my data?**
 You tab, then "Erase everything". It deletes all messages, keys and settings on this phone. We never had a copy.
 
