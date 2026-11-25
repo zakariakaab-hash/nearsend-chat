@@ -8,7 +8,7 @@ Plain HTML and CSS, no build step. `website/chat/` is the whole site.
 - `images/`: the 6.3-inch App Store screenshots, resized
   (`sips -Z 1300 -s format jpeg -s formatOptions 80`).
 - `og.png`: share image, drawn by `swift scripts/draw_chat_site_og.swift`.
-- `favicon.svg`: the app icon (Bubble arrow), same geometry as `scripts/draw_ios_icon_variants.swift`.
+- `favicon.svg`, `icon-v2.svg` (same file, new name so browsers drop the old cached logo): the app icon (Bubble arrow), same geometry as `scripts/draw_ios_icon_variants.swift`.
 - `fonts/Anton-Regular.ttf`: SIL Open Font License, see `fonts/OFL.txt`.
 - `_headers`: security and cache headers for Cloudflare Pages.
 
