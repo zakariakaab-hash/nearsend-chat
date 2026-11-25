@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Builds the Nearsend Chat privacy and support web pages from the Markdown in docs/nearsend-chat/.
 
-Output (upload these to nearsend.app so the URLs below work; App Store Connect needs both):
-  docs/nearsend-chat/web/chat/privacy/index.html  ->  https://nearsend.app/chat/privacy
-  docs/nearsend-chat/web/chat/support/index.html  ->  https://nearsend.app/chat/support
+Output (published on GitHub Pages from the gh-pages branch; App Store Connect needs both URLs):
+  docs/nearsend-chat/web/chat/privacy/index.html  ->  BASE/chat/privacy/
+  docs/nearsend-chat/web/chat/support/index.html  ->  BASE/chat/support/
+If the pages move to nearsend.app, change BASE and rebuild.
 
 Run from the repo root:  python3 scripts/build_chat_web_pages.py
 Handles only the Markdown these two files use: #/## headings, paragraphs, "- " lists, > quotes, **bold**, `code`, links.
@@ -12,6 +13,7 @@ import html
 import os
 import re
 
+BASE = "https://zakariakaab-hash.github.io/nearsend-chat"
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DOCS = os.path.join(ROOT, "docs", "nearsend-chat")
 PAGES = [("PRIVACY.md", "chat/privacy", "Nearsend Chat privacy policy"),
@@ -94,16 +96,16 @@ for src, path, title in PAGES:
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{html.escape(title)}</title>
 <meta name="description" content="{html.escape(title)}: Nearsend Chat, offline chat with people nearby over Bluetooth.">
-<link rel="canonical" href="https://nearsend.app/{path}">
+<link rel="canonical" href="{BASE}/{path}/">
 <style>{CSS}</style>
 </head>
 <body>
 <main>
-<a class="brand" href="https://nearsend.app/chat/support" aria-label="Nearsend Chat">{LOGO}<span>Nearsend Chat</span></a>
+<a class="brand" href="{BASE}/chat/support/" aria-label="Nearsend Chat">{LOGO}<span>Nearsend Chat</span></a>
 <div class="card">
 {body}
 </div>
-<footer><a href="https://nearsend.app/chat/privacy">Privacy</a> · <a href="https://nearsend.app/chat/support">Support</a> · <a href="https://nearsend.app/">nearsend.app</a></footer>
+<footer><a href="{BASE}/chat/privacy/">Privacy</a> · <a href="{BASE}/chat/support/">Support</a> · <a href="https://nearsend.app/">nearsend.app</a></footer>
 </main>
 </body>
 </html>

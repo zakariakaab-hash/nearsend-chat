@@ -85,10 +85,11 @@ between two phones.
 
 ## 4. URLs App Store Connect asks for
 
-- **Privacy Policy URL:** https://nearsend.app/chat/privacy
-- **Support URL:** https://nearsend.app/chat/support
-- Both pages are built by `python3 scripts/build_chat_web_pages.py` into `docs/nearsend-chat/web/chat/…/index.html`.
-  **YOU:** upload them to the nearsend.app site so those two URLs work before you submit. Today they return 404.
+- **Privacy Policy URL:** https://zakariakaab-hash.github.io/nearsend-chat/chat/privacy/
+- **Support URL:** https://zakariakaab-hash.github.io/nearsend-chat/chat/support/
+- Both pages are built by `python3 scripts/build_chat_web_pages.py` into `docs/nearsend-chat/web/chat/…/index.html` and
+  published on GitHub Pages from the `gh-pages` branch (entered in App Store Connect on 25 Nov 2026). To update them,
+  rebuild and push the new files to `gh-pages`.
 
 ## 5. Export compliance (encryption) — YOU DECIDE
 
@@ -110,7 +111,7 @@ Chat with strangers usually leads to a teen rating rather than 4+.
   (secondary: Utilities). Keywords, promotional text and description: `STORE_LISTING.md`.
 - **Copyright:** 2026 Zakaria Kaab (or your company name).
 - **Price:** Free.
-- **Screenshots:** `NearsendChatiOS/appstore-screenshots/` (6.9-inch iPhone and 13-inch iPad). They show the app's demo
+- **Screenshots:** `NearsendChatiOS/appstore-screenshots/` (6.3-inch and 6.9-inch iPhone, 13-inch iPad; all uploaded). They show the app's demo
   data from the simulator; the people in them are sample names.
 - **Sign-in required:** No (there are no accounts).
 
