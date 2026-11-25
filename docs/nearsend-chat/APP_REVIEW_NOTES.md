@@ -85,11 +85,12 @@ between two phones.
 
 ## 4. URLs App Store Connect asks for
 
-- **Privacy Policy URL:** https://zakariakaab-hash.github.io/nearsend-chat/chat/privacy/
-- **Support URL:** https://zakariakaab-hash.github.io/nearsend-chat/chat/support/
-- Both pages are built by `python3 scripts/build_chat_web_pages.py` into `docs/nearsend-chat/web/chat/…/index.html` and
-  published on GitHub Pages from the `gh-pages` branch (entered in App Store Connect on 25 Nov 2026). To update them,
-  rebuild and push the new files to `gh-pages`.
+- **Privacy Policy URL:** https://chat.nearsend.app/privacy/
+- **Support URL:** https://chat.nearsend.app/support/
+- **Marketing URL:** https://chat.nearsend.app/
+- All three are the Nearsend Chat website, `website/chat/` in this repo, deployed by hand to the Cloudflare Pages
+  project `nearsend-chat` (see `website/README.md`). The privacy and support pages are built from `PRIVACY.md` and
+  `SUPPORT.md` by `python3 scripts/build_chat_web_pages.py`. Entered in App Store Connect on 26 Nov 2026.
 
 ## 5. Export compliance (encryption) — YOU DECIDE
 

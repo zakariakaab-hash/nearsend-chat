@@ -49,4 +49,4 @@ support@nearsend.app with the details. You can also **Block** the person: their 
 
 ## Privacy
 
-Read the privacy policy: https://zakariakaab-hash.github.io/nearsend-chat/chat/privacy/
+Read the privacy policy: https://chat.nearsend.app/privacy/
