@@ -141,8 +141,6 @@ struct SettingsView: View {
                     } label: { Label("Messages from strangers", systemImage: "person.crop.circle.badge.questionmark") }
                     toggle("Hide me from strangers", "People nearby see \u{201C}\(ChatStore.hiddenName)\u{201D} instead of your name and picture. People you already chat with still see your name.",
                            icon: "eye.slash", $store.hideFromStrangers)
-                } header: { head("Strangers") } footer: { foot(LocalizedStringKey(strangerFooter)) }
-                Section {
                     Toggle(isOn: Binding(get: { appLock }, set: { setAppLock($0) })) {
                         Label("App lock", systemImage: "faceid")
                     }
@@ -155,7 +153,7 @@ struct SettingsView: View {
                     Picker(selection: $store.autoDeleteDays) {
                         Text("Never").tag(0); Text("1 day").tag(1); Text("\(7) days").tag(7); Text("\(30) days").tag(30)
                     } label: { Label("Delete messages after", systemImage: "timer") }
-                } header: { head("Privacy") }
+                } header: { head("Privacy") } footer: { foot(LocalizedStringKey(strangerFooter)) }
                 Section {
                     Picker(selection: $language) {
                         Text("System default").tag("system")
