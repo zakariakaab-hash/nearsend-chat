@@ -32,6 +32,8 @@ final class BLETransport: NSObject {
         var notifyReady = false
         var announced = false
         var writes: [(Bool) -> Void] = []
+        var writeSeq: UInt8 = 0
+        let since = Date()                                   // when we started connecting
         var rx = Reassembler()
         init(_ p: CBPeripheral) { peripheral = p }
     }
@@ -53,6 +55,7 @@ final class BLETransport: NSObject {
     private var notifyCharacteristic: CBMutableCharacteristic?
     private var outgoing: [Outgoing] = []
     private var notifySeq: [UUID: UInt8] = [:]
+    private var inRx: [UUID: Reassembler] = [:]              // big packets written to us in fragments, per phone
     private var timer: Timer?
     private var rssiTick = 0
 
@@ -64,26 +67,55 @@ final class BLETransport: NSObject {
     func start() {
         guard central == nil else { return }
         NLog.i("ble", "start: advertising + scanning, my id \(NLog.s(identity.id))")
-        central = CBCentralManager(delegate: self, queue: .main, options: [CBCentralManagerOptionRestoreIdentifierKey: Self.centralRestoreID])
+        // ShowPowerAlert: when Bluetooth is off, iOS shows its own "Turn On Bluetooth" alert, whose Settings button opens the
+        // Bluetooth page. Apps cannot open that page or switch Bluetooth on themselves.
+        central = CBCentralManager(delegate: self, queue: .main, options: [CBCentralManagerOptionRestoreIdentifierKey: Self.centralRestoreID,
+                                                                         CBCentralManagerOptionShowPowerAlertKey: true])
         peripheralManager = CBPeripheralManager(delegate: self, queue: .main, options: [CBPeripheralManagerOptionRestoreIdentifierKey: Self.peripheralRestoreID])
-        // Reading signal strength keeps the radio busy: every 6 s, or every 15 s in Low Power Mode.
+        // Reading signal strength keeps the radio busy: every 6 s, or every 30 s when saving battery.
         timer = Timer.scheduledTimer(withTimeInterval: 3, repeats: true) { [weak self] _ in
             guard let self else { return }
             self.rssiTick += 1
-            guard self.rssiTick % (ProcessInfo.processInfo.isLowPowerModeEnabled ? 5 : 2) == 0 else { return }
+            self.dropStalledLinks()
+            self.dutyCycleScan()
+            guard self.rssiTick % (self.saving ? 10 : 2) == 0 else { return }
             self.links.values.forEach { if $0.peripheral.state == .connected, $0.announced { $0.peripheral.readRSSI() } }
+        }
+    }
+
+    /// Battery saver (or the iPhone's Low Power Mode): scan less. Advertising stays on, so others can still find us.
+    var saver = false
+    private var saving: Bool { saver || ProcessInfo.processInfo.isLowPowerModeEnabled }
+    private var scanning = false
+
+    /// While saving and already connected to someone, scan 3 s out of every 9 s. With no one connected, scan all the
+    /// time, so a phone that comes close is found as quickly as without the saver.
+    private func dutyCycleScan() {
+        guard let c = central, c.state == .poweredOn else { return }
+        let connected = links.values.contains { $0.announced }
+        let want = !saving || !connected || rssiTick % 3 == 0
+        if want && !scanning { startScan() }
+        else if !want && scanning { c.stopScan(); scanning = false }
+    }
+
+    /// CoreBluetooth never times out a connection attempt, and a phone without our service stays connected for nothing.
+    /// A link that has not become a neighbour within 20 s is closed, so the phone can be found and tried again.
+    private func dropStalledLinks() {
+        for l in links.values where !l.announced && Date().timeIntervalSince(l.since) > 20 {
+            NLog.i("ble", "giving up on \(NLog.l("out:\(l.peripheral.identifier.uuidString)")) after 20 s (\(l.peripheral.state == .connected ? "no Nearsend identity" : "not connected"))")
+            if l.peripheral.state == .disconnected { drop(l.peripheral) } else { central?.cancelPeripheralConnection(l.peripheral) }
         }
     }
 
     func stop() {
         NLog.i("ble", "stop")
         timer?.invalidate(); timer = nil
-        central?.stopScan()
+        central?.stopScan(); scanning = false
         links.values.forEach { central?.cancelPeripheralConnection($0.peripheral) }
         for (id, l) in links { l.writes.forEach { $0(false) }; if l.announced { onLost?("out:\(id.uuidString)") } }
         links.removeAll()
         for id in subscribers.keys { onLost?("in:\(id.uuidString)") }
-        subscribers.removeAll(); notifySeq.removeAll()
+        subscribers.removeAll(); notifySeq.removeAll(); inRx.removeAll()
         outgoing.forEach { $0.done(false) }; outgoing.removeAll()
         peripheralManager?.stopAdvertising()
         peripheralManager?.removeAllServices()
@@ -100,8 +132,20 @@ final class BLETransport: NSObject {
     func write(link: String, data: Data, done: @escaping (Bool) -> Void) {
         if link.hasPrefix("out:"), let uuid = UUID(uuidString: String(link.dropFirst(4))),
            let l = links[uuid], let ch = l.messageChar, l.peripheral.state == .connected {
-            l.writes.append(done)
-            l.peripheral.writeValue(data, for: ch, type: .withResponse)
+            // One write holds at most 512 bytes: bigger packets (photo and voice chunks) go as fragments.
+            let pieces = WriteFraming.writes(data, seq: l.writeSeq, max: l.peripheral.maximumWriteValueLength(for: .withResponse))
+            guard !pieces.isEmpty else { done(false); return }
+            if pieces.count > 1 { l.writeSeq = WriteFraming.next(l.writeSeq) }
+            final class Once { var reported = false }
+            let once = Once()
+            for (i, piece) in pieces.enumerated() {
+                let last = i == pieces.count - 1
+                l.writes.append { ok in
+                    guard !once.reported else { return }
+                    if !ok || last { once.reported = true; done(ok) }   // first failure, or the last piece acknowledged
+                }
+                l.peripheral.writeValue(piece, for: ch, type: .withResponse)
+            }
         } else if link.hasPrefix("in:"), let uuid = UUID(uuidString: String(link.dropFirst(3))),
                   let c = subscribers[uuid], notifyCharacteristic != nil {
             let seq = notifySeq[uuid, default: 0]; notifySeq[uuid] = seq &+ 1
@@ -137,7 +181,10 @@ final class BLETransport: NSObject {
         peripheralManager?.add(svc)
     }
 
-    private func startScan() { central?.scanForPeripherals(withServices: [Self.service], options: nil) }
+    private func startScan() {
+        guard let c = central, c.state == .poweredOn else { return }
+        c.scanForPeripherals(withServices: [Self.service], options: nil); scanning = true
+    }
 
     /// A link becomes a neighbour once we have subscribed to its notifications AND read its identity.
     private func maybeAnnounce(_ p: CBPeripheral) {
@@ -164,7 +211,7 @@ extension BLETransport: CBCentralManagerDelegate {
     func centralManagerDidUpdateState(_ c: CBCentralManager) {
         NLog.i("ble", "central state: \(stateName(c.state))")
         onState?(stateName(c.state))
-        if c.state == .poweredOn { startScan() }
+        if c.state == .poweredOn { startScan() } else { scanning = false; dropAllLinks() }
     }
 
     /// Called first after a background relaunch: re-adopt the connections iOS kept alive for us and re-read their identities.
@@ -263,6 +310,16 @@ extension BLETransport: CBPeripheralManagerDelegate {
     /// it serves matches the current nickname and we never publish the service twice.
     func peripheralManager(_ pm: CBPeripheralManager, willRestoreState dict: [String: Any]) {}
 
+    /// Bluetooth went off (or "new connections" off in Control Centre): iOS does not always report each disconnect, so
+    /// forget every connection now. Otherwise people stay listed as in range with Bluetooth off.
+    private func dropAllLinks() {
+        for (id, l) in links { l.writes.forEach { $0(false) }; if l.announced { onLost?("out:\(id.uuidString)") } }
+        links.removeAll()
+        for id in subscribers.keys { onLost?("in:\(id.uuidString)") }
+        subscribers.removeAll(); notifySeq.removeAll(); inRx.removeAll()
+        outgoing.forEach { $0.done(false) }; outgoing.removeAll()
+    }
+
     func peripheralManagerDidUpdateState(_ pm: CBPeripheralManager) {
         NLog.i("ble", "peripheral state: \(pm.state == .poweredOn ? "ready" : "not ready")")
         guard pm.state == .poweredOn else { return }
@@ -288,7 +345,7 @@ extension BLETransport: CBPeripheralManagerDelegate {
 
     func peripheralManager(_ pm: CBPeripheralManager, central: CBCentral, didUnsubscribeFrom characteristic: CBCharacteristic) {
         guard characteristic.uuid == Self.notifyChar, subscribers.removeValue(forKey: central.identifier) != nil else { return }
-        notifySeq.removeValue(forKey: central.identifier)
+        notifySeq.removeValue(forKey: central.identifier); inRx.removeValue(forKey: central.identifier)
         NLog.i("ble", "subscriber left \(NLog.l("in:\(central.identifier.uuidString)"))")
         onLost?("in:\(central.identifier.uuidString)")
         pumpNotify()
@@ -298,7 +355,15 @@ extension BLETransport: CBPeripheralManagerDelegate {
 
     func peripheralManager(_ pm: CBPeripheralManager, didReceiveWrite requests: [CBATTRequest]) {
         for r in requests where r.characteristic.uuid == Self.messageChar {
-            if let data = r.value { onPacket?(data, "in:\(r.central.identifier.uuidString)") }
+            guard let data = r.value else { continue }
+            let link = "in:\(r.central.identifier.uuidString)"
+            if WriteFraming.isFragment(data) {
+                var rx = inRx[r.central.identifier] ?? Reassembler()
+                if let packet = rx.add(data) { onPacket?(packet, link) }
+                inRx[r.central.identifier] = rx
+            } else {
+                onPacket?(data, link)
+            }
         }
         if let first = requests.first { pm.respond(to: first, withResult: .success) }
     }

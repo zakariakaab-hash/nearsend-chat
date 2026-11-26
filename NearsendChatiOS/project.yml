@@ -7,7 +7,7 @@ settings:
   base:
     SWIFT_VERSION: "5.9"
     MARKETING_VERSION: "1.0"
-    CURRENT_PROJECT_VERSION: "5"
+    CURRENT_PROJECT_VERSION: "10"
 targets:
   NearsendChat:
     type: application
@@ -23,7 +23,7 @@ targets:
         UIAppFonts: [Anton-Regular.ttf]
         NSBluetoothAlwaysUsageDescription: Nearsend Chat uses Bluetooth to find and message people near you without internet.
         ITSAppUsesNonExemptEncryption: false   # only Apple's CryptoKit (exempt); answered in App Store Connect on 25 Nov 2026
-        NSFaceIDUsageDescription: Nearsend Chat uses Face ID to open chats you have locked.
+        NSFaceIDUsageDescription: Nearsend Chat uses Face ID to open the app or chats you have locked.
         NSMicrophoneUsageDescription: Only used while you hold the microphone button to record a voice message.
         NSCameraUsageDescription: Only used when you take a photo to send in a chat.
         NSLocationWhenInUseUsageDescription: Only used when you share your location in a chat or send an SOS, so people nearby can find you.

@@ -36,3 +36,25 @@ struct Reassembler {
 
     private mutating func reset() { active = false; buf = Data(); next = 0; count = 0 }
 }
+
+/// Writes from a phone to the GATT server it connected to ("out:" links). iOS (and Android) accept at most 512 bytes per
+/// characteristic write, but a photo or voice chunk packet is about 1.1 KB. Packets that fit go as one plain write, exactly as
+/// before (every version understands them). Bigger packets are cut with the notification framing above. A packet is JSON and
+/// starts with "{" (0x7B); a fragment starts with its sequence number, which is never 0x7B, so the receiver can tell them apart.
+enum WriteFraming {
+    static let maxWrite = 512
+    static let jsonStart: UInt8 = 0x7B
+
+    /// The writes to send for `data`: one plain write when it fits, else fragments of at most `max` bytes.
+    static func writes(_ data: Data, seq: UInt8, max: Int = maxWrite) -> [Data] {
+        let limit = Swift.min(max, maxWrite)
+        if data.count <= limit { return [data] }
+        return Framing.fragments(data, seq: seq == jsonStart ? seq &+ 1 : seq, payload: limit - 3)
+    }
+
+    /// True when a received write is a fragment (to reassemble) rather than a whole packet.
+    static func isFragment(_ d: Data) -> Bool { d.first != jsonStart }
+
+    /// The next fragment sequence number, skipping the one that looks like "{".
+    static func next(_ seq: UInt8) -> UInt8 { let n = seq &+ 1; return n == jsonStart ? n &+ 1 : n }
+}

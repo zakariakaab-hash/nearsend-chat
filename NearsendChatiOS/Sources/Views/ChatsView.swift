@@ -5,12 +5,14 @@ import SwiftUI
 struct ChatsView: View {
     @EnvironmentObject var store: ChatStore
     @Environment(\.dynamicTypeSize) private var typeSize
+    @AppStorage("tab") private var tab = 1
     @State private var path: [String] = UserDefaults.standard.bool(forKey: "openThread") ? [UserDefaults.standard.string(forKey: "threadID") ?? "a"] : []
     @State private var newGroup = false
     @State private var toDelete: Conversation?
     @State private var toClear: Conversation?
     @State private var more: Conversation?
     @State private var afterMore: (() -> Void)?
+    @State private var addContact = false
     @State private var filter = Filter.all
     @State private var selecting = false
     @State private var selected = Set<String>()
@@ -96,6 +98,9 @@ struct ChatsView: View {
                 Button("Cancel", role: .cancel) {}
             } message: { _ in Text("Only on this phone. The other person keeps their copy.") }
             // WhatsApp-style "More": a bottom sheet with the chat on top and one row per action.
+            .sheet(isPresented: $addContact) {
+                AddContactSheet { id in addContact = false; if !id.isEmpty { path = [id] } }.environmentObject(store)
+            }
             .sheet(item: $more, onDismiss: { afterMore?(); afterMore = nil }) { c in
                 ChatActionsSheet(conversation: c, title: title(c)) { action in
                     switch action {
@@ -142,10 +147,15 @@ struct ChatsView: View {
                     }.accessibilityLabel("More options")
                 }
                 Spacer()
-                Button { newGroup = true } label: {
-                    Image(systemName: "person.3.fill").font(.system(size: 17)).foregroundStyle(Theme.link)
+                // WhatsApp-style +: start a chat (people are picked on Nearby) or a group.
+                Menu {
+                    Button { tab = 0 } label: { Label("New chat with someone nearby", systemImage: "dot.radiowaves.left.and.right") }
+                    Button { addContact = true } label: { Label("Add contact", systemImage: "qrcode.viewfinder") }
+                    Button { newGroup = true } label: { Label("New group", systemImage: "person.3") }
+                } label: {
+                    Image(systemName: "plus").font(.system(size: 19, weight: .semibold)).foregroundStyle(Theme.link)
                         .frame(width: 44, height: 44).glass(radius: 22)
-                }.buttonStyle(.plain).accessibilityLabel("New group")
+                }.accessibilityLabel("New chat or group")
             }
             PageTitle(text: selecting ? "\(selected.count) selected" : "Chats")
             // Scrolls sideways at large text sizes instead of breaking the words.
@@ -256,7 +266,8 @@ struct ChatsView: View {
                     }
                     HStack(spacing: 6) {
                         Group {
-                            if c.isLocked { Label("Locked chat", systemImage: "lock.fill") }
+                            if c.isRequest { Label("Message request", systemImage: "person.crop.circle.badge.questionmark").foregroundStyle(Theme.link) }
+                            else if c.isLocked { Label("Locked chat", systemImage: "lock.fill") }
                             else if c.last != nil { Text(verbatim: preview(c)) }
                             else if isPublic { Text("Public · anyone in range can read this") }
                             else { Text(verbatim: "") }
@@ -335,5 +346,50 @@ private struct ChatActionsSheet: View {
             .foregroundStyle(destructive ? Color(hex: 0xE5484D) : Theme.ink)
             .padding(.horizontal, 14).frame(height: 50).contentShape(Rectangle())
         }.buttonStyle(.plain)
+    }
+}
+
+/// + › Add contact: scan a friend's code (camera) or paste the code they sent.
+struct AddContactSheet: View {
+    @EnvironmentObject var store: ChatStore
+    let opened: (String) -> Void
+    @State private var pasted = ""
+    @State private var scanning = false
+    @State private var problem: LocalizedStringKey?
+    @State private var showMine = false
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    if CodeScanner.available {
+                        Button { scanning = true } label: { Label("Scan their code", systemImage: "qrcode.viewfinder") }
+                    }
+                    Button { showMine = true } label: { Label("Show my code", systemImage: "qrcode") }
+                } footer: { Text("Scan each other's codes, so you can both write. Messages reach them even far away, carried by phones in between.") }
+                Section {
+                    TextField("nearsend:c:…", text: $pasted, axis: .vertical).lineLimit(2...4)
+                        .textInputAutocapitalization(.never).autocorrectionDisabled().font(.system(.footnote, design: .monospaced))
+                    Button("Add") { add(pasted, inPerson: false) }.disabled(pasted.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                } header: { Text("Or paste a code") } footer: {
+                    if let problem { Text(problem).foregroundStyle(.red) } else { Text("A friend can send their code from Show my code › Share my code.") }
+                }
+            }
+            .navigationTitle("Add contact")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { opened("") } } }
+            .fullScreenCover(isPresented: $scanning) {
+                CodeScanner { code in scanning = false; if let code { add(code, inPerson: true) } }.ignoresSafeArea()
+            }
+            .sheet(isPresented: $showMine) {
+                MyCodeSheet(payload: store.myCodePayload, fingerprint: store.myFingerprint, contactCode: store.myContactCode)
+            }
+        }
+    }
+    private func add(_ code: String, inPerson: Bool) {
+        switch store.addContact(code: code, inPerson: inPerson) {
+        case .added(let id, _): opened(id)
+        case .itsYou: problem = "That is your own code."
+        case .invalid: problem = "That is not a Nearsend contact code."
+        }
     }
 }

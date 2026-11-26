@@ -65,7 +65,7 @@ struct ThreadView: View {
                         if let last = messages.last { withAnimation { proxy.scrollTo(last.id, anchor: .bottom) } }
                     }
                 }
-                composer
+                if conversation?.isRequest == true { requestBar } else { composer }
             }
             }
         }
@@ -134,10 +134,9 @@ struct ThreadView: View {
             }
         }
         .blockConfirmation(for: $blockTarget, store: store)
-        .confirmationDialog("Delete message?", isPresented: Binding(get: { deleting != nil }, set: { if !$0 { deleting = nil } }), titleVisibility: .visible, presenting: deleting) { m in
-            Button("Delete for me", role: .destructive) { store.deleteMessage(m.id, in: conversationID) }
-            Button("Cancel", role: .cancel) {}
-        } message: { _ in Text("Only on this phone. The other person keeps their copy.") }
+        .bottomConfirm(isPresented: Binding(get: { deleting != nil }, set: { if !$0 { deleting = nil } }),
+                       title: "Delete message?", message: "Only on this phone. The other person keeps their copy.",
+                       action: "Delete for me") { if let m = deleting { store.deleteMessage(m.id, in: conversationID) } }
         .sheet(item: $infoFor) { m in MessageInfoSheet(message: m, chatName: members != nil ? livePeer.name : nil) }
         .sheet(item: $forwarding) { m in
             ForwardSheet(text: Reply.split(m.text)?.body ?? m.text, from: conversationID).environmentObject(store)
@@ -232,6 +231,31 @@ struct ThreadView: View {
     }
 
     private var lastMineID: String? { messages.last(where: { $0.mine })?.id }
+
+    /// A stranger wrote first ("Messages from strangers: Ask me"): accept to reply, or block. No read receipt until accepted.
+    private var requestBar: some View {
+        VStack(spacing: 10) {
+            Text("Message request").font(.headline).foregroundStyle(Theme.ink)
+            Text("\(livePeer.name) isn't in your chats yet. They don't know you've seen this.")
+                .font(.footnote).foregroundStyle(Theme.inkSecondary).multilineTextAlignment(.center)
+            HStack(spacing: 10) {
+                Button(role: .destructive) {
+                    // A group from a stranger is left (its messages are ignored); a person is blocked.
+                    if !conversationID.hasPrefix("g:") { store.toggleBlocked(conversationID) }
+                    store.deleteConversation(conversationID)
+                    dismiss()
+                } label: {
+                    Text(conversationID.hasPrefix("g:") ? "Leave" : "Block").font(.subheadline.weight(.semibold)).frame(maxWidth: .infinity, minHeight: 46)
+                        .foregroundStyle(.red).background(Color.red.opacity(0.12), in: Capsule())
+                }
+                Button { store.acceptRequest(conversationID) } label: {
+                    Text("Accept").font(.subheadline.weight(.semibold)).frame(maxWidth: .infinity, minHeight: 46)
+                        .foregroundStyle(.white).background(Theme.actionBlue, in: Capsule())
+                }
+            }
+        }
+        .padding(16).frame(maxWidth: .infinity).glass(radius: 24).padding(.horizontal, 12).padding(.bottom, 8)
+    }
 
     /// Private chats with someone not yet verified: a gentle nudge to compare fingerprints, hidden once they are verified.
     @State private var verifyDismissed = false
@@ -538,10 +562,8 @@ struct PeerInfoSheet: View {
             }.padding(.horizontal, 20).readableWidth(560)
             }
         }
-        .confirmationDialog("Delete chat", isPresented: $confirmDelete, titleVisibility: .visible) {
-            Button("Delete chat", role: .destructive) { onDelete?() }
-            Button("Cancel", role: .cancel) {}
-        } message: { Text("Only on this phone. The other person keeps their copy.") }
+        .bottomConfirm(isPresented: $confirmDelete, title: "Delete chat",
+                       message: "Only on this phone. The other person keeps their copy.", action: "Delete chat") { onDelete?() }
         .blockConfirmation(for: $blockTarget, store: store)
         .opensMail($report)
         .presentationDetents([.medium, .large])
@@ -714,7 +736,7 @@ extension Message {
         try? session.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker])
         try? session.setActive(true)
         let settings: [String: Any] = [AVFormatIDKey: kAudioFormatMPEG4AAC, AVSampleRateKey: 16_000,
-                                       AVNumberOfChannelsKey: 1, AVEncoderBitRateKey: 16_000]
+                                       AVNumberOfChannelsKey: 1, AVEncoderBitRateKey: 12_000]
         guard let r = try? AVAudioRecorder(url: url, settings: settings) else { NLog.i("voice", "recorder could not be created"); return }
         r.delegate = self
         guard r.record(forDuration: VoiceNote.maxSeconds) else { NLog.i("voice", "recording did not start"); return }
@@ -747,14 +769,15 @@ extension Message {
 }
 
 extension VoiceRecorder {
-    /// Re-encodes a recording as AAC, mono, 16 kHz, 16 kbit/s (about 2 KB a second), whatever format the microphone gave.
+    /// Re-encodes a recording as AAC, mono, 16 kHz, 12 kbit/s (about 1.5 KB a second, the smallest this encoder makes),
+    /// whatever format the microphone gave.
     /// nil when it cannot be read or is still too big for Bluetooth.
     nonisolated static func shrink(_ src: URL) -> Data? {
         let out = FileManager.default.temporaryDirectory.appendingPathComponent("voice-small.m4a")
         try? FileManager.default.removeItem(at: out)
         defer { try? FileManager.default.removeItem(at: out) }
         let settings: [String: Any] = [AVFormatIDKey: kAudioFormatMPEG4AAC, AVSampleRateKey: 16_000.0,
-                                       AVNumberOfChannelsKey: 1, AVEncoderBitRateKey: 16_000]
+                                       AVNumberOfChannelsKey: 1, AVEncoderBitRateKey: 12_000]
         guard let input = try? AVAudioFile(forReading: src) else { return nil }
         do {
             let output = try AVAudioFile(forWriting: out, settings: settings, commonFormat: .pcmFormatFloat32, interleaved: false)
@@ -861,6 +884,29 @@ struct RecordingBar: View {
     nonisolated func audioPlayerDidFinishPlaying(_ p: AVAudioPlayer, successfully flag: Bool) {
         Task { @MainActor in self.stop() }
     }
+    /// Loudness of a voice note in `bars` slices, 0...1, for the bars in its bubble.
+    nonisolated static func levels(_ data: Data?, bars: Int) -> [Double] {
+        let flat = [Double](repeating: 0.15, count: bars)
+        guard let data else { return flat }
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".m4a")
+        defer { try? FileManager.default.removeItem(at: url) }
+        guard (try? data.write(to: url)) != nil, let file = try? AVAudioFile(forReading: url),
+              let buf = AVAudioPCMBuffer(pcmFormat: file.processingFormat, frameCapacity: AVAudioFrameCount(file.length)),
+              (try? file.read(into: buf)) != nil, let ch = buf.floatChannelData?[0], buf.frameLength > 0 else { return flat }
+        let n = Int(buf.frameLength), per = max(1, n / bars)
+        var out = (0..<bars).map { b -> Double in
+            var sum: Float = 0
+            let start = b * per, end = min(n, start + per)
+            guard start < end else { return 0 }
+            for i in start..<end { sum += ch[i] * ch[i] }
+            return Double((sum / Float(end - start)).squareRoot())
+        }
+        // Scaled to the loudest part, but never below a speaking level, so a near-silent note shows low bars.
+        let peak = max(out.max() ?? 0, 0.05)
+        out = out.map { max(0.08, min(1, $0 / peak)) }
+        return out
+    }
+
     func duration(_ data: Data?) -> TimeInterval {
         guard let data, let p = try? AVAudioPlayer(data: data, fileTypeHint: AVFileType.m4a.rawValue) else { return 0 }
         return p.duration
@@ -875,6 +921,7 @@ struct VoiceBubble: View {
     @EnvironmentObject private var store: ChatStore
     @ObservedObject private var player = VoicePlayer.shared
     @State private var length: TimeInterval = 0
+    @State private var levels = [Double](repeating: 0.15, count: 28)
     private var isPlaying: Bool { player.playing == id }
     var body: some View {
         HStack(spacing: 10) {
@@ -887,13 +934,15 @@ struct VoiceBubble: View {
             .buttonStyle(.plain)
             .accessibilityLabel(Text(isPlaying ? "Pause" : "Play voice message"))
             VStack(alignment: .leading, spacing: 4) {
-                GeometryReader { g in
-                    ZStack(alignment: .leading) {
-                        Capsule().fill((mine ? Color.white : Theme.ink).opacity(0.25))
-                        Capsule().fill(mine ? Color.white : Theme.actionBlue)
-                            .frame(width: g.size.width * (isPlaying ? player.progress : (progress ?? 0)))
+                // WhatsApp-style sound bars: louder parts are taller; the played part is filled in.
+                let played = isPlaying ? player.progress : (progress ?? 0)
+                HStack(alignment: .center, spacing: 2) {
+                    ForEach(levels.indices, id: \.self) { i in
+                        Capsule()
+                            .fill((mine ? Color.white : Theme.actionBlue).opacity(Double(i) / Double(levels.count) < played ? 1 : 0.4))
+                            .frame(width: 2.5, height: 4 + 20 * levels[i])
                     }
-                }.frame(height: 4)
+                }.frame(height: 24)
                 Text(verbatim: String(format: "0:%02d", Int(length.rounded())))
                     .font(.caption.monospacedDigit()).opacity(0.85)
             }
@@ -902,7 +951,11 @@ struct VoiceBubble: View {
         .padding(.horizontal, 12).padding(.vertical, 9)
         .foregroundStyle(mine ? Color.white : Theme.ink)
         .modifier(BubbleBackground(mine: mine))
-        .onAppear { length = player.duration(store.mediaData(id)) }
+        .onAppear {
+            let data = store.mediaData(id)
+            length = player.duration(data)
+            if levels.allSatisfy({ $0 == 0.15 }) { levels = VoicePlayer.levels(data, bars: levels.count) }
+        }
     }
 }
 

@@ -65,12 +65,20 @@ extension View {
 
     /// Asks before blocking the phone whose id is in `target`, then blocks it (see `ChatStore.toggleBlocked`).
     @MainActor func blockConfirmation(for target: Binding<String?>, store: ChatStore) -> some View {
-        confirmationDialog("Block this person?", isPresented: Binding(get: { target.wrappedValue != nil }, set: { if !$0 { target.wrappedValue = nil } }),
-                           titleVisibility: .visible, presenting: target.wrappedValue) { id in
-            Button("Block", role: .destructive) { store.toggleBlocked(id) }
-            Button("Cancel", role: .cancel) {}
-        } message: { _ in
-            Text("Their messages and announcements are hidden and ignored. You can unblock them in their contact info.")
+        bottomConfirm(isPresented: Binding(get: { target.wrappedValue != nil }, set: { if !$0 { target.wrappedValue = nil } }),
+                      title: "Block this person?",
+                      message: "Their messages and announcements are hidden and ignored. You can unblock them in their contact info.",
+                      action: "Block", icon: "hand.raised.fill") { if let id = target.wrappedValue { store.toggleBlocked(id) } }
+    }
+
+    /// WhatsApp-style confirmation: a sheet at the bottom with the question, a red action and Cancel, instead of the
+    /// floating bubble iOS 26 draws for a confirmation dialog.
+    func bottomConfirm(isPresented: Binding<Bool>, title: LocalizedStringKey, message: LocalizedStringKey,
+                       action: LocalizedStringKey, icon: String = "trash", perform: @escaping () -> Void) -> some View {
+        sheet(isPresented: isPresented) {
+            ConfirmSheet(title: title, message: message, action: action, icon: icon) {
+                perform(); isPresented.wrappedValue = false
+            } cancel: { isPresented.wrappedValue = false }
         }
     }
 }
@@ -188,42 +196,6 @@ struct AvatarPickerSheet: View {
     private func apply() { store.changeAvatar(emoji.map { Avatars.encode($0, color) }) }
 }
 
-/// Switches on the You tab: pass on messages for others, delivery receipts, notification text, auto-delete.
-struct PrivacyCard: View {
-    @EnvironmentObject var store: ChatStore
-    var body: some View {
-        Card {
-            VStack(alignment: .leading, spacing: 14) {
-                Label("Privacy", systemImage: "lock.fill").font(.subheadline.weight(.semibold))
-                row("Pass on messages for others", "Helps messages travel further and reach people who are away. Uses some battery.", $store.relayOthers)
-                row("Delivery receipts", "Let senders see when their message reached you.", $store.receipts)
-                row("Hide text in notifications", "Notifications show who wrote, not what.", $store.hidePreviews)
-                row("Announcements", "Show announcements from people nearby and notify me. Off: they are hidden, but your phone still passes them on.", $store.showAnnouncements)
-                Text("Delete messages after").font(.subheadline.weight(.semibold))
-                HStack(spacing: 8) {
-                    ForEach([0, 1, 7, 30], id: \.self) { d in
-                        ChipButton(selected: store.autoDeleteDays == d, action: { store.autoDeleteDays = d }) { dayLabel(d) }
-                    }
-                    Spacer(minLength: 0)
-                }
-            }.frame(maxWidth: .infinity, alignment: .leading)
-        }
-    }
-
-    private func row(_ title: LocalizedStringKey, _ body: LocalizedStringKey, _ on: Binding<Bool>) -> some View {
-        Toggle(isOn: on) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                Text(body).font(.caption).foregroundStyle(Theme.inkSecondary)
-            }
-        }.tint(Theme.actionBlue)
-    }
-
-    @ViewBuilder private func dayLabel(_ d: Int) -> some View {
-        if d == 0 { Text("Never") } else if d == 1 { Text("1 day") } else { Text("\(d) days") }
-    }
-}
-
 /// A photo in a chat: the picture (or a placeholder) with a percentage while it is being sent.
 struct PhotoBubble: View {
     let image: UIImage?
@@ -239,5 +211,40 @@ struct PhotoBubble: View {
         }
         .background(Color.black.opacity(0.15))
         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+    }
+}
+
+/// The body of `bottomConfirm`: sized to its content, like WhatsApp's delete sheet.
+struct ConfirmSheet: View {
+    let title: LocalizedStringKey
+    let message: LocalizedStringKey
+    let action: LocalizedStringKey
+    var icon = "trash"
+    let confirm: () -> Void
+    let cancel: () -> Void
+    @State private var height: CGFloat = 280
+    var body: some View {
+        VStack(spacing: 12) {
+            VStack(spacing: 6) {
+                Text(title).font(.headline).foregroundStyle(Theme.ink)
+                Text(message).font(.subheadline).foregroundStyle(Theme.inkSecondary)
+            }
+            .multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
+            .padding(.horizontal, 8).padding(.bottom, 6)
+            Button(role: .destructive) { confirm() } label: {
+                Label(action, systemImage: icon).font(.body.weight(.semibold))
+                    .frame(maxWidth: .infinity, minHeight: 52).contentShape(Rectangle())
+            }
+            .foregroundStyle(Color(hex: 0xE5484D)).glass(radius: 16)
+            Button { cancel() } label: {
+                Text("Cancel").font(.body.weight(.semibold)).frame(maxWidth: .infinity, minHeight: 52).contentShape(Rectangle())
+            }
+            .foregroundStyle(Theme.link).glass(radius: 16)
+        }
+        .buttonStyle(.plain)
+        .padding(.horizontal, 16).padding(.top, 24).padding(.bottom, 12)
+        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { height = $0 }
+        .presentationDetents([.height(height)])
+        .presentationDragIndicator(.visible)
     }
 }

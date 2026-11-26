@@ -144,12 +144,14 @@ struct Conversation: Identifiable, Codable {
     var locked: Bool? = nil            // Face ID / passcode to open, text hidden in the list and in notifications
     var favorite: Bool? = nil          // shown under the Favourites filter
     var pinnedMessage: String? = nil   // id of the message shown at the top of the chat
+    var request: Bool? = nil           // a stranger wrote first ("Messages from strangers: Ask me"): accept or block
     var last: Message? { messages.last }
     var isGroup: Bool { members != nil }
     var isPinned: Bool { pinnedAt != nil }
     var isMuted: Bool { muted == true }
     var isLocked: Bool { locked == true }
     var isFavorite: Bool { favorite == true }
+    var isRequest: Bool { request == true }
 }
 
 /// Replies are sent as plain text with a first line "↪ name: quoted text", so every version (and Android) shows them;

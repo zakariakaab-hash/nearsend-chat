@@ -1,3 +1,6 @@
+import Combine
+import CommonCrypto
+import CryptoKit
 import CoreLocation
 import Foundation
 import SwiftUI
@@ -27,7 +30,9 @@ final class ChatStore: ObservableObject {
     @Published var meshActive = true {
         didSet {
             guard !simulated, oldValue != meshActive else { return }
-            if meshActive { transport?.start() } else { transport?.stop(); peers = [] }
+            // Paused: stop the radio and forget everyone, also people known only through relays (they would come back on
+            // the next announcement round otherwise).
+            if meshActive { transport?.start() } else { transport?.stop(); router?.forgetEveryone(); peers = [] }
         }
     }
     @Published var bluetoothState = "starting"   // starting | ready | off | unauthorized | unsupported
@@ -43,12 +48,14 @@ final class ChatStore: ObservableObject {
     private var router: MeshRouter?
     private var started = false
     private var timer: Timer?
+    private var saverWatch: AnyCancellable?
     private var inflight = Set<String>()
     private var leftGroups = Set<String>()                  // group ids we left: their messages are dropped
     private var groupPending: [String: Set<String>] = [:]   // group message id -> members not sent to yet
     private var groupAcks: [String: Set<String>] = [:]      // group message id -> members who confirmed
     private let keyBook = KeyBook()                         // contacts' keys, also read by the router
     private var handed = Set<String>()                      // message ids the router carries for us this session
+    private var receiptTries: [String: (at: Date, count: Int)] = [:]   // our sent messages with no delivery receipt yet
     private var photoSentAt: [String: Date] = [:]           // photo message id -> when all chunks last went out
     private var photoTries: [String: Int] = [:]
     private let photoCache = NSCache<NSString, UIImage>()     // decoded pictures, so a redraw does not decode them again
@@ -76,6 +83,25 @@ final class ChatStore: ObservableObject {
     @Published var autoDeleteDays = UserDefaults.standard.integer(forKey: "autoDelete") {
         didSet { UserDefaults.standard.set(autoDeleteDays, forKey: "autoDelete"); prune() }
     }
+    /// Private messages from someone with no chat here yet: shown as they come, held as a request, or dropped.
+    enum StrangerPolicy: String, CaseIterable { case allow, ask, block }
+    @Published var strangers = StrangerPolicy(rawValue: UserDefaults.standard.string(forKey: "strangers") ?? "") ?? .ask {
+        didSet { UserDefaults.standard.set(strangers.rawValue, forKey: "strangers") }
+    }
+    /// On: the name and picture we announce to everyone nearby are replaced by `hiddenName`. People who already have
+    /// a chat with us keep seeing the name they know (this build and later); a contact code still carries the real name.
+    @Published var hideFromStrangers = UserDefaults.standard.bool(forKey: "hideMe") {
+        didSet { UserDefaults.standard.set(hideFromStrangers, forKey: "hideMe"); applyNickname() }
+    }
+    static let hiddenName = "Nearsend user"
+    private var announcedName: String { hideFromStrangers ? Self.hiddenName : nickname }
+    /// A notification when someone we chat with comes back in range after 30 minutes away (at most every 2 hours each).
+    @Published var friendNearbyAlerts: Bool = UserDefaults.standard.object(forKey: "friendNearby") as? Bool ?? true {
+        didSet { UserDefaults.standard.set(friendNearbyAlerts, forKey: "friendNearby") }
+    }
+    private var lastSeen: [String: Date] = (UserDefaults.standard.dictionary(forKey: "lastSeen") as? [String: Double] ?? [:]).mapValues { Date(timeIntervalSince1970: $0) }
+    private var friendAlertAt: [String: Date] = [:]
+    private var lastSeenSaved = Date.distantPast
 
     // SOS
     @Published private(set) var alerts: [SosAlert] = []    // alarms heard, newest first (not saved)
@@ -98,7 +124,7 @@ final class ChatStore: ObservableObject {
         if d.string(forKey: "deviceID") == nil { d.set(UUID().uuidString, forKey: "deviceID") }
         deviceID = d.string(forKey: "deviceID") ?? UUID().uuidString
         #if targetEnvironment(simulator)
-        simulated = true
+        simulated = !d.bool(forKey: "realBluetooth")   // the simulator has no Bluetooth: demo data, unless testing the prompts
         #else
         simulated = d.bool(forKey: "demoMode")
         #endif
@@ -129,10 +155,12 @@ final class ChatStore: ObservableObject {
         Notifier.requestPermission()
         let crypto = KeyStore.loadOrCreate()
         myFingerprint = crypto.fingerprint
-        let r = MeshRouter(id: deviceID, name: nickname, crypto: crypto)
-        let t = BLETransport(id: deviceID, name: nickname, publicKey: crypto.publicKey)
+        myPublicKey = crypto.publicKey
+        let r = MeshRouter(id: deviceID, name: announcedName, crypto: crypto)
+        let t = BLETransport(id: deviceID, name: announcedName, publicKey: crypto.publicKey)
         r.transmit = { [weak t] link, data, done in if let t { t.write(link: link, data: data, done: done) } else { done(false) } }
         r.onPeers = { [weak self] p in Task { @MainActor in self?.setPeers(p) } }
+        r.onRepeat = { [weak self] from, id in Task { @MainActor in self?.resendRead(from: from, id: id) } }
         r.onText = { [weak self] from, name, text, hops, id in Task { @MainActor in self?.receiveText(from: from, name: name, text: text, hops: hops, id: id) } }
         r.onPublic = { [weak self] from, name, text, id in Task { @MainActor in self?.receivePublic(from: from, name: name, text: text, id: id) } }
         r.onDelivered = { [weak self] id in Task { @MainActor in self?.markDelivered(id) } }
@@ -151,13 +179,21 @@ final class ChatStore: ObservableObject {
         r.onKey = { [weak self] id, pk in Task { @MainActor in self?.learnKey(id, pk) } }
         let book = keyBook
         r.savedKey = { id in book.key(id) }
-        r.relay = relayOthers; r.sendAcks = receipts; r.myAvatar = myAvatar
+        r.relay = relayOthers; r.sendAcks = receipts; r.myAvatar = hideFromStrangers ? nil : myAvatar
         t.onNeighbor = { link, id, name, pk in r.neighborConnected(link: link, id: id, name: name, pk: pk) }
         t.onLost = { r.neighborLost(link: $0) }
         t.onPacket = { data, link in r.receive(data, from: link) }
         t.onRSSI = { r.updateRSSI(link: $0, rssi: $1) }
-        t.onState = { [weak self] s in Task { @MainActor in self?.bluetoothState = s } }
+        t.onState = { [weak self, weak r] s in
+            Task { @MainActor in
+                self?.bluetoothState = s
+                if s != "ready" { r?.forgetEveryone() }   // Bluetooth off: show nobody in range
+            }
+        }
         router = r; transport = t
+        // Battery saver also makes Bluetooth scan less (see BLETransport.dutyCycleScan).
+        t.saver = PowerMode.shared.saver
+        saverWatch = PowerMode.shared.$saver.sink { [weak t] on in t?.saver = on }
         if meshActive { t.start() }
         // Announce every 8 s, or every 16 s in Low Power Mode (relayed people are forgotten after 40 s of silence).
         timer = Timer.scheduledTimer(withTimeInterval: 4, repeats: true) { [weak self, weak r] _ in
@@ -165,14 +201,15 @@ final class ChatStore: ObservableObject {
                 guard let self else { return }
                 self.tickCount += 1
                 if self.tickCount % (ProcessInfo.processInfo.isLowPowerModeEnabled ? 4 : 2) == 0 { r?.tick() }
-                self.prune(); self.flushOutbox()
+                self.prune(); self.flushOutbox(); self.rememberSeen()
             }
         }
     }
 
     func applyNickname() {
-        router?.myName = nickname
-        transport?.setName(nickname)
+        router?.myName = announcedName
+        router?.myAvatar = hideFromStrangers ? nil : myAvatar
+        transport?.setName(announcedName)
     }
 
     /// Panic wipe: forget every message, key and setting. The phone gets a brand-new identity.
@@ -186,14 +223,20 @@ final class ChatStore: ObservableObject {
         KeyStore.wipe()
         try? FileManager.default.removeItem(at: Self.fileURL)
         let d = UserDefaults.standard
-        ["nickname", "deviceID", "onboarded", "tab", "relay", "receipts", "hidePreviews", "autoDelete", "avatar", "announcements", "avatarChosen"].forEach { d.removeObject(forKey: $0) }
+        ["nickname", "deviceID", "onboarded", "tab", "relay", "receipts", "hidePreviews", "autoDelete", "avatar", "announcements", "avatarChosen",
+         "strangers", "hideMe", "friendNearby", "lastSeen", "appLock"].forEach { d.removeObject(forKey: $0) }
+        strangers = .ask; hideFromStrangers = false; friendNearbyAlerts = true; lastSeen = [:]; friendAlertAt = [:]
         relayOthers = true; receipts = true; hidePreviews = false; autoDeleteDays = 0; myAvatar = nil; showAnnouncements = true
         deviceID = UUID().uuidString; d.set(deviceID, forKey: "deviceID")
         verified = []; blocked = []; peers = []; conversations = []
         myFingerprint = simulated ? myFingerprint : ""
         nickname = "anon-\(Int.random(in: 1000...9999))"
+        changeAvatar(Avatars.random(avoiding: []))   // a fresh picture for the fresh identity, as on first launch
+        d.removeObject(forKey: "avatarChosen")
         ensurePublicChannel()
-        if simulated { seed() } else { startIfNeeded() }
+        // Bluetooth starts again only from the onboarding's last page ("Allow Bluetooth & start"), as on a first launch,
+        // so iOS does not ask about Bluetooth while page 1 is showing.
+        if simulated { seed() }
     }
 
     /// Demo mode on a real phone, for App Review and for trying the app without a second phone: sample people and chats,
@@ -229,13 +272,68 @@ final class ChatStore: ObservableObject {
         if index(peer.id) == nil { conversations.append(Conversation(id: peer.id, peer: peer, messages: [])) }
     }
 
+    // MARK: strangers and friends nearby
+
+    /// Someone with no chat on this phone wrote to us. nil = drop it (Block), true = keep it as a request (Ask me),
+    /// false = a normal chat (Allow, or we already have a chat with them).
+    private func strangerGate(_ from: String) -> Bool? {
+        if index(from) != nil { return false }
+        switch strangers {
+        case .allow: return false
+        case .ask: return true
+        case .block: NLog.i("chat", "dropped a message from a stranger (\(NLog.s(from)))"); return nil
+        }
+    }
+
+    /// "Accept" on a message request: it becomes a normal chat, and read receipts start working.
+    func acceptRequest(_ id: String) {
+        guard let i = index(id) else { return }
+        conversations[i].request = nil
+        save()
+        markRead(id)
+    }
+
+    /// People we chat with who just came in range: a notification when they were away 30 minutes or more.
+    private func friendsArrived(_ arrived: [Peer]) {
+        let now = Date()
+        if friendNearbyAlerts {
+            for p in arrived {
+                guard let c = conversations.first(where: { $0.id == p.id }), !c.isGroup, !c.isRequest, !c.isMuted, !c.messages.isEmpty
+                else { continue }
+                let away = lastSeen[p.id].map { now.timeIntervalSince($0) } ?? .infinity
+                let since = friendAlertAt[p.id].map { now.timeIntervalSince($0) } ?? .infinity
+                guard away > 30 * 60, since > 2 * 3600 else { continue }
+                friendAlertAt[p.id] = now
+                Notifier.notify(title: String(format: localized("%@ is nearby"), p.name), body: localized("Say hi, or agree where to meet."))
+            }
+        }
+        rememberSeen(now)
+    }
+
+    /// When each person was last in range, saved at most once a minute (it decides who counts as "back").
+    private func rememberSeen(_ now: Date = .now) {
+        for p in peers { lastSeen[p.id] = now }
+        guard now.timeIntervalSince(lastSeenSaved) > 60 else { return }
+        lastSeenSaved = now
+        let week = now.addingTimeInterval(-7 * 86400)
+        lastSeen = lastSeen.filter { $0.value > week }
+        UserDefaults.standard.set(lastSeen.mapValues { $0.timeIntervalSince1970 }, forKey: "lastSeen")
+    }
+
     /// The chat is on screen: clear the badge and, in a private chat, send read receipts for their messages
     /// (only when Delivery receipts are on; the router checks).
+    /// They sent a message again because our receipts did not reach them: if we already read it, say so again.
+    private func resendRead(from: String, id: String) {
+        guard receipts, let router, let c = conversations.first(where: { $0.id == from }),
+              c.messages.contains(where: { $0.id == id && $0.readSent == true }) else { return }
+        router.sendRead(to: from, ref: id)
+    }
+
     func markRead(_ id: String) {
         guard let i = index(id) else { return }
         var changed = false
         if conversations[i].unread > 0 { conversations[i].unread = 0; changed = true }
-        if !simulated, !conversations[i].isGroup, id != publicChannelID, receipts, let router {
+        if !simulated, !conversations[i].isGroup, !conversations[i].isRequest, id != publicChannelID, receipts, let router {
             for j in conversations[i].messages.indices where !conversations[i].messages[j].mine && conversations[i].messages[j].readSent != true {
                 router.sendRead(to: id, ref: conversations[i].messages[j].id)
                 conversations[i].messages[j].readSent = true; changed = true
@@ -245,11 +343,60 @@ final class ChatStore: ObservableObject {
     }
 
     /// What "Show my code" puts in the QR code: our fingerprint, so a friend can verify us by scanning instead of reading digits.
-    var myCodePayload: String { "nearsend:fp:" + Self.compact(myFingerprint) }
+    /// Our public key, once Bluetooth has started (it is made then); part of the contact card.
+    @Published private(set) var myPublicKey: Data?
+
+    /// What "Show my code" shows: our contact card (id, public key, name), so a friend can add us from anywhere and
+    /// verify us at the same time. Before the key exists, just the fingerprint.
+    var myCodePayload: String { myContactCode ?? "nearsend:fp:" + Self.compact(myFingerprint) }
+
+    /// "nearsend:c:" + base64url JSON {i: id, k: public key, n: name}. Also shared as text for pasting.
+    var myContactCode: String? {
+        guard let pk = myPublicKey,
+              let json = try? JSONSerialization.data(withJSONObject: ["i": deviceID, "k": pk.base64EncodedString(), "n": nickname], options: [.sortedKeys])
+        else { return nil }
+        return "nearsend:c:" + json.base64EncodedString().replacingOccurrences(of: "+", with: "-").replacingOccurrences(of: "/", with: "_").replacingOccurrences(of: "=", with: "")
+    }
+
+    private static func parseContact(_ code: String) -> (id: String, key: Data, name: String)? {
+        let t = code.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let r = t.range(of: "nearsend:c:") else { return nil }
+        var b = String(t[r.upperBound...]).replacingOccurrences(of: "-", with: "+").replacingOccurrences(of: "_", with: "/")
+        b = String(b.prefix { !$0.isWhitespace })
+        while b.count % 4 != 0 { b += "=" }
+        guard let data = Data(base64Encoded: b), data.count < 2_000,
+              let o = try? JSONSerialization.jsonObject(with: data) as? [String: String],
+              let id = o["i"], !id.isEmpty, id.count <= 64, let ks = o["k"], let key = Data(base64Encoded: ks), key.count == 32
+        else { return nil }
+        return (id, key, String((o["n"] ?? "?").prefix(24)))
+    }
+
+    enum AddContactResult: Equatable { case added(id: String, name: String), itsYou, invalid }
+
+    /// A contact card scanned or pasted: saves their key and opens a chat with them, even when they are far away
+    /// (phones in between carry the messages). Scanning in person also verifies them.
+    func addContact(code: String, inPerson: Bool) -> AddContactResult {
+        guard let c = Self.parseContact(code) else { return .invalid }
+        guard c.id != deviceID else { return .itsYou }
+        let fp = MeshCrypto.fingerprint(c.key)
+        var all = keyBook.all(); all[c.id] = c.key; keyBook.replace(all)
+        if inPerson { verified.insert(fp) }
+        let peer = Peer(id: c.id, name: c.name, hops: 2, rssi: -100, verified: verified.contains(fp), fingerprint: fp)
+        if let i = index(c.id) { conversations[i].peer.fingerprint = fp; conversations[i].peer.verified = peer.verified }
+        else { ensureConversation(peer) }
+        peers = peers.map { var p = $0; p.verified = verified.contains(p.fingerprint); return p }
+        save()
+        flushOutbox()
+        return .added(id: c.id, name: c.name)
+    }
     private static func compact(_ fp: String) -> String { fp.filter { $0.isHexDigit }.uppercased() }
 
     /// A scanned code: marks the matching person as verified and returns their name, or nil when nobody here has that fingerprint.
     func verifyScanned(_ payload: String) -> String? {
+        if let c = Self.parseContact(payload) {    // a contact card verifies too: its key gives the fingerprint
+            if case .added(_, let name) = addContact(code: payload, inPerson: true) { return name }
+            return c.id == deviceID ? nil : c.name
+        }
         guard payload.hasPrefix("nearsend:fp:") else { return nil }
         let fp = Self.compact(String(payload.dropFirst("nearsend:fp:".count)))
         let candidates = peers + conversations.map(\.peer)
@@ -345,8 +492,18 @@ final class ChatStore: ObservableObject {
                 }
                 continue
             }
+            // Sent but no receipt: the receipt (or the message) was lost. Send it again while they are in range; the
+            // receiver answers a repeat with a fresh receipt. Every 20 s, at most 5 times.
+            for m in c.messages where m.mine && m.state == .sent && m.photo == nil && peers.contains(where: { $0.id == c.id }) {
+                let last = receiptTries[m.id]
+                guard (last?.count ?? 0) < 5, Date().timeIntervalSince(last?.at ?? m.date) > 20 else { continue }
+                receiptTries[m.id] = (.now, (last?.count ?? 0) + 1)
+                trySend(m, to: c.id)
+            }
+            // Photos and voice notes: sent again (every 30 s, at most 4 times) until their receipt arrives.
+            for m in c.messages where m.mine && m.photo != nil && (m.state == .sending || m.state == .sent) { flushPhoto(m, in: c.id) }
             for m in c.messages where m.mine && m.state == .sending {
-                if m.photo != nil { flushPhoto(m, in: c.id); continue }
+                if m.photo != nil { continue }
                 // Contacts whose key we have get a day (phones nearby carry the message); others 10 minutes.
                 let carried = keyBook.key(c.id) != nil
                 if Date().timeIntervalSince(m.date) > (carried ? MeshRouter.holdTime : 600) { update(m.id, in: c.id, .failed) }
@@ -358,9 +515,17 @@ final class ChatStore: ObservableObject {
     private func setPeers(_ list: [Peer]) {
         guard !simulated else { return }   // demo mode: Bluetooth input is ignored
         let known = Set(peers.map { $0.id })
-        var mapped = list.filter { !blocked.contains($0.id) }.map { p -> Peer in var q = p; q.verified = verified.contains(q.fingerprint); return q }
+        var mapped = list.filter { !blocked.contains($0.id) }.map { p -> Peer in
+            var q = p; q.verified = verified.contains(q.fingerprint)
+            // Someone who hides from strangers: we have a chat with them, so keep the name and picture we know.
+            if q.name == Self.hiddenName, let c = conversations.first(where: { $0.id == q.id }), c.peer.name != Self.hiddenName {
+                q.name = c.peer.name; q.avatar = q.avatar ?? c.peer.avatar
+            }
+            return q
+        }
         mapped.sort { $0.hops == $1.hops ? $0.rssi > $1.rssi : $0.hops < $1.hops }
         if mapped.contains(where: { !known.contains($0.id) }) { Notifier.peerHaptic() }
+        friendsArrived(mapped.filter { !known.contains($0.id) })
         peers = mapped
         for p in mapped { if let i = index(p.id) { conversations[i].peer = p } }
         flushOutbox()
@@ -368,13 +533,15 @@ final class ChatStore: ObservableObject {
 
     private func receiveText(from: String, name: String, text: String, hops: Int, id: String) {
         guard !simulated else { return }   // demo mode: Bluetooth input is ignored
-        guard !blocked.contains(from) else { return }
+        guard !blocked.contains(from), let request = strangerGate(from) else { return }
         let peer = peers.first { $0.id == from } ?? Peer(id: from, name: name, hops: hops, rssi: -80)
         ensureConversation(peer)
         guard let i = index(from), !conversations[i].messages.contains(where: { $0.id == id }) else { return }
+        if request { conversations[i].request = true }
         conversations[i].messages.append(Message(id: id, text: text, date: .now, mine: false, hops: hops))
         if activeConversation != from { conversations[i].unread += 1 }
-        alert(from, title: name, body: preview(text))
+        if conversations[i].isRequest { alert(from, title: localized("Message request"), body: peer.name) }
+        else { alert(from, title: name, body: preview(text)) }
         if conversations.first(where: { $0.id == from })?.isMuted != true { Notifier.messageHaptic() }
         save()
     }
@@ -545,7 +712,7 @@ final class ChatStore: ObservableObject {
                 guard let self else { return }
                 self.inflight.remove(key); self.photoProgress[m.id] = nil
                 switch outcome {
-                case .sent: self.photoSentAt[m.id] = Date()
+                case .sent: self.photoSentAt[m.id] = Date(); self.update(m.id, in: cid, .sent)   // all pieces out; receipt next
                 case .failed: self.photoSentAt[m.id] = Date().addingTimeInterval(-20)             // try again soon
                 default: self.photoTries[m.id, default: 1] -= 1                                    // person walked away: not a try
                 }
@@ -555,10 +722,11 @@ final class ChatStore: ObservableObject {
 
     private func receivePhoto(from: String, name sent: String, photo: String, bytes: Data) {
         guard !simulated else { return }   // demo mode: Bluetooth input is ignored
-        guard !blocked.contains(from) else { return }
+        guard !blocked.contains(from), let request = strangerGate(from) else { return }
         let peer = peers.first { $0.id == from } ?? Peer(id: from, name: sent, hops: 1, rssi: -80)
         ensureConversation(peer)
         guard let i = index(from), !conversations[i].messages.contains(where: { $0.id == photo }) else { return }
+        if request { conversations[i].request = true }
         guard (try? bytes.write(to: Self.photoURL(photo), options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])) != nil else { return }
         var m = Message(id: photo, text: "", date: .now, mine: false, photo: photo)
         if VoiceNote.looksLikeAudio(bytes) { m.voice = true }
@@ -645,8 +813,9 @@ final class ChatStore: ObservableObject {
     private func alert(_ cid: String, title: String, body: String) {
         let c = conversations.first { $0.id == cid }
         guard c?.isMuted != true else { return }
+        let appLocked = UserDefaults.standard.bool(forKey: "appLock")   // App lock: no message text on the Lock Screen
         Notifier.notify(title: c?.isLocked == true ? localized("Locked chat") : title,
-                        body: c?.isLocked == true ? localized("New message") : body)
+                        body: c?.isLocked == true || appLocked ? localized("New message") : body)
     }
 
     /// Local only. A private chat or group is removed from this phone (a group is left, so its new messages are ignored);
@@ -698,7 +867,10 @@ final class ChatStore: ObservableObject {
         guard !blocked.contains(from), !leftGroups.contains(gid), members.contains(where: { $0.id == deviceID }) else { return }
         let name = peers.first { $0.id == from }?.name ?? sent
         if index(gid) == nil {
-            conversations.append(Conversation(id: gid, peer: Peer(id: gid, name: groupName, hops: 1, rssi: -50), messages: [], members: members))
+            // A new group from someone we have no chat with follows the strangers setting too.
+            guard let request = strangerGate(from) else { return }
+            conversations.append(Conversation(id: gid, peer: Peer(id: gid, name: groupName, hops: 1, rssi: -50), messages: [], members: members,
+                                              request: request ? true : nil))
         }
         guard let i = index(gid), !conversations[i].messages.contains(where: { $0.id == id }) else { return }
         conversations[i].peer.name = groupName
@@ -872,5 +1044,109 @@ final class ChatStore: ObservableObject {
             guard simulated else { continue }
             for i in peers.indices { peers[i].rssi = max(-95, min(-40, peers[i].rssi + Int.random(in: -3...3))) }
         } }
+    }
+}
+
+// MARK: - Move to another phone
+
+/// A transfer file holds this phone's identity (private key, id, name, picture), its chats and, optionally, photos and
+/// voice notes, sealed with a key made from a password (PBKDF2-SHA256, 600,000 rounds; ChaCha20-Poly1305). Without the
+/// password nobody can open it. Layout: "NSXFER1" | salt (16 bytes) | rounds (UInt32, big-endian) | sealed box.
+extension ChatStore {
+    enum TransferError: LocalizedError {
+        case wrongPassword, notATransferFile, noIdentity, demoMode
+        var errorDescription: String? {
+            switch self {
+            case .wrongPassword: localized("Wrong password, or the file is damaged.")
+            case .notATransferFile: localized("This is not a Nearsend transfer file.")
+            case .noIdentity: localized("This phone has no identity to move yet.")
+            case .demoMode: localized("Turn off Demo mode first.")
+            }
+        }
+    }
+
+    private struct Transfer: Codable {
+        var v = 1
+        var deviceID: String
+        var nickname: String
+        var avatar: String?
+        var key: Data
+        var state: Data?
+        var photos: [String: Data]
+    }
+
+    private static let transferMagic = Data("NSXFER1".utf8)
+    private static let transferAAD = Data("nearsend-transfer-v1".utf8)
+    private static let transferRounds: UInt32 = 600_000
+
+    private static func transferKey(_ password: String, salt: Data, rounds: UInt32) -> SymmetricKey {
+        var out = [UInt8](repeating: 0, count: 32)
+        salt.withUnsafeBytes { s in
+            _ = CCKeyDerivationPBKDF(CCPBKDFAlgorithm(kCCPBKDF2), password, password.utf8.count,
+                                     s.bindMemory(to: UInt8.self).baseAddress, salt.count,
+                                     CCPseudoRandomAlgorithm(kCCPRFHmacAlgSHA256), rounds, &out, out.count)
+        }
+        return SymmetricKey(data: out)
+    }
+
+    /// Writes the transfer file to a temporary folder and returns it, to be shared (AirDrop, Files…).
+    func makeTransferFile(password: String, includePhotos: Bool) throws -> URL {
+        guard !simulated else { throw TransferError.demoMode }
+        saveNow()
+        guard let key = KeyStore.exportKey() else { throw TransferError.noIdentity }
+        var photos: [String: Data] = [:]
+        if includePhotos, let files = try? FileManager.default.contentsOfDirectory(at: Self.photosDir, includingPropertiesForKeys: nil) {
+            for f in files where f.pathExtension == "img" { photos[f.deletingPathExtension().lastPathComponent] = try? Data(contentsOf: f) }
+        }
+        let t = Transfer(deviceID: deviceID, nickname: nickname, avatar: myAvatar, key: key,
+                         state: try? Data(contentsOf: Self.fileURL), photos: photos)
+        var salt = Data(count: 16)
+        _ = salt.withUnsafeMutableBytes { SecRandomCopyBytes(kSecRandomDefault, 16, $0.baseAddress!) }
+        let box = try ChaChaPoly.seal(try JSONEncoder().encode(t), using: Self.transferKey(password, salt: salt, rounds: Self.transferRounds),
+                                      authenticating: Self.transferAAD)
+        var rounds = Self.transferRounds.bigEndian
+        let file = Self.transferMagic + salt + Data(bytes: &rounds, count: 4) + box.combined
+        let day = Date().formatted(.iso8601.year().month().day())
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("Nearsend transfer \(day).nearsend")
+        try file.write(to: url, options: [.atomic, .completeFileProtection])
+        NLog.i("app", "transfer file made (\(photos.count) photos)")
+        return url
+    }
+
+    /// Replaces this phone's identity, chats and settings with the ones in the file. Bluetooth restarts as that identity.
+    func restoreTransfer(from url: URL, password: String) throws {
+        guard !simulated else { throw TransferError.demoMode }
+        let scoped = url.startAccessingSecurityScopedResource()
+        defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+        let file = try Data(contentsOf: url)
+        let head = Self.transferMagic.count
+        guard file.count > head + 20, file.prefix(head) == Self.transferMagic else { throw TransferError.notATransferFile }
+        let salt = file.subdata(in: head..<head + 16)
+        let rounds = file.subdata(in: head + 16..<head + 20).reduce(UInt32(0)) { $0 << 8 | UInt32($1) }
+        guard (100_000...5_000_000).contains(rounds) else { throw TransferError.notATransferFile }
+        let plain: Data
+        do {
+            plain = try ChaChaPoly.open(ChaChaPoly.SealedBox(combined: file.subdata(in: head + 20..<file.count)),
+                                        using: Self.transferKey(password, salt: salt, rounds: rounds), authenticating: Self.transferAAD)
+        } catch { throw TransferError.wrongPassword }
+        let t = try JSONDecoder().decode(Transfer.self, from: plain)
+        try KeyStore.replace(with: t.key)
+
+        stopSos()
+        transport?.stop(); timer?.invalidate()
+        router = nil; transport = nil; started = false; inflight = []
+        handed = []; posts = []; alerts = []; peers = []; photoProgress = [:]; photoCache.removeAllObjects()
+        try? FileManager.default.removeItem(at: Self.photosDir)
+        for (id, data) in t.photos { try? data.write(to: Self.photoURL(id), options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication]) }
+        if let state = t.state { try state.write(to: Self.fileURL, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication]) }
+        else { try? FileManager.default.removeItem(at: Self.fileURL) }
+        deviceID = t.deviceID; UserDefaults.standard.set(t.deviceID, forKey: "deviceID")
+        nickname = t.nickname
+        if let a = t.avatar { changeAvatar(a) }
+        conversations = []
+        load()
+        ensurePublicChannel()
+        NLog.i("app", "transfer restored (\(t.photos.count) photos)")
+        startIfNeeded()
     }
 }

@@ -40,7 +40,7 @@
 	<key>NSBluetoothAlwaysUsageDescription</key>
 	<string>Nearsend Chat uses Bluetooth to find and message people near you without internet.</string>
 	<key>NSFaceIDUsageDescription</key>
-	<string>Nearsend Chat uses Face ID to open chats you have locked.</string>
+	<string>Nearsend Chat uses Face ID to open the app or chats you have locked.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Only used while you hold the microphone button to record a voice message.</string>
 	<key>NSCameraUsageDescription</key>

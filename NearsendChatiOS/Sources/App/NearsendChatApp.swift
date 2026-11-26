@@ -1,3 +1,4 @@
+import LocalAuthentication
 import SwiftUI
 
 @main
@@ -5,6 +6,9 @@ struct NearsendChatApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     private let store = ChatStore.shared
     @AppStorage("onboarded") private var onboarded = false
+    @AppStorage("appLock") private var appLock = false
+    /// App lock: closed at launch and every time the app goes to the background.
+    @State private var locked = UserDefaults.standard.bool(forKey: "appLock")
 
     init() {
         let a = UITabBarAppearance()
@@ -27,7 +31,11 @@ struct NearsendChatApp: App {
             .preferredColorScheme(power.saver ? .dark : nil)   // battery saver: light text on the black background
             .onAppear { if onboarded { store.startIfNeeded() } }
             .onChange(of: onboarded) { _, v in if v { store.startIfNeeded() } }
-            .onChange(of: scenePhase, initial: true) { _, p in power.applyBrightness(active: p == .active) }
+            .overlay { if locked && appLock { AppLockView { locked = false } } }
+            .onChange(of: scenePhase, initial: true) { _, p in
+                power.applyBrightness(active: p == .active)
+                if p == .background && appLock { locked = true }
+            }
             .onChange(of: power.saver) { _, _ in power.applyBrightness(active: scenePhase == .active) }
         }
     }
@@ -35,6 +43,13 @@ struct NearsendChatApp: App {
 
 struct RootView: View {
     @EnvironmentObject var store: ChatStore
+    /// The tab bar takes images, not views: draw the avatar once per change of picture or name.
+    private var youIcon: UIImage? {
+        guard store.myAvatar != nil else { return nil }
+        let r = ImageRenderer(content: Avatar(name: store.nickname, size: 28, avatar: store.myAvatar))
+        r.scale = 3
+        return r.uiImage?.withRenderingMode(.alwaysOriginal)   // keep its colours: the tab bar tints template images
+    }
     @AppStorage("tab") private var tab = 0
     var body: some View {
         TabView(selection: $tab) {
@@ -43,7 +58,11 @@ struct RootView: View {
                 .badge(store.unreadTotal).tag(1)
             SosView().tabItem { Label("SOS", systemImage: "exclamationmark.triangle.fill") }
                 .badge(store.activeAlerts).tag(3)
-            IdentityView().tabItem { Label("You", systemImage: "person.crop.circle.fill") }.tag(2)
+            IdentityView().tabItem {
+                // Your own picture as the tab icon (falls back to the person symbol until one exists).
+                if let img = youIcon { Label { Text("You") } icon: { Image(uiImage: img).renderingMode(.original) } }
+                else { Label("You", systemImage: "person.crop.circle.fill") }
+            }.tag(2)
         }
     }
 }
@@ -73,5 +92,47 @@ struct LanguageRoot<Content: View>: View {
             .environment(\.layoutDirection, explicit
                 ? (Locale.Language(identifier: language).characterDirection == .rightToLeft ? .rightToLeft : .leftToRight)
                 : systemDirection)
+    }
+}
+
+/// Covers the whole app until Face ID, Touch ID or the passcode says it's you. Asks once on its own when shown.
+struct AppLockView: View {
+    let unlocked: () -> Void
+    @State private var asking = false
+    @State private var fromBackground = false
+    @Environment(\.scenePhase) private var scenePhase
+
+    var body: some View {
+        ZStack {
+            SkyBackground()
+            VStack(spacing: 18) {
+                Image(systemName: "lock.fill").font(.system(size: 44, weight: .semibold)).foregroundStyle(.white)
+                    .frame(width: 96, height: 96).background(Theme.actionBlue, in: Circle())
+                Text("Nearsend Chat is locked").font(.title2.weight(.bold)).foregroundStyle(.white)
+                Button { ask() } label: {
+                    Label("Unlock", systemImage: "faceid").font(.headline).padding(.horizontal, 28).frame(minHeight: 50)
+                        .foregroundStyle(Theme.actionBlue).background(.white, in: Capsule())
+                }
+            }
+        }
+        // Ask on its own only when shown in front, or when coming back from the background; after a cancel the
+        // person taps Unlock (Face ID's own sheet makes the app inactive, which must not start another prompt).
+        .onAppear { if scenePhase == .active { ask() } else { fromBackground = true } }
+        .onChange(of: scenePhase) { _, p in
+            if p == .background { fromBackground = true }
+            if p == .active && fromBackground { fromBackground = false; ask() }
+        }
+    }
+
+    private func ask() {
+        guard !asking else { return }
+        let ctx = LAContext()
+        var err: NSError?
+        // No passcode on the phone any more: the lock cannot be checked, so it does not keep the person out.
+        guard ctx.canEvaluatePolicy(.deviceOwnerAuthentication, error: &err) else { unlocked(); return }
+        asking = true
+        ctx.evaluatePolicy(.deviceOwnerAuthentication, localizedReason: localized("Unlock Nearsend Chat")) { ok, _ in
+            Task { @MainActor in asking = false; if ok { unlocked() } }
+        }
     }
 }

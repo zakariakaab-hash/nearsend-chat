@@ -252,5 +252,38 @@ do {   // photos: chunked, sealed, only to a direct neighbour, confirmed, never 
     n[0].router.sendPhoto(photo, to: "B", photoID: "ph-1", progress: { _ in }) { _ in }
     check(n[1].photos.count == 1, "the same photo again is ignored")
 }
+// 5. Writes to a connected phone hold at most 512 bytes (iOS and Android). Photo and voice chunk packets are bigger, so they
+//    must be fragmented; small packets must stay one plain JSON write so older versions still understand them.
+do {
+    let small = Data("{\"t\":\"msg\"}".utf8)
+    check(WriteFraming.writes(small, seq: 5) == [small], "a packet under 512 bytes is one plain write")
+    check(!WriteFraming.isFragment(small), "a plain JSON packet is not taken for a fragment")
+    var big = Data("{".utf8); big.append(Data((0..<1_200).map { UInt8(truncatingIfNeeded: $0 % 90 + 32) }))
+    let w = WriteFraming.writes(big, seq: 0x7B)
+    check(w.count == 3 && w.allSatisfy { $0.count <= 512 }, "a 1.2 KB packet becomes 3 writes of at most 512 bytes")
+    check(w.allSatisfy { WriteFraming.isFragment($0) }, "fragments never start with \"{\" (sequence 0x7B is skipped)")
+    var r = Reassembler(); var got: Data?
+    for f in w { if let p = r.add(f) { got = p } }
+    check(got == big, "the receiver puts the 1.2 KB packet back together")
+    check(WriteFraming.next(0x7A) == 0x7C && WriteFraming.next(0xFF) == 0x00, "sequence numbers skip 0x7B and wrap")
+    // The real photo chunk packet the router builds is over the limit: this is why photos and voice notes got stuck on iPhone.
+    var p = Packet(t: "img", id: UUID().uuidString, src: UUID().uuidString, dst: UUID().uuidString, ttl: 1, ts: 1_700_000_000_000)
+    p.n = "anon-1234"; p.ct = Data(count: MeshRouter.photoChunk).base64EncodedString(); p.ref = UUID().uuidString; p.ix = 12; p.cnt = 40
+    let size = (try? JSONEncoder().encode(p).count) ?? 0
+    check(size > 512, "a photo chunk packet (\(size) bytes) needs fragmenting")
+    check(WriteFraming.writes((try? JSONEncoder().encode(p)) ?? Data(), seq: 1).allSatisfy { $0.count <= 512 }, "and fragments fit one write each")
+}
+// 6. Someone nearby announces a contact's id with their own key: it is refused, and messages stay readable only by the contact.
+do {
+    let net = Net(); let a = net.add("A"); let b = net.add("B"); let m = net.add("M")
+    a.router.savedKey = { $0 == "B" ? b.crypto.publicKey : nil }
+    net.connect("A", "B"); net.settle()
+    a.router.neighborConnected(link: "out:M", id: "B", name: "B", pk: m.crypto.publicKey)
+    check(a.peers.first { $0.id == "B" }?.fingerprint == nil || a.peers.contains { $0.id == "B" }, "the real B stays listed")
+    var outcome: SendOutcome?
+    a.router.sendText("for B only", to: "B", msgID: "imp-1") { outcome = $0 }
+    check(outcome == .sent && b.texts.map { $0.text } == ["for B only"], "a different key for a known id is refused; B still reads its messages")
+    check(m.texts.isEmpty, "the impostor gets nothing readable")
+}
 print(failures == 0 ? "ALL PASSED" : "\(failures) FAILED")
 exit(failures == 0 ? 0 : 1)

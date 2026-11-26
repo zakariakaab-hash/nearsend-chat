@@ -34,6 +34,8 @@
 		ED9459A47ECD6E0BAC374148 /* Framing.swift in Sources */ = {isa = PBXBuildFile; fileRef = 76CAF4DF9CBE52D59A76D02E /* Framing.swift */; };
 		F228ABAD441CEA143F2105D8 /* Photos.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73E4BAF73843F626F41F1F98 /* Photos.swift */; };
 		F861B1D61D3F1B6D29567FE3 /* Anton-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 232B4FB3BF6F535A13312310 /* Anton-Regular.ttf */; };
+		18CFFB8448AC39EC91B86F04 /* nearsend_sos.caf in Resources */ = {isa = PBXBuildFile; fileRef = BBAFDE89D389DEE291B1E6DF /* nearsend_sos.caf */; };
+		B481E83485CC0AE679A33147 /* nearsend_hop.caf in Resources */ = {isa = PBXBuildFile; fileRef = BC6A022E3B3C5C1469A6F4F2 /* nearsend_hop.caf */; };
 		FDE0E33B7E5BD3077DD9467B /* ShareSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 52CA2C589CFEC6E0B48B454C /* ShareSheet.swift */; };
 /* End PBXBuildFile section */
 
@@ -47,6 +49,8 @@
 		0C090350B14C2E063700E101 /* pt */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = pt; path = pt.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 		0CFC913F9BA993B9C262C482 /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/Localizable.strings"; sourceTree = "<group>"; };
 		232B4FB3BF6F535A13312310 /* Anton-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Anton-Regular.ttf"; sourceTree = "<group>"; };
+		BBAFDE89D389DEE291B1E6DF /* nearsend_sos.caf */ = {isa = PBXFileReference; lastKnownFileType = file; path = nearsend_sos.caf; sourceTree = "<group>"; };
+		BC6A022E3B3C5C1469A6F4F2 /* nearsend_hop.caf */ = {isa = PBXFileReference; lastKnownFileType = file; path = nearsend_hop.caf; sourceTree = "<group>"; };
 		27189BBA0B50CECDDF775F67 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
 		28CEAE65B3A970BA018742F3 /* NearbyView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NearbyView.swift; sourceTree = "<group>"; };
 		28D23FEEE99206B50AA5D8BE /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/InfoPlist.strings; sourceTree = "<group>"; };
@@ -159,6 +163,8 @@
 			isa = PBXGroup;
 			children = (
 				232B4FB3BF6F535A13312310 /* Anton-Regular.ttf */,
+				BBAFDE89D389DEE291B1E6DF /* nearsend_sos.caf */,
+				BC6A022E3B3C5C1469A6F4F2 /* nearsend_hop.caf */,
 				06C2AC2B316ACA9FD7CCFBA6 /* Assets.xcassets */,
 				A1B2C3D4E5F60718293A4B5C /* PrivacyInfo.xcprivacy */,
 				D9AB179AB7D0AE6D8D7DCFF5 /* InfoPlist.strings */,
@@ -257,6 +263,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				F861B1D61D3F1B6D29567FE3 /* Anton-Regular.ttf in Resources */,
+				18CFFB8448AC39EC91B86F04 /* nearsend_sos.caf in Resources */,
+				B481E83485CC0AE679A33147 /* nearsend_hop.caf in Resources */,
 				24B9C5BF1EE779DA9AA1EB75 /* Assets.xcassets in Resources */,
 				B2C3D4E5F60718293A4B5C6D /* PrivacyInfo.xcprivacy in Resources */,
 				AB66BB44A63B667FC433FF7E /* InfoPlist.strings in Resources */,
@@ -376,7 +384,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 5;
+				CURRENT_PROJECT_VERSION = 10;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = HW9XRXBJZA;
 				ENABLE_NS_ASSERTIONS = NO;
@@ -456,7 +464,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 5;
+				CURRENT_PROJECT_VERSION = 10;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = HW9XRXBJZA;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;

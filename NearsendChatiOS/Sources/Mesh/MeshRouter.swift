@@ -68,6 +68,8 @@ final class MeshRouter {
     var onText: ((_ from: String, _ name: String, _ text: String, _ hops: Int, _ msgID: String) -> Void)?
     var onPublic: ((_ from: String, _ name: String, _ text: String, _ id: String) -> Void)?
     var onDelivered: ((_ msgID: String) -> Void)?
+    /// A private message we already had arrived again: the sender did not get our receipt. The app re-sends a read receipt.
+    var onRepeat: ((_ from: String, _ msgID: String) -> Void)?
     /// QR verification arrived: `from` proved it holds the key we know for it (`fingerprint`) and echoed `code`.
     var onVerify: ((_ from: String, _ fingerprint: String, _ code: String) -> Void)?
     var onGroup: ((_ from: String, _ name: String, _ group: String, _ groupName: String, _ members: [(id: String, name: String)],
@@ -113,8 +115,18 @@ final class MeshRouter {
 
     /// `sayHello`: when we opened the link ("out:") we tell the other phone who we are, so it can answer over the same
     /// connection even though it never discovered us (the one-directional link problem).
+    /// An id never changes its key (Erase everything makes a new id too). A different key for an id we already know, from a
+    /// saved contact or a live neighbour, is someone pretending to be that person: refuse it, so messages stay encrypted
+    /// to the real one.
+    private func keyConflicts(_ id: String, _ pk: Data) -> Bool {
+        let known = savedKey?(id).flatMap { $0.count == 32 ? $0 : nil } ?? peers[id]?.pk
+        guard let known, known != pk else { return false }
+        NLog.i("mesh", "refused a different key for \(NLog.s(id)): possible impersonation")
+        return true
+    }
+
     func neighborConnected(link: String, id: String, name: String, pk: Data, sayHello: Bool = true) {
-        guard id != myID, pk.count == 32 else { return }
+        guard id != myID, pk.count == 32, !keyConflicts(id, pk) else { return }
         links[link] = id
         peers[id] = PeerInfo(name: name, pk: pk, hops: 1, lastSeen: now(), direct: true)
         NLog.i("mesh", "neighbour up \(NLog.s(id)) link=\(NLog.l(link)) sayHello=\(sayHello) (\(links.count) link(s))")
@@ -123,6 +135,14 @@ final class MeshRouter {
         if sayHello { sendHello(to: link) }
         sendAnnounce(to: [link])
         shareStored(link: link, id: id)
+    }
+
+    /// Bluetooth is off: nobody is reachable, also the people we only heard of through others.
+    func forgetEveryone() {
+        guard !links.isEmpty || !peers.isEmpty else { return }
+        NLog.i("mesh", "bluetooth off: forgetting \(peers.count) peer(s)")
+        links.removeAll(); peers.removeAll(); rssi.removeAll()
+        emitPeers()
     }
 
     func neighborLost(link: String) {
@@ -311,8 +331,11 @@ final class MeshRouter {
     /// Completion: `.sent` when every chunk was handed to Bluetooth (the receipt comes later through `onDelivered`),
     /// `.unreachable` when the person is not in direct range (or walked away), `.failed` on a write error.
     func sendPhoto(_ bytes: Data, to dst: String, photoID: String, progress: @escaping (Double) -> Void, completion: @escaping (SendOutcome) -> Void) {
-        guard let pk = keyOf(dst) else { completion(.unreachable); return }
-        guard peers[dst]?.direct == true, bestLink(for: dst) != nil else { completion(.unreachable); return }
+        guard let pk = keyOf(dst) else { NLog.i("photo", "send to \(NLog.s(dst)) waits: no key yet"); completion(.unreachable); return }
+        guard peers[dst]?.direct == true, bestLink(for: dst) != nil else {
+            NLog.i("photo", "send to \(NLog.s(dst)) waits: not a direct neighbour (direct=\(peers[dst]?.direct == true), link=\(bestLink(for: dst) != nil))")
+            completion(.unreachable); return
+        }
         guard let sealed = try? crypto.sealData(bytes, peerPK: pk, myID: myID, peerID: dst, aad: photoID) else { completion(.failed); return }
         let cnt = (sealed.count + Self.photoChunk - 1) / Self.photoChunk
         NLog.i("photo", "send to \(NLog.s(dst)): \(bytes.count) bytes, \(cnt) chunk(s)")
@@ -334,9 +357,17 @@ final class MeshRouter {
 
     private func receiveImg(_ p: Packet) {
         guard let ref = p.ref, let ix = p.ix, let cnt = p.cnt,
-              (1...Self.maxPhotoChunks).contains(cnt), (0..<cnt).contains(ix), !donePhotos.contains(ref),
-              let pk = keyOf(p.src),                                   // only from people whose key we have
-              let s = p.ct, let part = Data(base64Encoded: s), !part.isEmpty, part.count <= Self.photoChunk + 16 else { return }
+              (1...Self.maxPhotoChunks).contains(cnt), (0..<cnt).contains(ix) else { return }
+        if donePhotos.contains(ref) {
+            // Sent again: our receipt was lost. Confirm once more (on its last chunk, so a repeat gets one receipt).
+            if ix == cnt - 1 { NLog.i("photo", "repeat of \(NLog.s(ref)) from \(NLog.s(p.src)): receipt sent again"); sendAck(to: p.src, ref: ref) }
+            return
+        }
+        guard let pk = keyOf(p.src) else {                            // only from people whose key we have
+            if ix == 0 { NLog.i("photo", "from \(NLog.s(p.src)) dropped: no key for the sender yet") }
+            return
+        }
+        guard let s = p.ct, let part = Data(base64Encoded: s), !part.isEmpty, part.count <= Self.photoChunk + 16 else { return }
         let inc: Incoming
         if let existing = incoming[ref] { inc = existing }
         else {
@@ -363,7 +394,12 @@ final class MeshRouter {
     // MARK: receiving
 
     func receive(_ data: Data, from link: String?) {
-        guard let p = try? decoder.decode(Packet.self, from: data), p.v == 2, p.src != myID, !seen.contains(p.id) else { return }
+        guard let p = try? decoder.decode(Packet.self, from: data), p.v == 2, p.src != myID else { return }
+        if seen.contains(p.id) {
+            // A repeat of a private message for us means our receipt was lost on the way: answer it again.
+            if p.t == "msg", p.dst == myID { ack(p); onRepeat?(p.src, p.id) }
+            return
+        }
         remember(p.id)
         let hops = max(1, Self.startTTL + 1 - p.ttl)
         if p.t != "ann" {
@@ -374,7 +410,7 @@ final class MeshRouter {
             guard let link, let s = p.pk, let pk = Data(base64Encoded: s), pk.count == 32 else { return }
             neighborConnected(link: link, id: p.src, name: p.n ?? "?", pk: pk, sayHello: false)
         case "ann":
-            guard let s = p.pk, let pk = Data(base64Encoded: s), pk.count == 32 else { return }
+            guard let s = p.pk, let pk = Data(base64Encoded: s), pk.count == 32, !keyConflicts(p.src, pk) else { return }
             let direct = peers[p.src]?.direct ?? false
             let wasKnown = peers[p.src] != nil
             peers[p.src] = PeerInfo(name: p.n ?? "?", pk: pk, hops: direct ? 1 : hops, lastSeen: now(), direct: direct,

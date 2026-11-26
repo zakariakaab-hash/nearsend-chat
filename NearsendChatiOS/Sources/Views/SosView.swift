@@ -15,6 +15,7 @@ func localized(_ key: String) -> String {
 /// Hold-to-send SOS, our own position, and alarms heard from others.
 struct SosView: View {
     @State private var servicesOff = false   // Location Services switched off for the whole phone
+    @State private var locationAlert = false  // permission was refused before: explain and offer Settings
 
     @EnvironmentObject var store: ChatStore
     @Environment(\.openURL) private var openURL
@@ -23,6 +24,21 @@ struct SosView: View {
         sosContent
             // CLLocationManager.locationServicesEnabled() must not run on the main thread.
             .task(id: store.locationStatus) { servicesOff = await Task.detached { !CLLocationManager.locationServicesEnabled() }.value }
+            // Turning "Attach my location" on asks for permission right away, so the position is ready before an emergency.
+            .onChange(of: store.shareLocation) { _, on in if on { ensureLocation() } }
+            .alert("Location is off for Nearsend Chat", isPresented: $locationAlert) {
+                Button("Open Settings") { SystemSettings.open() }
+                Button("Not now", role: .cancel) {}
+            } message: {
+                Text("To attach your position to an SOS, allow location for Nearsend Chat in Settings. Until then the alarm is sent without it.")
+            }
+    }
+
+    /// Location for the SOS: ask iOS the first time; if it was refused, explain and offer Settings. Phone-wide Location
+    /// Services off and Screen Time blocks are explained under the switch.
+    private func ensureLocation() {
+        guard !store.hasLocationPermission, !servicesOff, store.locationStatus != .restricted else { return }
+        if store.locationStatus == .notDetermined { store.requestLocation() } else { locationAlert = true }
     }
 
     private var sosContent: some View {
@@ -33,7 +49,12 @@ struct SosView: View {
                     PageTitle(text: "SOS").padding(.top, 8)
                     SkyPill { Text("The alarm reaches phones nearby that have Nearsend Chat, also through other phones. It does not call emergency services.").font(.subheadline) }
                         .frame(maxWidth: .infinity, alignment: .leading)
-                    SosButton(active: store.mySos != nil) { store.startSos() }.padding(.vertical, 8)
+                    // Someone's alarm is on: show it first, above our own button, so it is never below the fold.
+                    if store.activeAlerts > 0 { alarms }
+                    SosButton(active: store.mySos != nil) {
+                        store.startSos()   // never wait: the alarm goes out now, the position joins the repeats once allowed
+                        if store.shareLocation { ensureLocation() }
+                    }.padding(.vertical, 8)
                     if store.mySos != nil {
                         Text("SOS is on · sent again every 15 s").font(.subheadline.weight(.semibold)).foregroundStyle(.white)
                             .padding(.horizontal, 14).padding(.vertical, 8).background(sosRed, in: Capsule())
@@ -42,7 +63,7 @@ struct SosView: View {
                     TextField("Add a note (optional)", text: $store.sosNote)
                         .foregroundStyle(Theme.ink).padding(.horizontal, 16).padding(.vertical, 14).glass(radius: Theme.rField)
                     locationCard
-                    alarms
+                    if store.activeAlerts == 0 { alarms }
                     beyond
                 }.padding(.horizontal, 20).padding(.bottom, 24).readableWidth()
             }
@@ -80,9 +101,11 @@ struct SosView: View {
                             }.font(.footnote.weight(.semibold))
                         }
                     } else if let l = store.myLocation {
-                        Text("Position found · ±\(Int(l.horizontalAccuracy.rounded())) m").font(.footnote).foregroundStyle(Theme.secure)
+                        Label("Location allowed · position found ±\(Int(l.horizontalAccuracy.rounded())) m", systemImage: "checkmark.circle.fill")
+                            .font(.footnote).foregroundStyle(Theme.secure)
                     } else {
-                        Text("Looking for your position…").font(.footnote).foregroundStyle(Theme.inkSecondary)
+                        Label("Location allowed · looking for your position…", systemImage: "checkmark.circle.fill")
+                            .font(.footnote).foregroundStyle(Theme.secure)
                     }
                 }
                 Text("Public · not encrypted. Every phone nearby can read it.").font(.caption).foregroundStyle(Theme.inkSecondary)
@@ -173,8 +196,23 @@ private struct SosButton: View {
 private struct AlertCard: View {
     let alert: SosAlert
     let me: CLLocation?
+    @Environment(\.openURL) private var openURL
+
+    /// Apple Maps at the alarm's position, when it came with one.
+    private var mapURL: URL? {
+        guard let lat = alert.lat, let lon = alert.lon else { return nil }
+        return URL(string: String(format: "maps://?ll=%.5f,%.5f&q=SOS", locale: Locale(identifier: "en_US_POSIX"), lat, lon))
+    }
 
     var body: some View {
+        // The whole card opens the map (not only the small icon), when the alarm has a position.
+        Button { if let mapURL { openURL(mapURL) } } label: { card }
+            .buttonStyle(.plain)
+            .disabled(mapURL == nil)
+            .accessibilityHint(mapURL == nil ? Text("") : Text("Open map"))
+    }
+
+    private var card: some View {
         Card(padding: 14) {
             HStack(alignment: .top, spacing: 12) {
                 Image(systemName: "exclamationmark.triangle.fill").font(.title2)
@@ -190,8 +228,8 @@ private struct AlertCard: View {
                     }.font(.caption).foregroundStyle(Theme.inkSecondary)
                 }
                 Spacer()
-                if let lat = alert.lat, let lon = alert.lon, let u = URL(string: "maps://?ll=\(lat),\(lon)&q=SOS") {
-                    Link(destination: u) { Image(systemName: "map.fill").font(.title3) }.accessibilityLabel("Open map")
+                if mapURL != nil {
+                    Image(systemName: "map.fill").font(.title3).foregroundStyle(Theme.link).accessibilityHidden(true)
                 }
             }
         }
