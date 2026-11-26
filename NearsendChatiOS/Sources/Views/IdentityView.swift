@@ -8,8 +8,15 @@ struct IdentityView: View {
     @State private var pickAvatar = false
 
     @State private var showScanner = false
+    @State private var transfer = false
+    @AppStorage("language") private var language = "system"
     @State private var showMyCode = false
     @State private var scanResult: String?      // the verified person's name, or "" when the code matched nobody
+
+    private func rowGroup<C: View>(@ViewBuilder _ c: () -> C) -> some View {
+        VStack(spacing: 0, content: c).glass().buttonStyle(.plain)
+    }
+    private var rowDivider: some View { Divider().padding(.leading, 62) }
 
     /// Profile and code in one card: "My code" opens the QR, fingerprint and share link; "Scan" adds or verifies a friend.
     private var profileCard: some View {
@@ -51,33 +58,42 @@ struct IdentityView: View {
                         PageTitle(text: "You").padding(.top, 8)
                             .onTapGesture(count: 3) { confirmWipe = true }   // panic: triple-tap
                         profileCard
-                        NavigationLink { SettingsView() } label: {
-                            Card(padding: 14) {
-                                HStack(spacing: 12) {
-                                    Image(systemName: "gearshape.fill").foregroundStyle(.white)
-                                        .frame(width: 34, height: 34).background(Theme.actionBlue, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-                                    VStack(alignment: .leading, spacing: 2) {
-                                        Text("Settings").font(.headline).foregroundStyle(Theme.ink)
-                                        Text("Privacy, strangers, app lock, battery, move to another phone")
-                                            .font(.footnote).foregroundStyle(Theme.inkSecondary).multilineTextAlignment(.leading)
-                                    }
-                                    Spacer()
-                                    Image(systemName: "chevron.right").font(.subheadline.weight(.semibold)).foregroundStyle(Theme.inkSecondary)
-                                }
+                        // Like WhatsApp: the settings are rows right here, each opening its own page.
+                        rowGroup {
+                            NavigationLink { PrivacySettingsView() } label: { SettingsRow(icon: "lock.fill", color: Color(hex: 0x2F6FE0), title: "Privacy") }
+                            rowDivider
+                            NavigationLink { NotificationSettingsView() } label: { SettingsRow(icon: "bell.badge.fill", color: Color(hex: 0xE5484D), title: "Notifications") }
+                            rowDivider
+                            NavigationLink { ConnectionView() } label: {
+                                SettingsRow(icon: "antenna.radiowaves.left.and.right", color: Color(hex: 0x0E9F8E), title: "Bluetooth",
+                                            value: LocalizedStringKey(store.bluetoothLabel))
                             }
-                        }.buttonStyle(.plain)
-                        SkyPill {
-                            VStack(alignment: .leading, spacing: 6) {
-                                Label("Project status", systemImage: "hammer.fill").font(.subheadline.weight(.semibold))
-                                Text("Not security audited yet. Open source (GPL-3.0).")
-                                    .font(.footnote).foregroundStyle(.white.opacity(0.85))
-                            }.frame(maxWidth: .infinity, alignment: .leading)
+                            rowDivider
+                            HStack(spacing: 14) {
+                                SettingsIcon(icon: "globe", color: Color(hex: 0x30A14E))
+                                Text("Language").foregroundStyle(Theme.ink).layoutPriority(1)
+                                Spacer(minLength: 4)
+                                Picker("Language", selection: $language) {
+                                    Text("System default").tag("system")
+                                    ForEach(AppLanguage.all) { Text(verbatim: $0.name).tag($0.code) }
+                                }.pickerStyle(.menu).labelsHidden().tint(Theme.inkSecondary).lineLimit(1).fixedSize()
+                            }.padding(.horizontal, 16).frame(minHeight: 56)
+                        }
+                        rowGroup {
+                            Button { transfer = true } label: {
+                                SettingsRow(icon: "iphone.and.arrow.forward", color: Color(hex: 0x5B5BD6), title: "Move to another phone")
+                            }
+                            rowDivider
+                            NavigationLink { ShareAppView() } label: { SettingsRow(icon: "heart.fill", color: Color(hex: 0xE0457B), title: "Invite a friend") }
+                            rowDivider
+                            NavigationLink { HelpSettingsView() } label: { SettingsRow(icon: "questionmark.circle.fill", color: Color(hex: 0x3E8BD6), title: "Help") }
                         }
                     }.padding(.horizontal, 20).padding(.bottom, 24).readableWidth()
                 }
             }
             .toolbar(.hidden, for: .navigationBar)
             .sheet(isPresented: $pickAvatar) { AvatarPickerSheet().environmentObject(store) }
+            .sheet(isPresented: $transfer) { TransferSheet().environmentObject(store) }
             .sheet(isPresented: $showMyCode) { MyCodeSheet(payload: store.myCodePayload, fingerprint: store.myFingerprint, contactCode: store.myContactCode) }
             .fullScreenCover(isPresented: $showScanner) {
                 CodeScanner { code in
@@ -100,111 +116,89 @@ struct IdentityView: View {
 
 // MARK: - Settings
 
-/// Every setting in one native grouped list: Connections, Privacy, Messages from strangers, App, Help.
-struct SettingsView: View {
-    @EnvironmentObject var store: ChatStore
-    @ObservedObject private var power = PowerMode.shared
-    @AppStorage("language") private var language = "system"
-    @AppStorage("appLock") private var appLock = false
-    @AppStorage("onboarded") private var onboarded = true
-    @State private var bluetoothHelp = false
-    @State private var shareLog = false
-    @State private var mail: URL?
-    @State private var confirmWipe = false
-    @State private var lockError = false
-    @State private var transfer = false
+/// A row like WhatsApp's settings: coloured icon, title, optional value, chevron.
+struct SettingsRow: View {
+    let icon: String
+    let color: Color
+    let title: LocalizedStringKey
+    var value: LocalizedStringKey? = nil
+    var body: some View {
+        HStack(spacing: 14) {
+            SettingsIcon(icon: icon, color: color)
+            Text(title).foregroundStyle(Theme.ink)
+            Spacer()
+            if let value { Text(value).foregroundStyle(Theme.inkSecondary) }
+            Image(systemName: "chevron.right").font(.footnote.weight(.semibold)).foregroundStyle(Theme.inkSecondary.opacity(0.7))
+        }
+        .padding(.horizontal, 16).frame(minHeight: 56).contentShape(Rectangle())
+    }
+}
 
+struct SettingsIcon: View {
+    let icon: String
+    let color: Color
+    var body: some View {
+        Image(systemName: icon).font(.system(size: 15, weight: .semibold)).foregroundStyle(.white)
+            .frame(width: 32, height: 32).background(color, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+}
+
+/// One settings page: a native grouped list on the sky.
+struct SettingsPage<Content: View>: View {
+    let title: LocalizedStringKey
+    @ViewBuilder var content: Content
     var body: some View {
         ZStack {
             SkyBackground()
-            List {
-                Section {
-                    Button { bluetoothHelp = true } label: {
-                        HStack {
-                            Label("Bluetooth", systemImage: "antenna.radiowaves.left.and.right")
-                            Spacer()
-                            Text(LocalizedStringKey(bluetoothText)).foregroundStyle(Theme.inkSecondary)
-                        }
-                    }.foregroundStyle(Theme.ink)
-                    toggle("Battery saver", "Black screen, no animations, dimmer screen, and Bluetooth looks for phones less often while you are connected.",
-                           icon: "battery.25", $power.saver)
-                    toggle("Pass on messages for others", "Helps messages travel further and reach people who are away. Uses some battery.",
-                           icon: "arrow.triangle.branch", $store.relayOthers)
-                    toggle("Demo mode", "Shows sample people and chats, so you can try the app without another phone. Bluetooth is off while it is on; your own chats come back when you turn it off.",
-                           icon: "play.rectangle", Binding(get: { store.simulated }, set: { store.setDemo($0) }))
-                } header: { head("Connections") }
-                Section {
-                    Picker(selection: $store.strangers) {
-                        Text("Ask me").tag(ChatStore.StrangerPolicy.ask)
-                        Text("Allow").tag(ChatStore.StrangerPolicy.allow)
-                        Text("Block").tag(ChatStore.StrangerPolicy.block)
-                    } label: { Label("Messages from strangers", systemImage: "person.crop.circle.badge.questionmark") }
-                    toggle("Hide me from strangers", "People nearby see \u{201C}\(ChatStore.hiddenName)\u{201D} instead of your name and picture. People you already chat with still see your name.",
-                           icon: "eye.slash", $store.hideFromStrangers)
-                    Toggle(isOn: Binding(get: { appLock }, set: { setAppLock($0) })) {
-                        Label("App lock", systemImage: "faceid")
-                    }
-                    toggle("Delivery receipts", "Let senders see when their message reached you.", icon: "checkmark.circle", $store.receipts)
-                    toggle("Hide text in notifications", "Notifications show who wrote, not what.", icon: "bell.slash", $store.hidePreviews)
-                    toggle("Notify me when a friend is nearby", "When someone you chat with comes back in range after 30 minutes away. At most every 2 hours per person. Works while the app is open or running in the background.",
-                           icon: "person.2.wave.2", $store.friendNearbyAlerts)
-                    toggle("Announcements", "Show announcements from people nearby and notify me. Off: they are hidden, but your phone still passes them on.",
-                           icon: "megaphone", $store.showAnnouncements)
-                    Picker(selection: $store.autoDeleteDays) {
-                        Text("Never").tag(0); Text("1 day").tag(1); Text("\(7) days").tag(7); Text("\(30) days").tag(30)
-                    } label: { Label("Delete messages after", systemImage: "timer") }
-                } header: { head("Privacy") } footer: { foot(LocalizedStringKey(strangerFooter)) }
-                Section {
-                    Picker(selection: $language) {
-                        Text("System default").tag("system")
-                        ForEach(AppLanguage.all) { Text(verbatim: $0.name).tag($0.code) }
-                    } label: { Label("Language", systemImage: "globe") }
-                    Button { transfer = true } label: { Label("Move to another phone", systemImage: "iphone.and.arrow.forward") }
-                        .foregroundStyle(Theme.ink)
-                    ShareLink(item: URL(string: "https://chat.nearsend.app")!) { Label("Share Nearsend Chat", systemImage: "square.and.arrow.up") }
-                        .foregroundStyle(Theme.ink)
-                } header: { head("App") }
-                Section {
-                    Button { onboarded = false } label: { Label("Show the intro", systemImage: "play.circle") }.foregroundStyle(Theme.ink)
-                    Button { mail = Support.contactURL } label: { Label("Contact us", systemImage: "envelope") }.foregroundStyle(Theme.ink)
-                    Button { shareLog = true } label: { Label("Share debug log", systemImage: "doc.text") }.foregroundStyle(Theme.ink)
-                } header: { head("Help") } footer: {
-                    foot("The debug log has the last 500 events: who connected, packet types, errors. No messages, photos or keys. To report someone, long-press their message or open their contact info and tap Report.")
-                }
-                Section {
-                    Button(role: .destructive) { confirmWipe = true } label: { Label("Erase everything", systemImage: "trash") }
-                } footer: {
-                    Text(verbatim: "Nearsend Chat \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "") (\(Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? ""))").foregroundStyle(.white.opacity(0.9))
-                }
-            }
-            .scrollContentBackground(.hidden)
-            .tint(Theme.actionBlue)
+            List { content }.scrollContentBackground(.hidden).tint(Theme.actionBlue)
         }
-        .navigationTitle("Settings")
+        .navigationTitle(title)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(.visible, for: .navigationBar)
-        .opensMail($mail)
-        .sheet(isPresented: $bluetoothHelp) { BluetoothGuideSheet().environmentObject(store) }
-        .sheet(isPresented: $transfer) { TransferSheet().environmentObject(store) }
-        .sheet(isPresented: $shareLog) {
-            let head = "Nearsend Chat debug log\n\(UIDevice.current.model), iOS \(UIDevice.current.systemVersion)\n\n"
-            ShareSheet(items: [head + (NLog.dump().isEmpty ? "(no events yet)" : NLog.dump())])
+    }
+}
+
+/// Section titles and notes sit on the blue sky: white, so they stay readable.
+func settingHead(_ t: LocalizedStringKey) -> some View { Text(t).font(.footnote.weight(.semibold)).foregroundStyle(.white) }
+func settingFoot(_ t: LocalizedStringKey) -> some View { Text(t).foregroundStyle(.white.opacity(0.9)) }
+
+func settingToggle(_ title: LocalizedStringKey, _ detail: LocalizedStringKey, icon: String, _ on: Binding<Bool>) -> some View {
+    Toggle(isOn: on) {
+        Label {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                Text(detail).font(.caption).foregroundStyle(Theme.inkSecondary)
+            }
+        } icon: { Image(systemName: icon) }
+    }
+}
+
+struct PrivacySettingsView: View {
+    @EnvironmentObject var store: ChatStore
+    @AppStorage("appLock") private var appLock = false
+    @State private var lockError = false
+
+    var body: some View {
+        SettingsPage(title: "Privacy") {
+            Section {
+                Picker(selection: $store.strangers) {
+                    Text("Ask me").tag(ChatStore.StrangerPolicy.ask)
+                    Text("Allow").tag(ChatStore.StrangerPolicy.allow)
+                    Text("Block").tag(ChatStore.StrangerPolicy.block)
+                } label: { Label("Messages from strangers", systemImage: "person.crop.circle.badge.questionmark") }
+                settingToggle("Hide me from strangers", "People nearby see \u{201C}\(ChatStore.hiddenName)\u{201D} instead of your name and picture. People you already chat with still see your name.",
+                              icon: "eye.slash", $store.hideFromStrangers)
+            } header: { settingHead("Strangers") } footer: { settingFoot(LocalizedStringKey(strangerFooter)) }
+            Section {
+                Toggle(isOn: Binding(get: { appLock }, set: { setAppLock($0) })) { Label("App lock", systemImage: "faceid") }
+                settingToggle("Delivery receipts", "Let senders see when their message reached you.", icon: "checkmark.circle", $store.receipts)
+                Picker(selection: $store.autoDeleteDays) {
+                    Text("Never").tag(0); Text("1 day").tag(1); Text("\(7) days").tag(7); Text("\(30) days").tag(30)
+                } label: { Label("Delete messages after", systemImage: "timer") }
+            }
         }
         .alert("Set a passcode first", isPresented: $lockError) { Button("OK", role: .cancel) {} } message: {
             Text("App lock uses Face ID, Touch ID or your iPhone passcode. Turn on a passcode in Settings › Face ID & Passcode.")
-        }
-        .bottomConfirm(isPresented: $confirmWipe, title: "Erase all messages, keys and settings on this phone?",
-                       message: "This cannot be undone. You will get a new identity.", action: "Erase everything") { store.wipeAll() }
-    }
-
-    private var bluetoothText: String {
-        if store.simulated { return "Demo data" }
-        switch store.bluetoothState {
-        case "ready": return "On"
-        case "off": return "Off"
-        case "unauthorized": return "Not allowed"
-        case "unsupported": return "Unsupported"
-        default: return "Starting…"
         }
     }
 
@@ -226,19 +220,184 @@ struct SettingsView: View {
             Task { @MainActor in if ok { appLock = true } }
         }
     }
+}
 
-    /// Section titles and notes sit on the blue sky: white, so they stay readable.
-    private func head(_ t: LocalizedStringKey) -> some View { Text(t).font(.footnote.weight(.semibold)).foregroundStyle(.white) }
-    private func foot(_ t: LocalizedStringKey) -> some View { Text(t).foregroundStyle(.white.opacity(0.9)) }
+struct NotificationSettingsView: View {
+    @EnvironmentObject var store: ChatStore
+    var body: some View {
+        SettingsPage(title: "Notifications") {
+            Section {
+                settingToggle("Hide text in notifications", "Notifications show who wrote, not what.", icon: "bell.slash", $store.hidePreviews)
+                settingToggle("Notify me when a friend is nearby", "When someone you chat with comes back in range after 30 minutes away. At most every 2 hours per person. Works while the app is open or running in the background.",
+                              icon: "person.2.wave.2", $store.friendNearbyAlerts)
+                settingToggle("Announcements", "Show announcements from people nearby and notify me. Off: they are hidden, but your phone still passes them on.",
+                              icon: "megaphone", $store.showAnnouncements)
+            }
+        }
+    }
+}
 
-    private func toggle(_ title: LocalizedStringKey, _ detail: LocalizedStringKey, icon: String, _ on: Binding<Bool>) -> some View {
-        Toggle(isOn: on) {
-            Label {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(title)
-                    Text(detail).font(.caption).foregroundStyle(Theme.inkSecondary)
+struct HelpSettingsView: View {
+    @EnvironmentObject var store: ChatStore
+    @AppStorage("onboarded") private var onboarded = true
+    @State private var shareLog = false
+    @State private var mail: URL?
+    @State private var confirmWipe = false
+
+    var body: some View {
+        SettingsPage(title: "Help") {
+            Section {
+                Button { onboarded = false } label: { Label("Show the intro", systemImage: "play.circle") }.foregroundStyle(Theme.ink)
+                Button { mail = Support.contactURL } label: { Label("Contact us", systemImage: "envelope") }.foregroundStyle(Theme.ink)
+                Button { shareLog = true } label: { Label("Share debug log", systemImage: "doc.text") }.foregroundStyle(Theme.ink)
+            } footer: {
+                settingFoot("The debug log has the last 500 events: who connected, packet types, errors. No messages, photos or keys. To report someone, long-press their message or open their contact info and tap Report.")
+            }
+            Section {
+                Button(role: .destructive) { confirmWipe = true } label: { Label("Erase everything", systemImage: "trash") }
+            } footer: {
+                VStack(alignment: .leading, spacing: 6) {
+                    settingFoot("Not security audited yet. Open source (GPL-3.0).")
+                    Text(verbatim: "Nearsend Chat \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "") (\(Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? ""))")
+                        .foregroundStyle(.white.opacity(0.9))
                 }
-            } icon: { Image(systemName: icon) }
+            }
+        }
+        .opensMail($mail)
+        .sheet(isPresented: $shareLog) {
+            let head = "Nearsend Chat debug log\n\(UIDevice.current.model), iOS \(UIDevice.current.systemVersion)\n\n"
+            ShareSheet(items: [head + (NLog.dump().isEmpty ? "(no events yet)" : NLog.dump())])
+        }
+        .bottomConfirm(isPresented: $confirmWipe, title: "Erase all messages, keys and settings on this phone?",
+                       message: "This cannot be undone. You will get a new identity.", action: "Erase everything") { store.wipeAll() }
+    }
+}
+
+/// What the Bluetooth link is doing, in plain words: on or off, who is reachable, and why it may be slower; plus the
+/// switches that change how it works.
+struct ConnectionView: View {
+    @EnvironmentObject var store: ChatStore
+    @ObservedObject private var power = PowerMode.shared
+    @State private var guide = false
+    @State private var batteryLow = false
+
+    private var direct: Int { max(0, store.peers.count - store.relayedCount) }
+
+    var body: some View {
+        SettingsPage(title: "Bluetooth") {
+            Section {
+                row("Bluetooth", "antenna.radiowaves.left.and.right", Text(LocalizedStringKey(store.bluetoothLabel)))
+                row("In range", "dot.radiowaves.left.and.right", Text(verbatim: "\(direct)"))
+                row("Through other phones", "point.3.connected.trianglepath.dotted", Text(verbatim: "\(store.relayedCount)"))
+            } header: {
+                Text("Bluetooth connects you to Nearsend phones nearby, with no Wi-Fi, no cell signal and no internet.")
+                    .font(.subheadline).foregroundStyle(.white).textCase(nil).padding(.bottom, 6)
+            }
+            if !store.simulated && ["off", "unauthorized"].contains(store.bluetoothState) {
+                Section {
+                    if store.bluetoothState == "off" {
+                        Button { guide = true } label: { Label("How to turn on Bluetooth", systemImage: "hand.tap.fill") }
+                    } else {
+                        Button { SystemSettings.open() } label: { Label("Open Settings", systemImage: "gear") }
+                    }
+                }
+            }
+            Section {
+                settingToggle("Battery saver", "Black screen, no animations, dimmer screen, and Bluetooth looks for phones less often while you are connected.",
+                              icon: "battery.25", $power.saver)
+                settingToggle("Pass on messages for others", "Helps messages travel further and reach people who are away. Uses some battery.",
+                              icon: "arrow.triangle.branch", $store.relayOthers)
+                settingToggle("Demo mode", "Shows sample people and chats, so you can try the app without another phone. Bluetooth is off while it is on; your own chats come back when you turn it off.",
+                              icon: "play.rectangle", Binding(get: { store.simulated }, set: { store.setDemo($0) }))
+            }
+            Section {
+                if let saving = savingText {
+                    Label { Text(LocalizedStringKey(saving)) } icon: { Image(systemName: "battery.25") }
+                        .font(.footnote).foregroundStyle(Color(hex: 0xB45309))
+                }
+                Label("In the background iPhone slows Bluetooth down, and nothing works after you swipe the app away. Leave it open in the background.",
+                      systemImage: "info.circle").font(.footnote).foregroundStyle(Theme.inkSecondary)
+            }
+        }
+        .sheet(isPresented: $guide) { BluetoothGuideSheet().environmentObject(store) }
+        .onAppear { batteryLow = PowerMode.batteryLow }
+    }
+
+    /// Why Bluetooth looks for phones less often right now, if it does.
+    private var savingText: String? {
+        if power.saver { return "Battery saver is on: Nearsend looks for phones less often while you are connected. Messages may arrive a little later." }
+        if power.systemLowPower { return "Low Power Mode is on: Nearsend looks for phones less often while you are connected. Messages may arrive a little later." }
+        if batteryLow { return "Low battery: Nearsend looks for phones less often while you are connected. Messages may arrive a little later." }
+        return nil
+    }
+
+    private func row(_ title: LocalizedStringKey, _ icon: String, _ value: Text) -> some View {
+        HStack { Label(title, systemImage: icon); Spacer(); value.foregroundStyle(Theme.inkSecondary) }
+    }
+}
+
+/// Recommend the app to the person next to you: a QR their camera opens as the App Store page.
+struct ShareAppView: View {
+    @State private var howItWorks = false
+    @Environment(\.openURL) private var openURL
+    static let appStoreURL = URL(string: "https://apps.apple.com/app/id6839386595")!
+
+    var body: some View {
+        ZStack {
+            SkyBackground()
+            ScrollView {
+                VStack(spacing: 20) {
+                    Text("Recommend Nearsend Chat to the person next to you.")
+                        .font(.title3.weight(.semibold)).foregroundStyle(.white).multilineTextAlignment(.center).padding(.top, 8)
+                    Card {
+                        VStack(spacing: 12) {
+                            if let img = MyCodeSheet.qr(Self.appStoreURL.absoluteString) {
+                                Image(uiImage: img).interpolation(.none).resizable().scaledToFit()
+                                    .frame(width: 200, height: 200).padding(14)
+                                    .background(.white, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                                    .accessibilityLabel(Text("QR code of the App Store page"))
+                            }
+                            Text("Scan with the camera").font(.subheadline).foregroundStyle(Theme.inkSecondary)
+                        }.frame(maxWidth: .infinity)
+                    }
+                    ShareLink(item: Self.appStoreURL) {
+                        Label("Share link", systemImage: "square.and.arrow.up").font(.headline).frame(maxWidth: .infinity, minHeight: 52)
+                            .foregroundStyle(.white).background(Theme.actionBlue, in: Capsule())
+                    }
+                    Button { openURL(Self.appStoreURL) } label: {
+                        Label("Nearsend Chat on the App Store", systemImage: "arrow.up.forward.app").font(.headline).frame(maxWidth: .infinity, minHeight: 52)
+                            .foregroundStyle(Theme.link).background(.white.opacity(0.85), in: Capsule())
+                    }
+                }.padding(.horizontal, 20).padding(.bottom, 24).readableWidth()
+            }
+        }
+        .navigationTitle("Invite a friend")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button { howItWorks = true } label: { Image(systemName: "info.circle") }.accessibilityLabel(Text("How does it work?"))
+            }
+        }
+        .sheet(isPresented: $howItWorks) {
+            VStack(alignment: .leading, spacing: 18) {
+                Text("How does it work?").font(.title2.weight(.bold)).padding(.top, 24)
+                step("qrcode", "Show the code to the person next to you: their camera opens Nearsend Chat on the App Store.")
+                step("arrow.down.circle", "They need internet once, to download it. After that it works with no signal.")
+                step("person.2", "Then add each other: tap My code on the You tab and scan.")
+                Spacer()
+                Button { howItWorks = false } label: {
+                    Text("Got it").font(.headline).frame(maxWidth: .infinity, minHeight: 52).foregroundStyle(.white).background(Theme.actionBlue, in: Capsule())
+                }
+            }
+            .padding(24)
+            .presentationDetents([.medium])
+        }
+    }
+
+    private func step(_ icon: String, _ text: LocalizedStringKey) -> some View {
+        HStack(alignment: .top, spacing: 14) {
+            Image(systemName: icon).font(.title3).foregroundStyle(Theme.link).frame(width: 30)
+            Text(text).font(.body).fixedSize(horizontal: false, vertical: true)
         }
     }
 }

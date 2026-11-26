@@ -51,17 +51,21 @@ struct RootView: View {
         return r.uiImage?.withRenderingMode(.alwaysOriginal)   // keep its colours: the tab bar tints template images
     }
     @AppStorage("tab") private var tab = 0
+    /// Filled dark icons for the other tabs; the open tab shows its icon as an outline, in the accent colour.
+    private func tabLabel(_ title: LocalizedStringKey, _ icon: String, _ index: Int) -> some View {
+        Label { Text(title) } icon: { Image(systemName: icon).environment(\.symbolVariants, tab == index ? .none : .fill) }
+    }
     var body: some View {
         TabView(selection: $tab) {
-            NearbyView().tabItem { Label("Nearby", systemImage: "dot.radiowaves.left.and.right") }.tag(0)
-            ChatsView().tabItem { Label("Chats", systemImage: "bubble.left.and.bubble.right.fill") }
+            NearbyView().tabItem { tabLabel("Nearby", "dot.radiowaves.left.and.right", 0) }.tag(0)
+            ChatsView().tabItem { tabLabel("Chats", "bubble.left.and.bubble.right", 1) }
                 .badge(store.unreadTotal).tag(1)
-            SosView().tabItem { Label("SOS", systemImage: "exclamationmark.triangle.fill") }
+            SosView().tabItem { tabLabel("SOS", "exclamationmark.triangle", 3) }
                 .badge(store.activeAlerts).tag(3)
             IdentityView().tabItem {
                 // Your own picture as the tab icon (falls back to the person symbol until one exists).
                 if let img = youIcon { Label { Text("You") } icon: { Image(uiImage: img).renderingMode(.original) } }
-                else { Label("You", systemImage: "person.crop.circle.fill") }
+                else { tabLabel("You", "person.crop.circle", 2) }
             }.tag(2)
         }
     }

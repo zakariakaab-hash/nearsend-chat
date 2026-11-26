@@ -144,6 +144,17 @@ final class ChatStore: ObservableObject {
     }
 
     var relayedCount: Int { peers.filter { $0.hops > 1 }.count }
+    /// Bluetooth's state in a word or two, for Settings.
+    var bluetoothLabel: String {
+        if simulated { return "Demo data" }
+        switch bluetoothState {
+        case "ready": return meshActive ? "On" : "Paused"
+        case "off": return "Off"
+        case "unauthorized": return "Not allowed"
+        case "unsupported": return "Unsupported"
+        default: return "Starting…"
+        }
+    }
     var unreadTotal: Int { conversations.reduce(0) { $0 + $1.unread } }
 
     // MARK: lifecycle

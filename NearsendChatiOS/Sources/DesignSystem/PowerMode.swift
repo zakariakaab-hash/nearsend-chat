@@ -10,6 +10,14 @@ final class PowerMode: ObservableObject {
     }
     var lowPower: Bool { systemLowPower || saver }
 
+    /// Battery at 20 % or less and not charging: Bluetooth saves battery on its own, like with Battery saver.
+    @MainActor static var batteryLow: Bool {
+        let d = UIDevice.current
+        if !d.isBatteryMonitoringEnabled { d.isBatteryMonitoringEnabled = true }
+        return d.batteryLevel >= 0 && d.batteryLevel <= 0.2 && d.batteryState == .unplugged
+    }
+    @MainActor static var batteryPercent: Int { Int((UIDevice.current.batteryLevel * 100).rounded()) }
+
     /// Battery saver also dims the screen while the app is in front. The person's own brightness is put back
     /// when the app goes to the background or the saver is turned off.
     private var savedBrightness: CGFloat?

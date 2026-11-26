@@ -85,7 +85,10 @@ final class BLETransport: NSObject {
 
     /// Battery saver (or the iPhone's Low Power Mode): scan less. Advertising stays on, so others can still find us.
     var saver = false
-    private var saving: Bool { saver || ProcessInfo.processInfo.isLowPowerModeEnabled }
+    /// The timer runs on the main queue, where the battery level can be read.
+    private var saving: Bool {
+        saver || ProcessInfo.processInfo.isLowPowerModeEnabled || MainActor.assumeIsolated { PowerMode.batteryLow }
+    }
     private var scanning = false
 
     /// While saving and already connected to someone, scan 3 s out of every 9 s. With no one connected, scan all the
