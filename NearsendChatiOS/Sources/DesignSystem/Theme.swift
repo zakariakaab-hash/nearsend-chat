@@ -42,7 +42,9 @@ struct SkyBackground: View {
 
     var body: some View {
         ZStack {
-            if scheme == .dark {
+            if power.saver {
+                Color.black   // battery saver: OLED pixels off, nothing to draw
+            } else if scheme == .dark {
                 LinearGradient(colors: [Color(hex: 0x040B1F), Color(hex: 0x0A1C47), Color(hex: 0x2B4A86)], startPoint: .top, endPoint: .bottom)
                 Canvas { ctx, size in
                     for i in 0..<80 {
@@ -83,7 +85,18 @@ struct SkyBackground: View {
 /// earlier versions keep the frosted blur. The `compiler` check lets older Xcode (CI) build without the iOS 26 API.
 struct Glass: ViewModifier {
     var radius: CGFloat = Theme.rCard
+    @ObservedObject private var power = PowerMode.shared
     func body(content: Content) -> some View {
+        if power.saver {
+            // battery saver: a flat dark card, no blur, glass or shadow to render
+            content
+                .background(Color(hex: 0x15181E), in: RoundedRectangle(cornerRadius: radius, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: radius, style: .continuous).stroke(Color.white.opacity(0.08), lineWidth: 1))
+        } else {
+            styled(content)
+        }
+    }
+    @ViewBuilder private func styled(_ content: Content) -> some View {
         #if compiler(>=6.2)
         if #available(iOS 26, *) {
             content.glassEffect(.regular.tint(Theme.liquidTint), in: RoundedRectangle(cornerRadius: radius, style: .continuous))
@@ -102,7 +115,13 @@ struct Glass: ViewModifier {
             .shadow(color: Theme.glassShadow, radius: 18, y: 10)
     }
 }
-extension View { func glass(radius: CGFloat = Theme.rCard) -> some View { modifier(Glass(radius: radius)) } }
+extension View {
+    /// The content shape makes the whole card tappable: with `.buttonStyle(.plain)`, iOS 26 Liquid Glass does not count as
+    /// hit area, so only the opaque parts (the avatar) reacted to taps.
+    func glass(radius: CGFloat = Theme.rCard) -> some View {
+        modifier(Glass(radius: radius)).contentShape(RoundedRectangle(cornerRadius: radius, style: .continuous))
+    }
+}
 
 /// On wide screens (iPad, landscape) content stays a comfortable column in the middle instead of stretching edge to edge.
 extension View {

@@ -7,6 +7,7 @@ struct IdentityView: View {
     @State private var shareLog = false
     @State private var mail: URL?
     @AppStorage("language") private var language = "system"
+    @ObservedObject private var power = PowerMode.shared
 
     var body: some View {
         NavigationStack {
@@ -49,6 +50,15 @@ struct IdentityView: View {
                             }
                         }
                         PrivacyCard()
+                        Card {
+                            Toggle(isOn: $power.saver) {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Label("Battery saver", systemImage: "battery.25")
+                                    Text("Pure black background and no animations. Saves battery on OLED screens. Bluetooth still uses power.")
+                                        .font(.caption).foregroundStyle(Theme.inkSecondary)
+                                }
+                            }.tint(Theme.actionBlue)
+                        }
                         Card {
                             Toggle(isOn: Binding(get: { store.simulated }, set: { store.setDemo($0) })) {
                                 VStack(alignment: .leading, spacing: 2) {

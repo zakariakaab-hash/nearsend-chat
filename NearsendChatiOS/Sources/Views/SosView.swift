@@ -14,10 +14,18 @@ func localized(_ key: String) -> String {
 
 /// Hold-to-send SOS, our own position, and alarms heard from others.
 struct SosView: View {
+    @State private var servicesOff = false   // Location Services switched off for the whole phone
+
     @EnvironmentObject var store: ChatStore
     @Environment(\.openURL) private var openURL
 
     var body: some View {
+        sosContent
+            // CLLocationManager.locationServicesEnabled() must not run on the main thread.
+            .task(id: store.locationStatus) { servicesOff = await Task.detached { !CLLocationManager.locationServicesEnabled() }.value }
+    }
+
+    private var sosContent: some View {
         ZStack {
             SkyBackground()
             ScrollView {
@@ -57,7 +65,13 @@ struct SosView: View {
                     }
                 }.tint(sosRed)
                 if store.shareLocation {
-                    if !store.hasLocationPermission {
+                    if !store.hasLocationPermission && (servicesOff || store.locationStatus == .restricted) {
+                        // Location Services off for the whole phone (or blocked by Screen Time): the app's own row in
+                        // Settings is greyed out, so say where to switch it on.
+                        Text(servicesOff ? "Location Services is off on this iPhone. Turn it on in Settings › Privacy & Security › Location Services."
+                                         : "Location is blocked by Screen Time. Allow it in Settings › Screen Time › Content & Privacy Restrictions › Location Services.")
+                            .font(.footnote).foregroundStyle(sosRed)
+                    } else if !store.hasLocationPermission {
                         HStack {
                             Text("Location permission needed.").font(.footnote).foregroundStyle(sosRed)
                             Spacer()

@@ -35,8 +35,12 @@
 	<string>$(MARKETING_VERSION)</string>
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>NSBluetoothAlwaysUsageDescription</key>
 	<string>Nearsend Chat uses Bluetooth to find and message people near you without internet.</string>
+	<key>NSFaceIDUsageDescription</key>
+	<string>Nearsend Chat uses Face ID to open chats you have locked.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Only used when you send an SOS with your location, so people nearby can find you.</string>
 	<key>UIAppFonts</key>
@@ -48,6 +52,11 @@
 		<string>bluetooth-central</string>
 		<string>bluetooth-peripheral</string>
 	</array>
+	<key>UILaunchScreen</key>
+	<dict>
+		<key>UIColorName</key>
+		<string>LaunchBackground</string>
+	</dict>
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
@@ -59,10 +68,5 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
-	<key>UILaunchScreen</key>
-	<dict>
-		<key>UIColorName</key>
-		<string>LaunchBackground</string>
-	</dict>
 </dict>
 </plist>

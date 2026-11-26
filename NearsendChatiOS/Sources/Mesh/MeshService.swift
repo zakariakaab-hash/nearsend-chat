@@ -69,6 +69,10 @@ final class ChatStore: ObservableObject {
     @Published var hidePreviews = UserDefaults.standard.bool(forKey: "hidePreviews") {
         didSet { UserDefaults.standard.set(hidePreviews, forKey: "hidePreviews") }
     }
+    /// Off: announcements are hidden on the Nearby tab and give no notifications (phones still pass them on for others).
+    @Published var showAnnouncements: Bool = UserDefaults.standard.object(forKey: "announcements") as? Bool ?? true {
+        didSet { UserDefaults.standard.set(showAnnouncements, forKey: "announcements") }
+    }
     @Published var autoDeleteDays = UserDefaults.standard.integer(forKey: "autoDelete") {
         didSet { UserDefaults.standard.set(autoDeleteDays, forKey: "autoDelete"); prune() }
     }
@@ -98,6 +102,10 @@ final class ChatStore: ObservableObject {
         #endif
         if simulated { seed() } else { load() }
         drift()
+        if myAvatar == nil && UserDefaults.standard.object(forKey: "avatarChosen") == nil {
+            // Everyone starts with a picture instead of a blank initial; it can be changed any time on the You tab.
+            changeAvatar(Avatars.random(avoiding: Set(peers.compactMap(\.avatar) + conversations.compactMap(\.peer.avatar))))
+        }
         ensurePublicChannel()
         locationStatus = location.status
         location.onUpdate = { [weak self] l in Task { @MainActor in self?.myLocation = l } }
@@ -176,8 +184,8 @@ final class ChatStore: ObservableObject {
         KeyStore.wipe()
         try? FileManager.default.removeItem(at: Self.fileURL)
         let d = UserDefaults.standard
-        ["nickname", "deviceID", "onboarded", "tab", "relay", "receipts", "hidePreviews", "autoDelete", "avatar"].forEach { d.removeObject(forKey: $0) }
-        relayOthers = true; receipts = true; hidePreviews = false; autoDeleteDays = 0; myAvatar = nil
+        ["nickname", "deviceID", "onboarded", "tab", "relay", "receipts", "hidePreviews", "autoDelete", "avatar", "announcements", "avatarChosen"].forEach { d.removeObject(forKey: $0) }
+        relayOthers = true; receipts = true; hidePreviews = false; autoDeleteDays = 0; myAvatar = nil; showAnnouncements = true
         deviceID = UUID().uuidString; d.set(deviceID, forKey: "deviceID")
         verified = []; blocked = []; peers = []; conversations = []
         myFingerprint = simulated ? myFingerprint : ""
@@ -219,8 +227,19 @@ final class ChatStore: ObservableObject {
         if index(peer.id) == nil { conversations.append(Conversation(id: peer.id, peer: peer, messages: [])) }
     }
 
+    /// The chat is on screen: clear the badge and, in a private chat, send read receipts for their messages
+    /// (only when Delivery receipts are on; the router checks).
     func markRead(_ id: String) {
-        if let i = index(id), conversations[i].unread > 0 { conversations[i].unread = 0; save() }
+        guard let i = index(id) else { return }
+        var changed = false
+        if conversations[i].unread > 0 { conversations[i].unread = 0; changed = true }
+        if !simulated, !conversations[i].isGroup, id != publicChannelID, receipts, let router {
+            for j in conversations[i].messages.indices where !conversations[i].messages[j].mine && conversations[i].messages[j].readSent != true {
+                router.sendRead(to: id, ref: conversations[i].messages[j].id)
+                conversations[i].messages[j].readSent = true; changed = true
+            }
+        }
+        if changed { save() }
     }
 
     func toggleVerified(_ peer: Peer) {
@@ -337,8 +356,8 @@ final class ChatStore: ObservableObject {
         guard let i = index(from), !conversations[i].messages.contains(where: { $0.id == id }) else { return }
         conversations[i].messages.append(Message(id: id, text: text, date: .now, mine: false, hops: hops))
         if activeConversation != from { conversations[i].unread += 1 }
-        Notifier.notify(title: name, body: preview(text))
-        Notifier.messageHaptic()
+        alert(from, title: name, body: preview(text))
+        if conversations.first(where: { $0.id == from })?.isMuted != true { Notifier.messageHaptic() }
         save()
     }
 
@@ -347,12 +366,17 @@ final class ChatStore: ObservableObject {
         guard !blocked.contains(from), let i = index(publicChannelID), !conversations[i].messages.contains(where: { $0.id == id }) else { return }
         conversations[i].messages.append(Message(id: id, text: text, date: .now, mine: false, sender: name, senderID: from))
         if activeConversation != publicChannelID { conversations[i].unread += 1 }
-        Notifier.notify(title: "#nearby · \(name)", body: preview(text))
+        alert(publicChannelID, title: "#nearby · \(name)", body: preview(text))
         save()
     }
 
     private func markDelivered(_ id: String) {
         guard !simulated else { return }   // demo mode: Bluetooth input is ignored
+        if id.hasPrefix("r:") {   // read receipt for one of our private messages
+            let mid = String(id.dropFirst(2))
+            for c in conversations where !c.isGroup && c.messages.contains(where: { $0.id == mid }) { update(mid, in: c.id, .read) }
+            return
+        }
         if id.contains(".") {   // a group copy "<message id>.<member>": delivered once every member confirmed
             let parts = id.split(separator: ".", maxSplits: 1).map(String.init)
             guard parts.count == 2, let c = conversations.first(where: { $0.messages.contains { $0.id == parts[0] } }) else { return }
@@ -365,8 +389,12 @@ final class ChatStore: ObservableObject {
 
     private func update(_ mid: String, in id: String, _ s: DeliveryState) {
         guard let i = index(id), let j = conversations[i].messages.firstIndex(where: { $0.id == mid }) else { return }
-        if conversations[i].messages[j].state == .delivered && s != .delivered { return }   // never downgrade
+        let now = conversations[i].messages[j].state
+        if now == .read { return }                                    // never downgrade
+        if now == .delivered && s != .delivered && s != .read { return }
         conversations[i].messages[j].state = s
+        if (s == .delivered || s == .read) && conversations[i].messages[j].deliveredAt == nil { conversations[i].messages[j].deliveredAt = .now }
+        if s == .read && conversations[i].messages[j].readAt == nil { conversations[i].messages[j].readAt = .now }
         save()
     }
 
@@ -405,7 +433,7 @@ final class ChatStore: ObservableObject {
         guard !blocked.contains(from), !posts.contains(where: { $0.id == post }) else { return }
         let name = peers.first { $0.id == from }?.name ?? sent
         posts.insert(Post(id: post, from: from, name: name, text: text, exp: Date(timeIntervalSince1970: Double(exp) / 1000), mine: false, hops: hops), at: 0)
-        Notifier.notify(title: "\u{1F4E2} \(name)", body: preview(text))
+        if showAnnouncements { Notifier.notify(title: "\u{1F4E2} \(name)", body: preview(text)) }
     }
 
     /// Drops expired announcements and, if auto-delete is on, messages older than the chosen number of days.
@@ -423,6 +451,7 @@ final class ChatStore: ObservableObject {
     /// Sets our picture ("<emoji>|<colour>", see Avatars) or clears it (nil = show the initial). Goes out with the next announcement.
     func changeAvatar(_ a: String?) {
         myAvatar = a; router?.myAvatar = a
+        UserDefaults.standard.set(true, forKey: "avatarChosen")   // a picture removed on purpose stays removed
         if let a { UserDefaults.standard.set(a, forKey: "avatar") } else { UserDefaults.standard.removeObject(forKey: "avatar") }
     }
 
@@ -500,8 +529,8 @@ final class ChatStore: ObservableObject {
         guard (try? bytes.write(to: Self.photoURL(photo), options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])) != nil else { return }
         conversations[i].messages.append(Message(id: photo, text: "", date: .now, mine: false, photo: photo))
         if activeConversation != from { conversations[i].unread += 1 }
-        Notifier.notify(title: peer.name, body: hidePreviews ? localized("New message") : "\u{1F4F7} " + localized("Photo"))
-        Notifier.messageHaptic()
+        alert(from, title: peer.name, body: hidePreviews ? localized("New message") : "\u{1F4F7} " + localized("Photo"))
+        if conversations.first(where: { $0.id == from })?.isMuted != true { Notifier.messageHaptic() }
         save()
     }
 
@@ -538,6 +567,67 @@ final class ChatStore: ObservableObject {
         conversations.removeAll { $0.id == id }
         leftGroups.insert(id)
         save()
+    }
+
+    // MARK: chat list and message actions (local only, nothing is sent)
+
+    func togglePin(_ id: String) {
+        guard let i = index(id) else { return }
+        if conversations[i].isPinned { conversations[i].pinnedAt = nil }
+        else {
+            // like WhatsApp: at most 3 pinned chats, the oldest pin makes room
+            let pinned = conversations.indices.filter { conversations[$0].isPinned }.sorted { conversations[$0].pinnedAt! < conversations[$1].pinnedAt! }
+            if pinned.count >= 3 { conversations[pinned[0]].pinnedAt = nil }
+            conversations[i].pinnedAt = .now
+        }
+        save()
+    }
+    func toggleMute(_ id: String) { guard let i = index(id) else { return }; conversations[i].muted = conversations[i].isMuted ? nil : true; save() }
+    func toggleLock(_ id: String) { guard let i = index(id) else { return }; conversations[i].locked = conversations[i].isLocked ? nil : true; save() }
+    func toggleFavorite(_ id: String) { guard let i = index(id) else { return }; conversations[i].favorite = conversations[i].isFavorite ? nil : true; save() }
+    func toggleUnread(_ id: String) { guard let i = index(id) else { return }; conversations[i].unread = conversations[i].unread > 0 ? 0 : 1; save() }
+
+    /// Empties a chat but keeps it in the list.
+    func clearChat(_ id: String) {
+        guard let i = index(id) else { return }
+        for m in conversations[i].messages { if let p = m.photo { try? FileManager.default.removeItem(at: Self.photoURL(p)); photoCache.removeObject(forKey: p as NSString) } }
+        conversations[i].messages.removeAll(); conversations[i].unread = 0; conversations[i].pinnedMessage = nil
+        save()
+    }
+
+    /// Deletes one message from this phone ("Delete for me").
+    func deleteMessage(_ mid: String, in id: String) {
+        guard let i = index(id), let j = conversations[i].messages.firstIndex(where: { $0.id == mid }) else { return }
+        if let p = conversations[i].messages[j].photo { try? FileManager.default.removeItem(at: Self.photoURL(p)); photoCache.removeObject(forKey: p as NSString) }
+        conversations[i].messages.remove(at: j)
+        if conversations[i].pinnedMessage == mid { conversations[i].pinnedMessage = nil }
+        save()
+    }
+
+    func pinMessage(_ mid: String?, in id: String) { guard let i = index(id) else { return }; conversations[i].pinnedMessage = mid; save() }
+
+    /// Notification for a new message, unless the chat is muted; locked chats never show the text.
+    private func alert(_ cid: String, title: String, body: String) {
+        let c = conversations.first { $0.id == cid }
+        guard c?.isMuted != true else { return }
+        Notifier.notify(title: c?.isLocked == true ? localized("Locked chat") : title,
+                        body: c?.isLocked == true ? localized("New message") : body)
+    }
+
+    /// Local only. A private chat or group is removed from this phone (a group is left, so its new messages are ignored);
+    /// the Nearby channel always stays, so it is only emptied. New messages from the same person start a new chat.
+    func deleteConversation(_ id: String) {
+        if id == publicChannelID {
+            guard let i = index(id) else { return }
+            conversations[i].messages.removeAll()
+            conversations[i].unread = 0
+            save()
+        } else if id.hasPrefix("g:") {
+            leaveGroup(id)
+        } else {
+            conversations.removeAll { $0.id == id }
+            save()
+        }
     }
 
     func isMe(_ id: String) -> Bool { id == deviceID }
@@ -580,7 +670,7 @@ final class ChatStore: ObservableObject {
         conversations[i].members = members
         conversations[i].messages.append(Message(id: id, text: text, date: .now, mine: false, hops: hops, sender: name, senderID: from))
         if activeConversation != gid { conversations[i].unread += 1 }
-        Notifier.notify(title: "\(groupName) · \(name)", body: preview(text))
+        alert(gid, title: "\(groupName) · \(name)", body: preview(text))
         Notifier.messageHaptic()
         save()
     }

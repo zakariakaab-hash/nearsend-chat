@@ -14,7 +14,7 @@ struct NearbyView: View {
                         PageTitle(text: "Nearby").padding(.top, 8)
                         header
                         Card(padding: 12) { RadarView(peers: store.peers).frame(height: 320) }
-                        announcements
+                        if store.showAnnouncements { announcements }
                         peerList
                     }.padding(.horizontal, 20).padding(.bottom, 24).readableWidth()
                 }
@@ -85,7 +85,7 @@ struct NearbyView: View {
                 Button { store.ensureConversation(p); chat = p } label: {
                     Card(padding: 12) {
                         HStack(spacing: 12) {
-                            Avatar(name: p.name, online: true, avatar: p.avatar).accessibilityHidden(true)
+                            Avatar(name: p.name, online: true, avatar: p.shownAvatar).accessibilityHidden(true)
                             VStack(alignment: .leading, spacing: 3) {
                                 HStack(spacing: 4) {
                                     Text(verbatim: p.name).font(.headline)

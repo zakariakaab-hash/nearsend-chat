@@ -42,7 +42,7 @@ struct NewGroupSheet: View {
                                     if on { picked.remove(p.id) } else { picked.insert(p.id) }
                                 } label: {
                                     HStack(spacing: 12) {
-                                        Avatar(name: p.name, size: 40, online: store.peers.contains { $0.id == p.id } && p.hops == 1, avatar: p.avatar)
+                                        Avatar(name: p.name, size: 40, online: store.peers.contains { $0.id == p.id } && p.hops == 1, avatar: p.shownAvatar)
                                         Text(verbatim: p.name).font(.headline).foregroundStyle(Theme.ink)
                                         Spacer()
                                         Image(systemName: on ? "checkmark.circle.fill" : "circle").font(.title3)
@@ -89,7 +89,8 @@ struct GroupInfoSheet: View {
                                 let me = store.isMe(m.id)
                                 HStack(spacing: 12) {
                                     Avatar(name: me ? store.nickname : m.name, size: 36,
-                                           online: !me && store.peers.contains { $0.id == m.id && $0.hops == 1 })
+                                           online: !me && store.peers.contains { $0.id == m.id && $0.hops == 1 },
+                                           avatar: me ? store.myAvatar : (store.peers.first { $0.id == m.id }?.avatar ?? Avatars.fallback(for: m.id)))
                                     if me { Text(verbatim: store.nickname + " (") + Text("You") + Text(verbatim: ")") }
                                     else { Text(verbatim: store.peers.first { $0.id == m.id }?.name ?? m.name) }
                                     Spacer()

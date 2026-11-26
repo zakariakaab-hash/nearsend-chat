@@ -195,6 +195,7 @@ struct PrivacyCard: View {
                 row("Pass on messages for others", "Helps messages travel further and reach people who are away. Uses some battery.", $store.relayOthers)
                 row("Delivery receipts", "Let senders see when their message reached you.", $store.receipts)
                 row("Hide text in notifications", "Notifications show who wrote, not what.", $store.hidePreviews)
+                row("Announcements", "Show announcements from people nearby and notify me. Off: they are hidden, but your phone still passes them on.", $store.showAnnouncements)
                 Text("Delete messages after").font(.subheadline.weight(.semibold))
                 HStack(spacing: 8) {
                     ForEach([0, 1, 7, 30], id: \.self) { d in

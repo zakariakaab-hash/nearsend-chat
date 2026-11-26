@@ -95,6 +95,10 @@ At most 255 fragments. Shared test vector: the bytes `00 01 … 09` with `seq` 7
 - **Pass on messages for others** off: the phone neither forwards nor holds other people's packets (it still sends,
   receives and carries its own). Other phones cannot tell.
 - **Delivery receipts** off: the phone sends no `ack` for `msg` or `gm`. Senders keep showing "sent"/"relayed".
+- **Read receipts** (iOS from 1.0 build 2): when a private chat is open and unlocked on screen, the phone sends an `ack` whose
+  `ref` is `r:` followed by the message id, once per received `msg`. It is an ordinary `ack`, so every phone carries and
+  forwards it; a phone without read receipts finds no message with id `r:…` and ignores it. On receipt the sender shows the
+  message as read. Not sent for groups, the public channel, or when Delivery receipts are off.
 
 ## 4. Direct-message encryption
 

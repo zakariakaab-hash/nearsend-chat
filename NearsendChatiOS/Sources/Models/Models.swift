@@ -9,6 +9,12 @@ struct Peer: Identifiable, Hashable, Codable {
     var fingerprint: String = ""
     var via: String? = nil      // relayed peers: the neighbour their announcement came through (network view)
     var avatar: String? = nil   // the emoji and colour they chose, see Avatars
+
+    /// What to draw: their own picture, else a stable one made from their id. Groups and the Nearby channel keep their letter.
+    var shownAvatar: String? {
+        if avatar != nil || id.hasPrefix("g:") || id == publicChannelID { return avatar }
+        return Avatars.fallback(for: id)
+    }
 }
 
 /// Profile "pictures" are an emoji plus one of a few colours, written "<emoji>|<colour index>" (PROTOCOL.md section 10).
@@ -36,9 +42,24 @@ enum Avatars {
 
     /// `s` itself when it is a valid avatar, otherwise nil.
     static func valid(_ s: String?) -> String? { parse(s) != nil ? s : nil }
+
+    /// A stable picture for someone who sent none (older versions): the same id always gets the same emoji and colour,
+    /// and different ids are spread over all 240 combinations. Only shown here, never sent.
+    static func fallback(for id: String) -> String {
+        var h: UInt64 = 0xcbf29ce484222325                       // FNV-1a, stable across launches (unlike hashValue)
+        for b in id.utf8 { h = (h ^ UInt64(b)) &* 0x100000001b3 }
+        return encode(emojis[Int(h % UInt64(emojis.count))], Int((h / UInt64(emojis.count)) % UInt64(colors)))
+    }
+
+    /// A random picture for a new user, avoiding the emojis already used by people around when possible.
+    static func random(avoiding used: Set<String>) -> String {
+        let taken = Set(used.compactMap { parse($0)?.emoji })
+        let free = emojis.filter { !taken.contains($0) }
+        return encode((free.isEmpty ? emojis : free).randomElement()!, Int.random(in: 0..<colors))
+    }
 }
 
-enum DeliveryState: String, Codable { case sending, sent, relayed, delivered, failed }
+enum DeliveryState: String, Codable { case sending, sent, relayed, delivered, read, failed }
 
 struct Message: Identifiable, Hashable, Codable {
     var id: String = UUID().uuidString
@@ -50,6 +71,9 @@ struct Message: Identifiable, Hashable, Codable {
     var sender: String? = nil      // shown on public-channel and group messages
     var photo: String? = nil       // id of a photo kept on this phone (the message shows the picture, text is empty)
     var senderID: String? = nil    // who sent a public-channel or group message, so they can be blocked
+    var deliveredAt: Date? = nil   // our messages: when the delivery receipt arrived (shown under Info)
+    var readAt: Date? = nil        // our messages: when the read receipt arrived
+    var readSent: Bool? = nil      // their messages: we already told them we read it
 }
 
 /// A public announcement, kept by phones nearby until `exp`.
@@ -72,8 +96,34 @@ struct Conversation: Identifiable, Codable {
     var messages: [Message]
     var unread: Int = 0
     var members: [Member]? = nil   // groups only (ids start with "g:")
+    // Local settings for this chat, never sent. Optional so chats saved by older versions still decode.
+    var pinnedAt: Date? = nil          // pinned to the top of the list (newest pin first)
+    var muted: Bool? = nil             // no notifications
+    var locked: Bool? = nil            // Face ID / passcode to open, text hidden in the list and in notifications
+    var favorite: Bool? = nil          // shown under the Favourites filter
+    var pinnedMessage: String? = nil   // id of the message shown at the top of the chat
     var last: Message? { messages.last }
     var isGroup: Bool { members != nil }
+    var isPinned: Bool { pinnedAt != nil }
+    var isMuted: Bool { muted == true }
+    var isLocked: Bool { locked == true }
+    var isFavorite: Bool { favorite == true }
+}
+
+/// Replies are sent as plain text with a first line "↪ name: quoted text", so every version (and Android) shows them;
+/// this app draws that first line as a quote.
+enum Reply {
+    static let mark = "\u{21AA} "
+    static func compose(quoting m: Message, from name: String, text: String) -> String {
+        let q = (m.photo != nil ? "\u{1F4F7}" : m.text.replacingOccurrences(of: "\n", with: " "))
+        let short = q.count > 60 ? String(q.prefix(60)) + "\u{2026}" : q
+        return mark + name + ": " + short + "\n" + text
+    }
+    /// (quote line, rest) when `text` starts with a reply line.
+    static func split(_ text: String) -> (quote: String, body: String)? {
+        guard text.hasPrefix(mark), let nl = text.firstIndex(of: "\n") else { return nil }
+        return (String(text[text.index(text.startIndex, offsetBy: mark.count)..<nl]), String(text[text.index(after: nl)...]))
+    }
 }
 
 /// An SOS alarm heard from someone nearby. Repeats of one alarm update the same entry.

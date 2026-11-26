@@ -1,11 +1,11 @@
 import UIKit
 
-/// Makes a picture small enough for Bluetooth: resized and re-encoded as JPEG of at most about 40 KB. Re-encoding drops the
+/// Makes a picture small enough for Bluetooth: resized and re-encoded as JPEG of at most about 24 KB (about 35 chunks). Re-encoding drops the
 /// camera metadata (the GPS position included). Android receivers decode JPEG as well as WebP (PROTOCOL.md section 11).
 enum Photos {
-    static let maxBytes = 40_000
-    private static let sizes: [CGFloat] = [800, 640, 512, 400, 320]
-    private static let qualities: [CGFloat] = [0.6, 0.45, 0.3]
+    static let maxBytes = 24_000
+    private static let sizes: [CGFloat] = [720, 600, 512, 420, 340, 280]
+    private static let qualities: [CGFloat] = [0.5, 0.38, 0.28, 0.2]
 
     static func compress(_ data: Data) -> Data? {
         guard let image = UIImage(data: data), image.size.width > 0, image.size.height > 0 else { return nil }
@@ -22,7 +22,7 @@ enum Photos {
                 if jpeg.count <= maxBytes { return jpeg }
             }
         }
-        if let best, best.count <= 48_000 { return best }
+        if let best, best.count <= 32_000 { return best }
         return nil
     }
 }

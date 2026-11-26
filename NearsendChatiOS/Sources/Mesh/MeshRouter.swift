@@ -445,6 +445,13 @@ final class MeshRouter {
         sendAck(to: p.src, ref: p.id)
     }
 
+    /// A read receipt is an ordinary ack whose ref is "r:<message id>": every version passes acks on, and versions
+    /// without read receipts find no message with that id and ignore it (PROTOCOL.md, receipts).
+    func sendRead(to dst: String, ref: String) {
+        guard sendAcks else { return }
+        sendAck(to: dst, ref: "r:" + ref)
+    }
+
     private func sendAck(to dst: String, ref: String) {
         var ack = Packet(t: "ack", id: UUID().uuidString, src: myID, dst: dst, ttl: Self.startTTL, ts: ms())
         ack.ref = ref

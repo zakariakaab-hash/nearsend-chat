@@ -1,77 +1,248 @@
 import SwiftUI
 
+/// The chat list. A real `List`, so rows get the system's full-row taps and WhatsApp-style swipes:
+/// swipe right to pin (and mark read/unread), swipe left for Delete and More (mute, lock, favourite, clear).
 struct ChatsView: View {
     @EnvironmentObject var store: ChatStore
     @State private var path: [String] = UserDefaults.standard.bool(forKey: "openThread") ? [UserDefaults.standard.string(forKey: "threadID") ?? "a"] : []
     @State private var newGroup = false
+    @State private var toDelete: Conversation?
+    @State private var toClear: Conversation?
+    @State private var more: Conversation?
+    @State private var filter = Filter.all
+    @State private var selecting = false
+    @State private var selected = Set<String>()
+    @State private var bulkDelete = false
+
+    enum Filter { case all, unread, favorites }
 
     private var sorted: [Conversation] {
-        store.conversations.sorted {
-            if $0.id == publicChannelID { return true }
-            if $1.id == publicChannelID { return false }
-            return ($0.last?.date ?? .distantPast) > ($1.last?.date ?? .distantPast)
-        }
+        store.conversations
+            .filter {
+                switch filter {
+                case .all: true
+                case .unread: $0.unread > 0
+                case .favorites: $0.isFavorite
+                }
+            }
+            .sorted {
+                if $0.id == publicChannelID { return true }
+                if $1.id == publicChannelID { return false }
+                if $0.isPinned != $1.isPinned { return $0.isPinned }
+                if let a = $0.pinnedAt, let b = $1.pinnedAt { return a > b }
+                return ($0.last?.date ?? .distantPast) > ($1.last?.date ?? .distantPast)
+            }
     }
 
     var body: some View {
         NavigationStack(path: $path) {
             ZStack {
                 SkyBackground()
-                ScrollView {
-                    VStack(spacing: 12) {
-                        HStack {
-                            PageTitle(text: "Chats")
-                            Button { newGroup = true } label: {
-                                Image(systemName: "person.3.fill").font(.system(size: 17)).foregroundStyle(Theme.link)
-                                    .frame(width: 44, height: 44).glass(radius: 22)
-                            }.accessibilityLabel("New group")
-                        }.padding(.top, 8)
-                        if store.conversations.count <= 1 {
-                            Card {
-                                VStack(spacing: 8) {
-                                    Image(systemName: "bubble.left.and.text.bubble.right").font(.system(size: 30)).foregroundStyle(Theme.actionBlue)
-                                    Text("No private chats yet").font(.headline)
-                                    Text("Open Nearby and tap someone to say hi.").font(.footnote).foregroundStyle(Theme.inkSecondary)
-                                }.frame(maxWidth: .infinity)
+                List {
+                    header.plainRow()
+                    if store.conversations.count <= 1 && filter == .all {
+                        Card {
+                            VStack(spacing: 8) {
+                                Image(systemName: "bubble.left.and.text.bubble.right").font(.system(size: 30)).foregroundStyle(Theme.actionBlue)
+                                Text("No private chats yet").font(.headline)
+                                Text("Open Nearby and tap someone to say hi.").font(.footnote).foregroundStyle(Theme.inkSecondary)
+                            }.frame(maxWidth: .infinity)
+                        }.plainRow()
+                    }
+                    ForEach(sorted) { c in
+                        Button {
+                            if selecting { if selected.contains(c.id) { selected.remove(c.id) } else { selected.insert(c.id) } }
+                            else { path.append(c.id) }
+                        } label: {
+                            HStack(spacing: 10) {
+                                if selecting {
+                                    Image(systemName: selected.contains(c.id) ? "checkmark.circle.fill" : "circle")
+                                        .font(.title2).foregroundStyle(selected.contains(c.id) ? Theme.actionBlue : .white)
+                                        .accessibilityLabel(selected.contains(c.id) ? "Selected" : "Not selected")
+                                }
+                                row(c)
                             }
                         }
-                        ForEach(sorted) { c in
-                            NavigationLink(value: c.id) { row(c) }.buttonStyle(.plain)
-                        }
-                    }.padding(.horizontal, 20).readableWidth()
+                            .buttonStyle(.plain)
+                            .plainRow()
+                            .swipeActions(edge: .leading, allowsFullSwipe: true) { leadingActions(c) }
+                            .swipeActions(edge: .trailing, allowsFullSwipe: false) { trailingActions(c) }
+                            .contextMenu { menu(c) }
+                    }
+                    if sorted.isEmpty && filter != .all {
+                        Text(filter == .unread ? "No unread chats" : "No favourites yet. Swipe left on a chat and tap More.")
+                            .font(.subheadline).foregroundStyle(.white).frame(maxWidth: .infinity).padding(.top, 24).plainRow()
+                    }
                 }
+                .listStyle(.plain)
+                .scrollContentBackground(.hidden)
+                if selecting { selectionBar }
             }
             .toolbar(.hidden, for: .navigationBar)
             .navigationDestination(for: String.self) { id in
                 if let c = store.conversations.first(where: { $0.id == id }) { ThreadView(conversationID: c.id, peer: c.peer) }
             }
+            .confirmationDialog(deleteTitle, isPresented: Binding(get: { toDelete != nil }, set: { if !$0 { toDelete = nil } }), titleVisibility: .visible, presenting: toDelete) { c in
+                Button(c.isGroup ? "Leave group" : "Delete chat", role: .destructive) {
+                    if path.contains(c.id) { path.removeAll() }
+                    store.deleteConversation(c.id)
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: { _ in Text("Only on this phone. The other person keeps their copy.") }
+            .confirmationDialog("Clear messages", isPresented: Binding(get: { toClear != nil }, set: { if !$0 { toClear = nil } }), titleVisibility: .visible, presenting: toClear) { c in
+                Button("Clear messages", role: .destructive) { store.clearChat(c.id) }
+                Button("Cancel", role: .cancel) {}
+            } message: { _ in Text("Only on this phone. The other person keeps their copy.") }
+            .confirmationDialog(Text(verbatim: more.map(title) ?? ""), isPresented: Binding(get: { more != nil }, set: { if !$0 { more = nil } }), titleVisibility: .visible, presenting: more) { c in
+                menu(c)
+                Button("Cancel", role: .cancel) {}
+            }
+            .confirmationDialog("Delete chats", isPresented: $bulkDelete, titleVisibility: .visible) {
+                Button("Delete \(selected.count)", role: .destructive) {
+                    for id in selected where id != publicChannelID { store.deleteConversation(id) }
+                    endSelecting()
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: { Text("Only on this phone. The other person keeps their copy.") }
             .sheet(isPresented: $newGroup) {
                 NewGroupSheet { id in newGroup = false; path = [id] }.environmentObject(store)
             }
         }
     }
 
+    private var header: some View {
+        VStack(spacing: 12) {
+            HStack {
+                if selecting {
+                    Button { endSelecting() } label: {
+                        Text("Done").font(.headline).foregroundStyle(Theme.link).padding(.horizontal, 16).frame(height: 44).glass(radius: 22)
+                    }.buttonStyle(.plain)
+                } else {
+                    Menu {
+                        Button { selecting = true } label: { Label("Select chats", systemImage: "checkmark.circle") }
+                        Button { for c in store.conversations where c.unread > 0 { store.toggleUnread(c.id) } } label: {
+                            Label("Read all", systemImage: "envelope.open")
+                        }
+                        Button { newGroup = true } label: { Label("New group", systemImage: "person.3") }
+                    } label: {
+                        Image(systemName: "ellipsis").font(.system(size: 17, weight: .semibold)).foregroundStyle(Theme.link)
+                            .frame(width: 44, height: 44).glass(radius: 22)
+                    }.accessibilityLabel("More options")
+                }
+                Spacer()
+                Button { newGroup = true } label: {
+                    Image(systemName: "person.3.fill").font(.system(size: 17)).foregroundStyle(Theme.link)
+                        .frame(width: 44, height: 44).glass(radius: 22)
+                }.buttonStyle(.plain).accessibilityLabel("New group")
+            }
+            PageTitle(text: selecting ? "\(selected.count) selected" : "Chats")
+            HStack(spacing: 8) {
+                ChipButton(selected: filter == .all, action: { filter = .all }) { Text("All") }
+                ChipButton(selected: filter == .unread, action: { filter = .unread }) { Text("Unread") }
+                ChipButton(selected: filter == .favorites, action: { filter = .favorites }) { Text("Favourites") }
+                Spacer()
+            }
+        }.padding(.top, 8)
+    }
+
+    // MARK: selecting
+
+    private func endSelecting() { selecting = false; selected.removeAll() }
+
+    /// Bottom bar while selecting: actions for every ticked chat.
+    private var selectionBar: some View {
+        VStack {
+            Spacer()
+            HStack(spacing: 0) {
+                barButton("Pin", "pin") { for id in selected where id != publicChannelID { store.togglePin(id) }; endSelecting() }
+                barButton("Mute", "bell.slash") { for id in selected { store.toggleMute(id) }; endSelecting() }
+                barButton("Read", "envelope.open") {
+                    for id in selected { if store.conversations.first(where: { $0.id == id })?.unread ?? 0 > 0 { store.toggleUnread(id) } }
+                    endSelecting()
+                }
+                barButton("Delete", "trash", destructive: true) { bulkDelete = true }
+            }
+            .disabled(selected.isEmpty)
+            .padding(.vertical, 10).glass(radius: Theme.rCard).padding(.horizontal, 20).padding(.bottom, 8)
+        }
+    }
+
+    private func barButton(_ title: LocalizedStringKey, _ icon: String, destructive: Bool = false, _ action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            VStack(spacing: 3) { Image(systemName: icon).font(.system(size: 18)); Text(title).font(.caption2) }
+                .foregroundStyle(destructive ? Color.red : Theme.link).frame(maxWidth: .infinity)
+        }.buttonStyle(.plain)
+    }
+
+    // MARK: actions
+
+    @ViewBuilder private func leadingActions(_ c: Conversation) -> some View {
+        if c.id != publicChannelID {
+            Button { store.togglePin(c.id) } label: { Label(c.isPinned ? "Unpin" : "Pin", systemImage: c.isPinned ? "pin.slash.fill" : "pin.fill") }
+                .tint(Theme.actionBlue)
+        }
+        Button { store.toggleUnread(c.id) } label: {
+            Label(c.unread > 0 ? "Read" : "Unread", systemImage: c.unread > 0 ? "message.fill" : "message.badge.filled.fill")
+        }.tint(Color(hex: 0x0F6B3F))
+    }
+
+    @ViewBuilder private func trailingActions(_ c: Conversation) -> some View {
+        if c.id == publicChannelID {
+            Button { toClear = c } label: { Label("Clear messages", systemImage: "trash") }.tint(.red)
+        } else {
+            Button { toDelete = c } label: { Label(c.isGroup ? "Leave group" : "Delete chat", systemImage: "trash") }.tint(.red)
+        }
+        Button { more = c } label: { Label("More", systemImage: "ellipsis") }.tint(.gray)
+    }
+
+    /// Long-press menu and the "More" sheet share these.
+    @ViewBuilder private func menu(_ c: Conversation) -> some View {
+        if c.id != publicChannelID {
+            Button { store.togglePin(c.id) } label: { Label(c.isPinned ? "Unpin" : "Pin", systemImage: c.isPinned ? "pin.slash" : "pin") }
+        }
+        Button { store.toggleMute(c.id) } label: { Label(c.isMuted ? "Unmute" : "Mute", systemImage: c.isMuted ? "bell" : "bell.slash") }
+        if c.id != publicChannelID {
+            Button { store.toggleLock(c.id) } label: { Label(c.isLocked ? "Unlock chat" : "Lock chat", systemImage: c.isLocked ? "lock.open" : "lock") }
+        }
+        Button { store.toggleFavorite(c.id) } label: {
+            Label(c.isFavorite ? "Remove from favourites" : "Add to favourites", systemImage: c.isFavorite ? "heart.slash" : "heart")
+        }
+        Button(role: .destructive) { toClear = c } label: { Label("Clear messages", systemImage: "eraser") }
+        if c.id != publicChannelID {
+            Button(role: .destructive) { toDelete = c } label: { Label(c.isGroup ? "Leave group" : "Delete chat", systemImage: "trash") }
+        }
+    }
+
+    private var deleteTitle: LocalizedStringKey { toDelete?.isGroup == true ? "Leave group" : "Delete chat" }
+    private func title(_ c: Conversation) -> String { c.id == publicChannelID ? localized("Nearby channel") : c.peer.name }
+
+    // MARK: row
+
     private func row(_ c: Conversation) -> some View {
         let isPublic = c.id == publicChannelID
         return Card(padding: 12) {
             HStack(spacing: 12) {
-                Avatar(name: isPublic ? "#" : c.peer.name, size: 52, online: !isPublic && !c.isGroup && c.peer.hops == 1, avatar: c.peer.avatar).accessibilityHidden(true)
+                Avatar(name: isPublic ? "#" : c.peer.name, size: 52, online: !isPublic && !c.isGroup && c.peer.hops == 1, avatar: c.peer.shownAvatar).accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 4) {
-                    HStack {
-                        if isPublic { Text("Nearby channel").font(.headline) } else { Text(verbatim: c.peer.name).font(.headline) }
+                    HStack(spacing: 6) {
+                        if isPublic { Text("Nearby channel").font(.headline) } else { Text(verbatim: c.peer.name).font(.headline).lineLimit(1) }
+                        if c.isFavorite { Image(systemName: "heart.fill").font(.caption).foregroundStyle(.pink).accessibilityLabel("Favourite") }
                         Spacer()
                         if let d = c.last?.date { Text(d, style: .time).font(.caption).foregroundStyle(Theme.inkSecondary) }
                     }
-                    HStack {
+                    HStack(spacing: 6) {
                         Group {
-                            if c.last != nil { Text(verbatim: preview(c)) }
+                            if c.isLocked { Label("Locked chat", systemImage: "lock.fill") }
+                            else if c.last != nil { Text(verbatim: preview(c)) }
                             else if isPublic { Text("Public · anyone in range can read this") }
                             else { Text(verbatim: "") }
                         }.font(.subheadline).foregroundStyle(Theme.inkSecondary).lineLimit(1)
                         Spacer()
+                        if c.isMuted { Image(systemName: "bell.slash.fill").font(.caption).foregroundStyle(Theme.inkSecondary).accessibilityLabel("Muted") }
+                        if c.isPinned { Image(systemName: "pin.fill").font(.caption).foregroundStyle(Theme.inkSecondary).accessibilityLabel("Pinned") }
                         if c.unread > 0 {
                             Text("\(c.unread)").font(.caption.bold()).foregroundStyle(.white)
-                                .padding(.horizontal, 7).padding(.vertical, 3).background(Theme.actionBlue, in: Capsule())
+                                .padding(.horizontal, 7).padding(.vertical, 3).background(c.isMuted ? Color.gray : Theme.actionBlue, in: Capsule())
                         }
                     }
                 }
@@ -82,7 +253,17 @@ struct ChatsView: View {
     private func preview(_ c: Conversation) -> String {
         guard let m = c.last else { return "" }
         if m.photo != nil { return "\u{1F4F7} " + localized("Photo") }
-        if let s = m.sender { return "\(s): \(m.text)" }
-        return m.text
+        let text = Reply.split(m.text)?.body ?? m.text
+        if let s = m.sender { return "\(s): \(text)" }
+        return text
+    }
+}
+
+private extension View {
+    /// A list row that looks like the old card stack: no separators, no system background, same side margins.
+    func plainRow() -> some View {
+        listRowBackground(Color.clear)
+            .listRowSeparator(.hidden)
+            .listRowInsets(EdgeInsets(top: 6, leading: 20, bottom: 6, trailing: 20))
     }
 }

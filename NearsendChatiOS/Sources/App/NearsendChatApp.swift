@@ -14,6 +14,8 @@ struct NearsendChatApp: App {
         UITabBar.appearance().scrollEdgeAppearance = a
     }
 
+    @ObservedObject private var power = PowerMode.shared
+
     var body: some Scene {
         WindowGroup {
             LanguageRoot {
@@ -21,6 +23,7 @@ struct NearsendChatApp: App {
             }
             .environmentObject(store)
             .tint(Theme.link)
+            .preferredColorScheme(power.saver ? .dark : nil)   // battery saver: light text on the black background
             .onAppear { if onboarded { store.startIfNeeded() } }
             .onChange(of: onboarded) { _, v in if v { store.startIfNeeded() } }
         }
