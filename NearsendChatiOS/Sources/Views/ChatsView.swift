@@ -176,23 +176,27 @@ struct ChatsView: View {
 
     // MARK: actions
 
+    // Swipe buttons follow the app's look: round, icon only, in the app's own colours (the name stays for VoiceOver).
     @ViewBuilder private func leadingActions(_ c: Conversation) -> some View {
         if c.id != publicChannelID {
-            Button { store.togglePin(c.id) } label: { Label(c.isPinned ? "Unpin" : "Pin", systemImage: c.isPinned ? "pin.slash.fill" : "pin.fill") }
-                .tint(Theme.actionBlue)
+            Button { store.togglePin(c.id) } label: {
+                Label(c.isPinned ? "Unpin" : "Pin", systemImage: c.isPinned ? "pin.slash.fill" : "pin.fill").labelStyle(.iconOnly)
+            }.tint(Theme.actionBlue)
         }
         Button { store.toggleUnread(c.id) } label: {
-            Label(c.unread > 0 ? "Read" : "Unread", systemImage: c.unread > 0 ? "message.fill" : "message.badge.filled.fill")
-        }.tint(Color(hex: 0x0F6B3F))
+            Label(c.unread > 0 ? "Read" : "Unread", systemImage: c.unread > 0 ? "envelope.open.fill" : "envelope.badge.fill").labelStyle(.iconOnly)
+        }.tint(Color(hex: 0x1F9D63))
     }
 
     @ViewBuilder private func trailingActions(_ c: Conversation) -> some View {
         if c.id == publicChannelID {
-            Button { toClear = c } label: { Label("Clear messages", systemImage: "trash") }.tint(.red)
+            Button { toClear = c } label: { Label("Clear messages", systemImage: "trash.fill").labelStyle(.iconOnly) }.tint(Color(hex: 0xE5484D))
         } else {
-            Button { toDelete = c } label: { Label(c.isGroup ? "Leave group" : "Delete chat", systemImage: "trash") }.tint(.red)
+            Button { toDelete = c } label: {
+                Label(c.isGroup ? "Leave group" : "Delete chat", systemImage: "trash.fill").labelStyle(.iconOnly)
+            }.tint(Color(hex: 0xE5484D))
         }
-        Button { more = c } label: { Label("More", systemImage: "ellipsis") }.tint(.gray)
+        Button { more = c } label: { Label("More", systemImage: "ellipsis").labelStyle(.iconOnly) }.tint(Theme.brandBlue)
     }
 
     /// Long-press menu and the "More" sheet share these.

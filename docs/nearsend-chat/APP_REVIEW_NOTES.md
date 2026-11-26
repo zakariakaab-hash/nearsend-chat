@@ -28,7 +28,7 @@ BACKGROUND MODES
 bluetooth-central and bluetooth-peripheral let the app keep receiving messages from people nearby, and pass them on to others, while the screen is locked. The app uses Core Bluetooth state restoration. It does not use location in the background.
 
 USER SAFETY (Guideline 1.2)
-- Report: long-press any message or announcement and tap Report, or tap the (i) button in a chat to open contact info. Report opens an email to support@nearsend.app with the details.
+- Report: in a private chat, tap the (i) button for contact info and tap Report. In the Nearby channel or a group, long-press a message and tap Report; announcements also have Report on long-press. Report opens an email to support@nearsend.app with the details.
 - Block: long-press a message in the Nearby channel or a group, or an announcement, or use the Block button in contact info. Blocked people's messages and announcements are hidden and ignored.
 - Contact us: You tab.
 
@@ -66,7 +66,7 @@ between two phones.
 | 5–12 s | Open Nearsend Chat on both. Each one appears on the other's Nearby tab within a few seconds. | "The phones find each other over Bluetooth" |
 | 12–20 s | On phone A, tap "Ben" in the list under the radar and type "Hello from Anna". Tap send. | "Private chat, end-to-end encrypted" |
 | 20–27 s | Phone B shows the message (notification or open chat). Reply "Got it!". | "Delivered phone to phone. No server." |
-| 27–34 s | On phone B, long-press Anna's message to show Report, then tap the (i) button to show contact info with Block and Report. Close it. | "Report and Block, always one tap away" |
+| 27–34 s | On phone B, tap the (i) button in the chat to show contact info with Block and Report. Close it. | "Report and Block, always one tap away" |
 | 34–40 s | Open the SOS tab on one phone and show the text under the title. Do NOT send an alarm. | "SOS reaches phones nearby. It does not call emergency services." |
 
 **After recording**

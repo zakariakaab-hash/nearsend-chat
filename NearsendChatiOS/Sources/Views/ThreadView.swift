@@ -187,7 +187,8 @@ struct ThreadView: View {
     private func bubble(_ m: Message) -> Bubble {
         let group = isPublic || members != nil
         let blockAction: (() -> Void)? = (!m.mine && m.senderID != nil && group) ? { blockTarget = m.senderID } : nil
-        let reportAction: (() -> Void)? = m.mine ? nil : { reportMessage(m) }
+        // Private chats report from contact info (i); the long-press Report stays where senders may be strangers.
+        let reportAction: (() -> Void)? = (m.mine || !group) ? nil : { reportMessage(m) }
         let forwardAction: (() -> Void)? = m.photo == nil ? { forwarding = m } : nil
         let isPinnedNow = conversation?.pinnedMessage == m.id
         return Bubble(message: m, showSender: group, progress: store.photoProgress[m.id],
