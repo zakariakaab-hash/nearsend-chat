@@ -4,11 +4,13 @@ import SwiftUI
 /// swipe right to pin (and mark read/unread), swipe left for Delete and More (mute, lock, favourite, clear).
 struct ChatsView: View {
     @EnvironmentObject var store: ChatStore
+    @Environment(\.dynamicTypeSize) private var typeSize
     @State private var path: [String] = UserDefaults.standard.bool(forKey: "openThread") ? [UserDefaults.standard.string(forKey: "threadID") ?? "a"] : []
     @State private var newGroup = false
     @State private var toDelete: Conversation?
     @State private var toClear: Conversation?
     @State private var more: Conversation?
+    @State private var afterMore: (() -> Void)?
     @State private var filter = Filter.all
     @State private var selecting = false
     @State private var selected = Set<String>()
@@ -82,22 +84,32 @@ struct ChatsView: View {
             .navigationDestination(for: String.self) { id in
                 if let c = store.conversations.first(where: { $0.id == id }) { ThreadView(conversationID: c.id, peer: c.peer) }
             }
-            .confirmationDialog(deleteTitle, isPresented: Binding(get: { toDelete != nil }, set: { if !$0 { toDelete = nil } }), titleVisibility: .visible, presenting: toDelete) { c in
+            .alert(deleteTitle, isPresented: Binding(get: { toDelete != nil }, set: { if !$0 { toDelete = nil } }), presenting: toDelete) { c in
                 Button(c.isGroup ? "Leave group" : "Delete chat", role: .destructive) {
                     if path.contains(c.id) { path.removeAll() }
                     store.deleteConversation(c.id)
                 }
                 Button("Cancel", role: .cancel) {}
             } message: { _ in Text("Only on this phone. The other person keeps their copy.") }
-            .confirmationDialog("Clear messages", isPresented: Binding(get: { toClear != nil }, set: { if !$0 { toClear = nil } }), titleVisibility: .visible, presenting: toClear) { c in
+            .alert("Clear messages", isPresented: Binding(get: { toClear != nil }, set: { if !$0 { toClear = nil } }), presenting: toClear) { c in
                 Button("Clear messages", role: .destructive) { store.clearChat(c.id) }
                 Button("Cancel", role: .cancel) {}
             } message: { _ in Text("Only on this phone. The other person keeps their copy.") }
-            .confirmationDialog(Text(verbatim: more.map(title) ?? ""), isPresented: Binding(get: { more != nil }, set: { if !$0 { more = nil } }), titleVisibility: .visible, presenting: more) { c in
-                menu(c)
-                Button("Cancel", role: .cancel) {}
+            // WhatsApp-style "More": a bottom sheet with the chat on top and one row per action.
+            .sheet(item: $more, onDismiss: { afterMore?(); afterMore = nil }) { c in
+                ChatActionsSheet(conversation: c, title: title(c)) { action in
+                    switch action {
+                    case .pin: store.togglePin(c.id)
+                    case .mute: store.toggleMute(c.id)
+                    case .lock: store.toggleLock(c.id)
+                    case .favourite: store.toggleFavorite(c.id)
+                    case .clear: afterMore = { toClear = c }          // the confirmation opens once the sheet is gone
+                    case .delete: afterMore = { toDelete = c }
+                    }
+                    more = nil
+                }
             }
-            .confirmationDialog("Delete chats", isPresented: $bulkDelete, titleVisibility: .visible) {
+            .alert("Delete chats", isPresented: $bulkDelete) {
                 Button("Delete \(selected.count)", role: .destructive) {
                     for id in selected where id != publicChannelID { store.deleteConversation(id) }
                     endSelecting()
@@ -136,12 +148,14 @@ struct ChatsView: View {
                 }.buttonStyle(.plain).accessibilityLabel("New group")
             }
             PageTitle(text: selecting ? "\(selected.count) selected" : "Chats")
-            HStack(spacing: 8) {
-                ChipButton(selected: filter == .all, action: { filter = .all }) { Text("All") }
-                ChipButton(selected: filter == .unread, action: { filter = .unread }) { Text("Unread") }
-                ChipButton(selected: filter == .favorites, action: { filter = .favorites }) { Text("Favourites") }
-                Spacer()
-            }
+            // Scrolls sideways at large text sizes instead of breaking the words.
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ChipButton(selected: filter == .all, action: { filter = .all }) { Text("All").fixedSize() }
+                    ChipButton(selected: filter == .unread, action: { filter = .unread }) { Text("Unread").fixedSize() }
+                    ChipButton(selected: filter == .favorites, action: { filter = .favorites }) { Text("Favourites").fixedSize() }
+                }
+            }.scrollClipDisabled()
         }.padding(.top, 8)
     }
 
@@ -224,14 +238,20 @@ struct ChatsView: View {
 
     private func row(_ c: Conversation) -> some View {
         let isPublic = c.id == publicChannelID
+        // At accessibility text sizes the picture goes above the text and the time below the name, so names are not split into syllables.
+        let big = typeSize.isAccessibilitySize
+        let layout = big ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8)) : AnyLayout(HStackLayout(spacing: 12))
+        let header = big ? AnyLayout(VStackLayout(alignment: .leading, spacing: 2)) : AnyLayout(HStackLayout(spacing: 6))
         return Card(padding: 12) {
-            HStack(spacing: 12) {
+            layout {
                 Avatar(name: isPublic ? "#" : c.peer.name, size: 52, online: !isPublic && !c.isGroup && c.peer.hops == 1, avatar: c.peer.shownAvatar).accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 4) {
-                    HStack(spacing: 6) {
-                        if isPublic { Text("Nearby channel").font(.headline) } else { Text(verbatim: c.peer.name).font(.headline).lineLimit(1) }
-                        if c.isFavorite { Image(systemName: "heart.fill").font(.caption).foregroundStyle(.pink).accessibilityLabel("Favourite") }
-                        Spacer()
+                    header {
+                        HStack(spacing: 6) {
+                            if isPublic { Text("Nearby channel").font(.headline) } else { Text(verbatim: c.peer.name).font(.headline).lineLimit(big ? 3 : 1) }
+                            if c.isFavorite { Image(systemName: "heart.fill").font(.caption).foregroundStyle(.pink).accessibilityLabel("Favourite") }
+                        }
+                        if !big { Spacer() }
                         if let d = c.last?.date { Text(d, style: .time).font(.caption).foregroundStyle(Theme.inkSecondary) }
                     }
                     HStack(spacing: 6) {
@@ -240,7 +260,7 @@ struct ChatsView: View {
                             else if c.last != nil { Text(verbatim: preview(c)) }
                             else if isPublic { Text("Public · anyone in range can read this") }
                             else { Text(verbatim: "") }
-                        }.font(.subheadline).foregroundStyle(Theme.inkSecondary).lineLimit(1)
+                        }.font(.subheadline).foregroundStyle(Theme.inkSecondary).lineLimit(big ? 2 : 1)
                         Spacer()
                         if c.isMuted { Image(systemName: "bell.slash.fill").font(.caption).foregroundStyle(Theme.inkSecondary).accessibilityLabel("Muted") }
                         if c.isPinned { Image(systemName: "pin.fill").font(.caption).foregroundStyle(Theme.inkSecondary).accessibilityLabel("Pinned") }
@@ -256,7 +276,7 @@ struct ChatsView: View {
 
     private func preview(_ c: Conversation) -> String {
         guard let m = c.last else { return "" }
-        if m.photo != nil { return "\u{1F4F7} " + localized("Photo") }
+        if let media = m.mediaLabel { return media }
         let text = Reply.split(m.text)?.body ?? m.text
         if let s = m.sender { return "\(s): \(text)" }
         return text
@@ -269,5 +289,51 @@ private extension View {
         listRowBackground(Color.clear)
             .listRowSeparator(.hidden)
             .listRowInsets(EdgeInsets(top: 6, leading: 20, bottom: 6, trailing: 20))
+    }
+}
+
+/// The chat actions behind a swipe's "More", laid out like WhatsApp: the chat, then grouped rows with icons.
+private struct ChatActionsSheet: View {
+    enum Action { case pin, mute, lock, favourite, clear, delete }
+    let conversation: Conversation
+    let title: String
+    let act: (Action) -> Void
+    private var c: Conversation { conversation }
+    private var isPublic: Bool { c.id == publicChannelID }
+    var body: some View {
+        VStack(spacing: 14) {
+            HStack(spacing: 12) {
+                Avatar(name: isPublic ? "#" : c.peer.name, size: 44, avatar: c.peer.shownAvatar).accessibilityHidden(true)
+                Text(verbatim: title).font(.headline).foregroundStyle(Theme.ink)
+                Spacer()
+            }.padding(.horizontal, 4)
+            VStack(spacing: 0) {
+                if !isPublic { row(c.isPinned ? "Unpin" : "Pin", c.isPinned ? "pin.slash" : "pin", .pin) ; divider }
+                row(c.isMuted ? "Unmute" : "Mute", c.isMuted ? "bell" : "bell.slash", .mute)
+                if !isPublic { divider; row(c.isLocked ? "Unlock chat" : "Lock chat", c.isLocked ? "lock.open" : "lock", .lock) }
+                divider
+                row(c.isFavorite ? "Remove from favourites" : "Add to favourites", c.isFavorite ? "heart.slash" : "heart", .favourite)
+            }.glass(radius: 16)
+            VStack(spacing: 0) {
+                row("Clear messages", "eraser", .clear, destructive: true)
+                if !isPublic { divider; row(c.isGroup ? "Leave group" : "Delete chat", c.isGroup ? "rectangle.portrait.and.arrow.right" : "trash", .delete, destructive: true) }
+            }.glass(radius: 16)
+        }
+        .padding(.horizontal, 16).padding(.top, 20).padding(.bottom, 8)
+        .frame(maxHeight: .infinity, alignment: .top)
+        .presentationDetents([.height(isPublic ? 300 : 430)])
+        .presentationDragIndicator(.visible)
+    }
+    private var divider: some View { Divider().padding(.leading, 52) }
+    private func row(_ label: LocalizedStringKey, _ icon: String, _ a: Action, destructive: Bool = false) -> some View {
+        Button { act(a) } label: {
+            HStack(spacing: 16) {
+                Image(systemName: icon).font(.system(size: 18)).frame(width: 24)
+                Text(label).font(.body)
+                Spacer()
+            }
+            .foregroundStyle(destructive ? Color(hex: 0xE5484D) : Theme.ink)
+            .padding(.horizontal, 14).frame(height: 50).contentShape(Rectangle())
+        }.buttonStyle(.plain)
     }
 }

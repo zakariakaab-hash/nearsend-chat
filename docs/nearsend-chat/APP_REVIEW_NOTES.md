@@ -33,10 +33,10 @@ USER SAFETY (Guideline 1.2)
 - Contact us: You tab.
 
 SOS
-SOS sends an alarm only to phones nearby that run Nearsend Chat. The SOS screen states that it does not call emergency services, and offers "Call 112" for when there is cell signal.
+SOS sends an alarm only to phones nearby that run Nearsend Chat. The SOS screen states that it does not call emergency services, and offers a call to the local emergency number (from the phone's region, for example 112 in Europe, 911 in the US; 112 when unknown) for when there is cell signal.
 
 PRIVACY
-No accounts, no analytics, no ads, no tracking. All data stays on the device. "Erase everything" on the You tab deletes it. Location is used only when the user attaches it to an SOS alarm.
+No accounts, no analytics, no ads, no tracking. All data stays on the device. "Erase everything" on the You tab deletes it. Location is used only when the user shares it in a chat or attaches it to an SOS alarm; it goes over Bluetooth to the people they choose, never to us. Camera and microphone are used only when the user takes a photo or holds the microphone button to record a voice message in a private chat.
 
 ENCRYPTION
 Private messages use X25519, HKDF and ChaCha20-Poly1305 from Apple's CryptoKit.

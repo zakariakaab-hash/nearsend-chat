@@ -1,3 +1,5 @@
 "NSBluetoothAlwaysUsageDescription" = "Nearsend Chat, yakınınızdaki kişileri bulmak ve internetsiz mesajlaşmak için Bluetooth kullanır.";
 "NSLocalNetworkUsageDescription" = "Nearsend Chat, yakındaki cihazlara ulaşmak için yerel ağı kullanır.";
-"NSLocationWhenInUseUsageDescription" = "Yalnızca konumunla SOS gönderdiğinde kullanılır, böylece yakındakiler seni bulabilir.";
+"NSLocationWhenInUseUsageDescription" = "Yalnızca bir sohbette konumunuzu paylaştığınızda veya SOS gönderdiğinizde, yakındakiler sizi bulabilsin diye kullanılır.";
+"NSCameraUsageDescription" = "Yalnızca bir sohbette göndermek için fotoğraf çektiğinizde kullanılır.";
+"NSMicrophoneUsageDescription" = "Yalnızca sesli mesaj kaydetmek için mikrofon düğmesini basılı tuttuğunuzda kullanılır.";

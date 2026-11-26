@@ -92,7 +92,9 @@ final class ChatStore: ObservableObject {
 
     init() {
         let d = UserDefaults.standard
-        nickname = d.string(forKey: "nickname") ?? "anon-\(Int.random(in: 1000...9999))"
+        // A new user gets a random name once; it is saved now (didSet does not run in init), so it stays the same next launch.
+        if d.string(forKey: "nickname") == nil { d.set("anon-\(Int.random(in: 1000...9999))", forKey: "nickname") }
+        nickname = d.string(forKey: "nickname") ?? "anon"
         if d.string(forKey: "deviceID") == nil { d.set(UUID().uuidString, forKey: "deviceID") }
         deviceID = d.string(forKey: "deviceID") ?? UUID().uuidString
         #if targetEnvironment(simulator)
@@ -240,6 +242,22 @@ final class ChatStore: ObservableObject {
             }
         }
         if changed { save() }
+    }
+
+    /// What "Show my code" puts in the QR code: our fingerprint, so a friend can verify us by scanning instead of reading digits.
+    var myCodePayload: String { "nearsend:fp:" + Self.compact(myFingerprint) }
+    private static func compact(_ fp: String) -> String { fp.filter { $0.isHexDigit }.uppercased() }
+
+    /// A scanned code: marks the matching person as verified and returns their name, or nil when nobody here has that fingerprint.
+    func verifyScanned(_ payload: String) -> String? {
+        guard payload.hasPrefix("nearsend:fp:") else { return nil }
+        let fp = Self.compact(String(payload.dropFirst("nearsend:fp:".count)))
+        let candidates = peers + conversations.map(\.peer)
+        guard fp.count >= 16, let match = candidates.first(where: { !$0.fingerprint.isEmpty && Self.compact($0.fingerprint) == fp }) else { return nil }
+        verified.insert(match.fingerprint)
+        peers = peers.map { var p = $0; p.verified = verified.contains(p.fingerprint); return p }
+        save()
+        return match.name
     }
 
     func toggleVerified(_ peer: Peer) {
@@ -463,6 +481,11 @@ final class ChatStore: ObservableObject {
         return photosDir.appendingPathComponent(id + ".img")
     }
 
+    /// Bytes of a stored photo (what went over Bluetooth), or nil when it is missing.
+    func photoSize(_ id: String) -> Int? {
+        (try? FileManager.default.attributesOfItem(atPath: Self.photoURL(id).path))?[.size] as? Int
+    }
+
     func loadPhoto(_ id: String) -> UIImage? {
         if let cached = photoCache.object(forKey: id as NSString) { return cached }
         guard let img = UIImage(contentsOfFile: Self.photoURL(id).path) else { return nil }
@@ -480,12 +503,22 @@ final class ChatStore: ObservableObject {
         }
     }
 
-    private func addPhoto(_ bytes: Data?, in id: String) {
+    /// A recorded voice note (an .m4a file): sent to the contact like a photo.
+    func sendVoice(_ bytes: Data, in id: String) {
+        guard id != publicChannelID, !id.hasPrefix("g:"), VoiceNote.looksLikeAudio(bytes) else { return }
+        addPhoto(bytes, in: id, voice: true)
+    }
+
+    /// Where a voice note's bytes are kept, for playing it.
+    func mediaData(_ id: String) -> Data? { try? Data(contentsOf: Self.photoURL(id)) }
+
+    private func addPhoto(_ bytes: Data?, in id: String, voice: Bool = false) {
         guard let i = index(id) else { return }
         guard let bytes else { photoError = true; return }
         let pid = UUID().uuidString
         guard (try? bytes.write(to: Self.photoURL(pid), options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])) != nil else { photoError = true; return }
-        let m = Message(id: pid, text: "", date: .now, mine: true, state: .sending, photo: pid)
+        var m = Message(id: pid, text: "", date: .now, mine: true, state: .sending, photo: pid)
+        if voice { m.voice = true }
         conversations[i].messages.append(m)
         save()
         if simulated {
@@ -527,9 +560,11 @@ final class ChatStore: ObservableObject {
         ensureConversation(peer)
         guard let i = index(from), !conversations[i].messages.contains(where: { $0.id == photo }) else { return }
         guard (try? bytes.write(to: Self.photoURL(photo), options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])) != nil else { return }
-        conversations[i].messages.append(Message(id: photo, text: "", date: .now, mine: false, photo: photo))
+        var m = Message(id: photo, text: "", date: .now, mine: false, photo: photo)
+        if VoiceNote.looksLikeAudio(bytes) { m.voice = true }
+        conversations[i].messages.append(m)
         if activeConversation != from { conversations[i].unread += 1 }
-        alert(from, title: peer.name, body: hidePreviews ? localized("New message") : "\u{1F4F7} " + localized("Photo"))
+        alert(from, title: peer.name, body: hidePreviews ? localized("New message") : (m.mediaLabel ?? ""))
         if conversations.first(where: { $0.id == from })?.isMuted != true { Notifier.messageHaptic() }
         save()
     }

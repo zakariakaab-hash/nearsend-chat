@@ -1,3 +1,5 @@
 "NSBluetoothAlwaysUsageDescription" = "Nearsend Chat använder Bluetooth för att hitta och skicka meddelanden till personer i närheten utan internet.";
 "NSLocalNetworkUsageDescription" = "Nearsend Chat använder det lokala nätverket för att nå enheter i närheten.";
-"NSLocationWhenInUseUsageDescription" = "Används bara när du skickar ett SOS med din position, så att folk i närheten kan hitta dig.";
+"NSLocationWhenInUseUsageDescription" = "Används bara när du delar din plats i en chatt eller skickar ett SOS, så att personer i närheten kan hitta dig.";
+"NSCameraUsageDescription" = "Används bara när du tar en bild att skicka i en chatt.";
+"NSMicrophoneUsageDescription" = "Används bara medan du håller in mikrofonknappen för att spela in ett röstmeddelande.";

@@ -108,7 +108,9 @@ struct SosView: View {
                 Text("Beyond Nearsend").font(.headline)
                 Text("Calls and texts need cell signal. Texts are not encrypted.").font(.footnote).foregroundStyle(Theme.inkSecondary)
                 HStack(spacing: 10) {
-                    SosAction(title: "Call 112", icon: "phone.fill") { if let u = URL(string: "tel:112") { openURL(u) } }
+                    SosAction(title: "Call \(EmergencyNumber.local)", icon: "phone.fill") {
+                        if let u = URL(string: "tel:" + EmergencyNumber.local) { openURL(u) }
+                    }
                     SosAction(title: "Text my position", icon: "message.fill") { if let u = smsURL { openURL(u) } }
                 }
             }
@@ -220,4 +222,25 @@ private struct SosAction: View {
                 .frame(maxWidth: .infinity).padding(.vertical, 12).glass(radius: Theme.rButton)
         }
     }
+}
+
+/// The emergency number for the phone's region (Settings > General > Language & Region), ambulance first where
+/// police and ambulance differ. 112 everywhere else: it is the GSM emergency number and most networks route it.
+enum EmergencyNumber {
+    static var local: String { number(for: Locale.current.region?.identifier) }
+    static func number(for region: String?) -> String {
+        guard let r = region?.uppercased() else { return "112" }
+        if let n = table[r] { return n }
+        return "112"
+    }
+    private static let table: [String: String] = {
+        var t: [String: String] = [:]
+        for r in ["US", "CA", "MX", "PR", "PA", "CR", "SV", "DO", "UY", "PH", "SA", "JO"] { t[r] = "911" }
+        for r in ["GB", "HK", "MO", "MY", "BD", "AE", "QA", "BH", "SG", "GH"] { t[r] = "999" }
+        for r in ["JP", "KR", "TW"] { t[r] = "119" }
+        t["AU"] = "000"; t["NZ"] = "111"; t["CN"] = "120"; t["BR"] = "192"; t["AR"] = "911"
+        t["TH"] = "1669"; t["VN"] = "115"; t["EG"] = "123"; t["MA"] = "15"; t["CO"] = "123"
+        t["CL"] = "131"; t["IR"] = "115"; t["PK"] = "1122"
+        return t
+    }()
 }

@@ -264,3 +264,11 @@ over the internet relays.
   shows "failed" and the user can tap to try again.
 - A photo waits (shown as "sending") until the person is in direct range, for at most 24 hours.
 - Group chats and the public channel do not support photos.
+
+### 11.1 Voice notes
+
+A voice note travels exactly like a photo (`img` chunks, sealed, to one direct neighbour, same receipt). The plain bytes
+are an MPEG-4 audio file (`.m4a`: AAC, mono, 16 kHz, about 16 kbit/s, at most 12 seconds, at most 60 KB) instead of
+an image. Receivers tell the two apart by the first box: bytes 4 to 7 are `ftyp` for audio, while JPEG starts with
+`FF D8` and WebP with `RIFF`. Senders strip the empty `free` padding box Apple's writer adds before `mdat` and shift the
+`stco` offsets back to match. Versions that do not know voice notes treat the bytes as a photo they cannot open.

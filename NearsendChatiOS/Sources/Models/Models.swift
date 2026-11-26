@@ -74,6 +74,48 @@ struct Message: Identifiable, Hashable, Codable {
     var deliveredAt: Date? = nil   // our messages: when the delivery receipt arrived (shown under Info)
     var readAt: Date? = nil        // our messages: when the read receipt arrived
     var readSent: Bool? = nil      // their messages: we already told them we read it
+    var voice: Bool? = nil         // `photo` holds a voice note (AAC in .m4a), not a picture; it travels the same way
+    var isVoice: Bool { voice == true }
+}
+
+/// Voice notes are sent like photos (PROTOCOL.md section 11): the receiver tells them apart by the MPEG-4 "ftyp" box.
+enum VoiceNote {
+    static let maxSeconds: TimeInterval = 12
+    static func looksLikeAudio(_ d: Data) -> Bool { d.count > 12 && d.subdata(in: 4..<8) == Data("ftyp".utf8) }
+
+    /// Drops the empty "free" padding Apple's writer puts before the audio (about 23 KB, more than the sound itself) and moves
+    /// the sample offsets ("stco") back by the same amount. Returns the input unchanged when the layout is not the expected one.
+    static func stripPadding(_ d: Data) -> Data {
+        let b = [UInt8](d)
+        func u32(_ i: Int) -> Int { i + 4 <= b.count ? Int(b[i]) << 24 | Int(b[i + 1]) << 16 | Int(b[i + 2]) << 8 | Int(b[i + 3]) : 0 }
+        func type(_ i: Int) -> String { i + 8 <= b.count ? String(bytes: b[(i + 4)..<(i + 8)], encoding: .ascii) ?? "" : "" }
+        var atoms: [(type: String, start: Int, size: Int)] = []
+        var i = 0
+        while i + 8 <= b.count { let n = u32(i); guard n >= 8, i + n <= b.count else { return d }; atoms.append((type(i), i, n)); i += n }
+        guard let free = atoms.first(where: { $0.type == "free" }), let mdat = atoms.first(where: { $0.type == "mdat" }),
+              let moov = atoms.first(where: { $0.type == "moov" }), free.start < mdat.start, moov.start < free.start else { return d }
+        var out = b
+        // Every stco inside moov: version/flags (4), count (4), then 32-bit offsets.
+        var j = moov.start + 8
+        var patched = 0
+        while j + 8 <= moov.start + moov.size {
+            if type(j) == "stco" {
+                let count = u32(j + 12)
+                for k in 0..<count {
+                    let at = j + 16 + k * 4
+                    let v = u32(at) - free.size
+                    guard v >= 0 else { return d }
+                    out[at] = UInt8(v >> 24 & 0xFF); out[at + 1] = UInt8(v >> 16 & 0xFF); out[at + 2] = UInt8(v >> 8 & 0xFF); out[at + 3] = UInt8(v & 0xFF)
+                }
+                patched += 1
+            }
+            if type(j) == "co64" { return d }
+            j += 1
+        }
+        guard patched > 0 else { return d }
+        out.removeSubrange(free.start..<(free.start + free.size))
+        return Data(out)
+    }
 }
 
 /// A public announcement, kept by phones nearby until `exp`.
@@ -115,7 +157,7 @@ struct Conversation: Identifiable, Codable {
 enum Reply {
     static let mark = "\u{21AA} "
     static func compose(quoting m: Message, from name: String, text: String) -> String {
-        let q = (m.photo != nil ? "\u{1F4F7}" : m.text.replacingOccurrences(of: "\n", with: " "))
+        let q = (m.photo != nil ? (m.isVoice ? "\u{1F3A4}" : "\u{1F4F7}") : m.text.replacingOccurrences(of: "\n", with: " "))
         let short = q.count > 60 ? String(q.prefix(60)) + "\u{2026}" : q
         return mark + name + ": " + short + "\n" + text
     }
@@ -123,6 +165,20 @@ enum Reply {
     static func split(_ text: String) -> (quote: String, body: String)? {
         guard text.hasPrefix(mark), let nl = text.firstIndex(of: "\n") else { return nil }
         return (String(text[text.index(text.startIndex, offsetBy: mark.count)..<nl]), String(text[text.index(after: nl)...]))
+    }
+}
+
+/// "Send location" travels as "📍 <openstreetmap.org link>", which any phone (and the Android app) can open.
+/// This app draws such a message as a map card that opens Apple Maps.
+enum SharedLocation {
+    static let prefix = "\u{1F4CD} https://www.openstreetmap.org/?"
+    static func parse(_ text: String) -> (lat: Double, lon: Double)? {
+        guard text.hasPrefix(prefix), !text.contains("\n"),
+              let q = URLComponents(string: String(text.dropFirst(2)))?.queryItems,
+              let lat = q.first(where: { $0.name == "mlat" })?.value.flatMap(Double.init),
+              let lon = q.first(where: { $0.name == "mlon" })?.value.flatMap(Double.init),
+              (-90...90).contains(lat), (-180...180).contains(lon) else { return nil }
+        return (lat, lon)
     }
 }
 

@@ -13,9 +13,15 @@ struct NearbyView: View {
                     VStack(spacing: 16) {
                         PageTitle(text: "Nearby").padding(.top, 8)
                         header
-                        Card(padding: 12) { RadarView(peers: store.peers).frame(height: 320) }
-                        if store.showAnnouncements { announcements }
+                        if showEmpty { emptyCard }
+                        Card(padding: 12) {
+                            VStack(spacing: 8) {
+                                RadarView(peers: store.peers).frame(height: 210)
+                                legend
+                            }
+                        }
                         peerList
+                        if store.showAnnouncements { announcements }
                     }.padding(.horizontal, 20).padding(.bottom, 24).readableWidth()
                 }
             }
@@ -79,9 +85,48 @@ struct NearbyView: View {
         }
     }
 
+    /// Nobody in range on a working phone: say what is happening and what helps. Bluetooth off is handled by the header.
+    private var showEmpty: Bool { store.peers.isEmpty && !store.simulated && store.meshActive && store.bluetoothState == "ready" }
+    private var emptyCard: some View {
+        Card {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("No one in range yet").font(.headline)
+                Text("Nearsend Chat reaches phones about 10 to 50 metres away. People show up here when they come close.")
+                    .font(.subheadline).foregroundStyle(Theme.inkSecondary)
+                VStack(alignment: .leading, spacing: 6) {
+                    Label("Bluetooth is on", systemImage: "checkmark.circle.fill")
+                    Label("Your friends need Nearsend Chat too", systemImage: "person.2.fill")
+                    Label("Open the app on both phones to connect faster", systemImage: "iphone.radiowaves.left.and.right")
+                }.font(.footnote).foregroundStyle(Theme.ink)
+                ShareLink(item: URL(string: "https://chat.nearsend.app")!) {
+                    Label("Invite friends", systemImage: "square.and.arrow.up").font(.subheadline.weight(.semibold))
+                        .frame(maxWidth: .infinity).frame(height: 44)
+                        .foregroundStyle(.white).background(Theme.actionBlue, in: RoundedRectangle(cornerRadius: Theme.rButton, style: .continuous))
+                }
+            }.frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
+    /// Filled dot = direct link, ring = relayed: told apart by shape, not colour alone.
+    private var legend: some View {
+        HStack(spacing: 16) {
+            HStack(spacing: 5) { Circle().fill(Theme.actionBlue).frame(width: 10, height: 10); Text("Direct link") }
+            HStack(spacing: 5) { Circle().stroke(Theme.actionBlue, lineWidth: 2).frame(width: 9, height: 9); Text("Via relay") }
+        }
+        .font(.caption).foregroundStyle(Theme.inkSecondary)
+        .accessibilityElement(children: .combine)
+    }
+
+    /// People first: direct links before relayed ones, strongest signal first.
+    private var sortedPeers: [Peer] { store.peers.sorted { ($0.hops, -$0.rssi) < ($1.hops, -$1.rssi) } }
+
     private var peerList: some View {
         VStack(spacing: 10) {
-            ForEach(store.peers) { p in
+            if !store.peers.isEmpty {
+                Text("People nearby").font(.headline).foregroundStyle(.white).frame(maxWidth: .infinity, alignment: .leading)
+                    .accessibilityAddTraits(.isHeader)
+            }
+            ForEach(sortedPeers) { p in
                 Button { store.ensureConversation(p); chat = p } label: {
                     Card(padding: 12) {
                         HStack(spacing: 12) {
@@ -168,6 +213,7 @@ struct RadarView: View {
                             .overlay(Circle().stroke(Theme.actionBlue, lineWidth: 2))
                             .frame(width: 13, height: 13)
                         Text(verbatim: p.name).font(.caption2.weight(.medium)).foregroundStyle(Theme.ink)
+                            .dynamicTypeSize(...DynamicTypeSize.large)   // the list below shows every name at full size
                     }
                     .position(x: c.x + cos(a) * r, y: c.y + sin(a) * r)
                     .animation(.easeInOut(duration: 1), value: p.rssi)

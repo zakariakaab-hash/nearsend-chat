@@ -10,6 +10,21 @@ final class PowerMode: ObservableObject {
     }
     var lowPower: Bool { systemLowPower || saver }
 
+    /// Battery saver also dims the screen while the app is in front. The person's own brightness is put back
+    /// when the app goes to the background or the saver is turned off.
+    private var savedBrightness: CGFloat?
+    static let dimLevel: CGFloat = 0.3
+    func applyBrightness(active: Bool) {
+        guard let screen = UIApplication.shared.connectedScenes.compactMap({ $0 as? UIWindowScene }).first?.screen else { return }
+        if saver && active {
+            if savedBrightness == nil { savedBrightness = screen.brightness }
+            if screen.brightness > Self.dimLevel { screen.brightness = Self.dimLevel }
+        } else if let b = savedBrightness {
+            savedBrightness = nil
+            screen.brightness = b
+        }
+    }
+
     private init() {
         // `queue: .main` delivers on the main thread, where SwiftUI wants its state changes.
         NotificationCenter.default.addObserver(forName: .NSProcessInfoPowerStateDidChange, object: nil, queue: .main) { [weak self] _ in

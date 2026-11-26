@@ -15,6 +15,7 @@ struct NearsendChatApp: App {
     }
 
     @ObservedObject private var power = PowerMode.shared
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some Scene {
         WindowGroup {
@@ -26,6 +27,8 @@ struct NearsendChatApp: App {
             .preferredColorScheme(power.saver ? .dark : nil)   // battery saver: light text on the black background
             .onAppear { if onboarded { store.startIfNeeded() } }
             .onChange(of: onboarded) { _, v in if v { store.startIfNeeded() } }
+            .onChange(of: scenePhase, initial: true) { _, p in power.applyBrightness(active: p == .active) }
+            .onChange(of: power.saver) { _, _ in power.applyBrightness(active: scenePhase == .active) }
         }
     }
 }

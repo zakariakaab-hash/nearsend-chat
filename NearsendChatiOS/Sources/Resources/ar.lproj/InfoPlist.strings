@@ -1,3 +1,5 @@
 "NSBluetoothAlwaysUsageDescription" = "يستخدم Nearsend Chat البلوتوث للعثور على الأشخاص القريبين ومراسلتهم دون إنترنت.";
 "NSLocalNetworkUsageDescription" = "يستخدم Nearsend Chat الشبكة المحلية للوصول إلى الأجهزة القريبة.";
-"NSLocationWhenInUseUsageDescription" = "يُستخدم فقط عند إرسال نداء SOS مع موقعك، ليتمكن من حولك من العثور عليك.";
+"NSLocationWhenInUseUsageDescription" = "يُستخدم فقط عند مشاركة موقعك في محادثة أو إرسال نداء SOS، ليتمكن من حولك من العثور عليك.";
+"NSCameraUsageDescription" = "يُستخدم فقط عند التقاط صورة لإرسالها في محادثة.";
+"NSMicrophoneUsageDescription" = "يُستخدم فقط أثناء الضغط المطوّل على زر الميكروفون لتسجيل رسالة صوتية.";

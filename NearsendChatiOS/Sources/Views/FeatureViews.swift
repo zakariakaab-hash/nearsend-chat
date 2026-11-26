@@ -8,10 +8,13 @@ struct ChipButton<Label: View>: View {
     var body: some View {
         Button(action: action) {
             label().font(.footnote.weight(.semibold)).padding(.horizontal, 12).padding(.vertical, 7)
-                .foregroundStyle(selected ? Color.white : Theme.link)
-                .background(selected ? Theme.actionBlue : Color.white.opacity(0.55), in: Capsule())
+                .foregroundStyle(selected ? Color.white : Self.idleText)
+                .background(selected ? Theme.actionBlue : Self.idleFill, in: Capsule())
         }.buttonStyle(.plain)
     }
+    // Unselected: glass with white text at night (blue on grey failed 4.5:1), deep blue on white by day.
+    private static var idleText: Color { Color.adaptive(day: Theme.actionBlueDeep, night: .white) }
+    private static var idleFill: Color { Color.adaptive(day: Color.white.opacity(0.7), night: Color.white.opacity(0.16)) }
 }
 
 /// Reporting and contact (App Store guideline 1.2). The app has no server, so a report is an email the user sends themself.
@@ -158,7 +161,7 @@ struct AvatarPickerSheet: View {
                             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 6), spacing: 8) {
                                 ForEach(Avatars.emojis, id: \.self) { e in
                                     Button { emoji = e; apply() } label: {
-                                        Text(e).font(.system(size: 26)).frame(width: 44, height: 44)
+                                        Text(e).font(.title).dynamicTypeSize(...DynamicTypeSize.xxxLarge).frame(width: 44, height: 44)
                                             .background(e == emoji ? Theme.actionBlue.opacity(0.22) : Theme.ink.opacity(0.06), in: Circle())
                                     }.buttonStyle(.plain)
                                 }

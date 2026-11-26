@@ -18,9 +18,9 @@ def rows(path):
         if line and not line.startswith("#"): out.append(line.split("|"))
     return out
 
-def ios_str(s):  return s.replace("\\", "\\\\").replace('"', '\\"').replace("{n}", "%lld")
+def ios_str(s):  return s.replace("\\", "\\\\").replace('"', '\\"').replace("{n}", "%lld").replace("{s}", "%@")
 def and_str(s):
-    s = s.replace("&", "&amp;").replace("<", "&lt;").replace("'", "\\'").replace('"', '\\"').replace("{n}", "%1$d")
+    s = s.replace("&", "&amp;").replace("<", "&lt;").replace("'", "\\'").replace('"', '\\"').replace("{n}", "%1$d").replace("{s}", "%1$s")
     return "\\@" + s[1:] if s.startswith("@") else s
 
 tr = rows(os.path.join(root, "translations.txt"))
@@ -49,6 +49,8 @@ for r in rows(os.path.join(root, "plist.txt")):
     with open(os.path.join(d, "InfoPlist.strings"), "w", encoding="utf-8") as f:
         f.write(f'"NSBluetoothAlwaysUsageDescription" = "{ios_str(r[1])}";\n"NSLocalNetworkUsageDescription" = "{ios_str(r[2])}";\n')
         f.write(f'"NSLocationWhenInUseUsageDescription" = "{ios_str(r[3])}";\n')
+        f.write(f'"NSCameraUsageDescription" = "{ios_str(r[4])}";\n')
+        f.write(f'"NSMicrophoneUsageDescription" = "{ios_str(r[5])}";\n')
 
 os.makedirs(os.path.join(and_res, "xml"), exist_ok=True)
 with open(os.path.join(and_res, "xml/locales_config.xml"), "w", encoding="utf-8") as f:
