@@ -11,7 +11,7 @@ Updated 26 Nov 2026 for build 10 (about 2,500 characters; the field allows 4,000
 Nearsend Chat is an offline messenger. Phones talk directly to each other over Bluetooth Low Energy: no internet, no account, no server. Messages hop from phone to phone (up to 5 hops), and private chats are end-to-end encrypted.
 
 ONE DEVICE
-The app has no demo data: people and chats appear only when a second iPhone running Nearsend Chat is nearby. On one phone you can still review onboarding, the Nearby radar, SOS, and the You tab (Privacy, Notifications, Bluetooth, Account, Help).
+The app has no demo data: people and chats appear only when a second iPhone running Nearsend Chat is nearby. The attached video shows two iPhones finding each other, chatting and sending an SOS over Bluetooth. On one phone you can still review onboarding, the Nearby radar, SOS, and the You tab (Privacy, Notifications, Bluetooth, Account, Help).
 
 FULL TEST WITH TWO DEVICES (recommended)
 1. Install on two iPhones and turn Bluetooth on. Airplane Mode can stay on: the app needs no Wi-Fi or cellular.
