@@ -251,3 +251,150 @@ struct ConfirmSheet: View {
         .presentationDragIndicator(.visible)
     }
 }
+
+// MARK: - Permission sheets
+
+/// What a permission sheet explains. iOS draws its own alerts and apps cannot style them, so before iOS asks (and when
+/// something is off or was refused) the app shows this sheet in the same spirit as iOS's location prompt: icon, title,
+/// one honest paragraph, a small picture of what it is for, and large buttons.
+enum PermissionAsk: String, Identifiable {
+    case bluetooth, bluetoothOff, bluetoothDenied, location, locationDenied
+    var id: String { rawValue }
+    var isBluetooth: Bool { [.bluetooth, .bluetoothOff, .bluetoothDenied].contains(self) }
+
+    var title: LocalizedStringKey {
+        switch self {
+        case .bluetooth: "Nearsend Chat uses Bluetooth"
+        case .bluetoothOff: "Bluetooth is off"
+        case .bluetoothDenied: "Bluetooth is not allowed"
+        case .location: "Share your location?"
+        case .locationDenied: "Location is off for Nearsend Chat"
+        }
+    }
+    var message: LocalizedStringKey {
+        switch self {
+        case .bluetooth: "It finds phones nearby and sends them your messages, with no internet. Your iPhone asks next: tap Allow."
+        case .bluetoothOff: "Swipe down from the top-right corner to open Control Center, and tap Bluetooth so it turns blue. Apps can't turn it on for you."
+        case .bluetoothDenied: "Nearsend Chat needs Bluetooth to find people nearby. Turn it on in Settings › Nearsend Chat › Bluetooth."
+        case .location: "Only when you share it in a chat or attach it to an SOS. It goes over Bluetooth to the people you choose, never to us. Your iPhone asks next."
+        case .locationDenied: "To share your position, allow location in Settings › Nearsend Chat › Location."
+        }
+    }
+    var chip: LocalizedStringKey {
+        switch self {
+        case .bluetooth, .bluetoothOff, .bluetoothDenied: "No internet needed"
+        case .location, .locationDenied: "Only when you share"
+        }
+    }
+    var primary: LocalizedStringKey {
+        switch self {
+        case .bluetooth, .location: "Continue"
+        case .bluetoothOff: "OK"
+        case .bluetoothDenied, .locationDenied: "Open Settings"
+        }
+    }
+    var hasSecondary: Bool { self != .bluetoothOff }
+}
+
+struct PermissionSheet: View {
+    let ask: PermissionAsk
+    var onPrimary: () -> Void = {}
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            ZStack(alignment: .bottomTrailing) {
+                Image(systemName: ask.isBluetooth ? "antenna.radiowaves.left.and.right" : "location.fill")
+                    .font(.system(size: 34, weight: .semibold)).foregroundStyle(.white)
+                    .frame(width: 76, height: 76)
+                    .background(LinearGradient(colors: [Color(hex: 0x3F8CFF), Theme.actionBlue], startPoint: .top, endPoint: .bottom),
+                                in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                Image(systemName: "hand.raised.fill").font(.system(size: 15, weight: .semibold)).foregroundStyle(.white)
+                    .frame(width: 30, height: 30).background(Theme.actionBlue, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).stroke(.white, lineWidth: 2))
+                    .offset(x: 10, y: 8)
+            }
+            .padding(.top, 8).accessibilityHidden(true)
+            Text(ask.title).font(.title2.weight(.bold)).foregroundStyle(.primary).fixedSize(horizontal: false, vertical: true)
+            Text(ask.message).font(.body).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            illustration.frame(height: 170).clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                .overlay(alignment: .topLeading) {
+                    Label { Text(ask.chip) } icon: { Image(systemName: ask.isBluetooth ? "wifi.slash" : "hand.tap.fill") }
+                        .font(.subheadline.weight(.semibold)).foregroundStyle(Theme.actionBlue)
+                        .padding(.horizontal, 12).padding(.vertical, 7).background(.white, in: Capsule()).padding(10)
+                }
+                .accessibilityHidden(true)
+                .padding(.bottom, 6)
+            VStack(spacing: 10) {
+                Button { dismiss(); onPrimary() } label: {
+                    Text(ask.primary).font(.headline).frame(maxWidth: .infinity, minHeight: 52)
+                        .foregroundStyle(.white).background(Theme.actionBlue, in: Capsule())
+                }
+                if ask.hasSecondary {
+                    Button { dismiss() } label: {
+                        Text("Not now").font(.headline).frame(maxWidth: .infinity, minHeight: 52)
+                            .foregroundStyle(Theme.ink).background(Theme.ink.opacity(0.08), in: Capsule())
+                    }
+                }
+            }
+        }
+        .padding(24)
+        .frame(maxHeight: .infinity, alignment: .top)
+        .presentationDetents([.height(ask.hasSecondary ? 680 : 620), .large])
+        .presentationCornerRadius(36)
+    }
+
+    @ViewBuilder private var illustration: some View {
+        if ask.isBluetooth { RadarPicture() } else { MapPicture() }
+    }
+}
+
+/// You in the middle, friends around you on rings: what Bluetooth is for.
+private struct RadarPicture: View {
+    var body: some View {
+        GeometryReader { g in
+            let c = CGPoint(x: g.size.width / 2, y: g.size.height / 2 + 10)
+            ZStack {
+                LinearGradient(colors: [Color(hex: 0xE8F1FF), Color(hex: 0xD3E4FF)], startPoint: .top, endPoint: .bottom)
+                ForEach(1...3, id: \.self) { i in
+                    Circle().stroke(Theme.actionBlue.opacity(0.18), lineWidth: 1.5)
+                        .frame(width: CGFloat(i) * 70, height: CGFloat(i) * 70).position(c)
+                }
+                ForEach(Array([("🦊", -0.9, 0.5), ("🌻", 0.35, 0.75), ("⚽️", 2.4, 1.0)].enumerated()), id: \.offset) { _, f in
+                    Text(f.0).font(.system(size: 22)).frame(width: 38, height: 38).background(.white, in: Circle())
+                        .shadow(color: .black.opacity(0.12), radius: 4, y: 2)
+                        .position(x: c.x + cos(f.1) * 105 * f.2 * 0.66, y: c.y + sin(f.1) * 105 * f.2 * 0.5)
+                }
+                Circle().fill(Theme.actionBlue).frame(width: 22, height: 22).overlay(Circle().stroke(.white, lineWidth: 3))
+                    .shadow(color: Theme.actionBlue.opacity(0.5), radius: 8).position(c)
+            }
+        }
+    }
+}
+
+/// A small drawn map with your position: what location is for. Drawn, not loaded, so it works with no internet.
+private struct MapPicture: View {
+    var body: some View {
+        Canvas { ctx, size in
+            ctx.fill(Path(CGRect(origin: .zero, size: size)), with: .color(Color(hex: 0xF3EEE2)))
+            ctx.fill(Path(ellipseIn: CGRect(x: -40, y: size.height * 0.45, width: size.width * 0.55, height: size.height * 0.9)),
+                     with: .color(Color(hex: 0xC9E6B4)))
+            ctx.fill(Path(roundedRect: CGRect(x: size.width * 0.62, y: 18, width: size.width * 0.3, height: 52), cornerRadius: 10),
+                     with: .color(Color(hex: 0xC9E6B4)))
+            var roads = Path()
+            roads.move(to: CGPoint(x: 0, y: size.height * 0.3)); roads.addLine(to: CGPoint(x: size.width, y: size.height * 0.62))
+            roads.move(to: CGPoint(x: size.width * 0.38, y: 0)); roads.addLine(to: CGPoint(x: size.width * 0.58, y: size.height))
+            roads.move(to: CGPoint(x: size.width * 0.75, y: 0)); roads.addLine(to: CGPoint(x: size.width * 0.9, y: size.height))
+            ctx.stroke(roads, with: .color(.white), lineWidth: 9)
+            var highway = Path()
+            highway.move(to: CGPoint(x: size.width * 0.15, y: size.height)); highway.addLine(to: CGPoint(x: size.width, y: size.height * 0.78))
+            ctx.stroke(highway, with: .color(Color(hex: 0xB9B9C3)), lineWidth: 12)
+        }
+        .overlay {
+            Circle().fill(Theme.actionBlue).frame(width: 22, height: 22).overlay(Circle().stroke(.white, lineWidth: 3))
+                .shadow(color: .black.opacity(0.2), radius: 4)
+                .background(Circle().fill(Theme.actionBlue.opacity(0.15)).frame(width: 70, height: 70))
+                .offset(x: 10, y: 6)
+        }
+    }
+}

@@ -436,6 +436,16 @@
     <string name="lic_font">Vernon Adams。SIL Open Font License 1.1。</string>
     <string name="lic_foot">それ以外はすべて Apple のシステムフレームワーク（SwiftUI、Core Bluetooth、CryptoKit）です。</string>
     <string name="bt_off_cc">Bluetooth がオフです。近くの人を見つけるには、コントロールセンターでオンにしてください。</string>
+    <string name="perm_bt_title">Nearsend Chat は Bluetooth を使います</string>
+    <string name="perm_bt_body">近くのスマホを見つけて、インターネットなしでメッセージを届けます。次に iPhone が確認するので「許可」をタップしてください。</string>
+    <string name="perm_bt_off_body">右上隅から下にスワイプしてコントロールセンターを開き、Bluetooth をタップして青色にします。アプリがオンにすることはできません。</string>
+    <string name="perm_bt_denied_title">Bluetooth が許可されていません</string>
+    <string name="perm_bt_denied_body">近くの人を見つけるには Bluetooth が必要です。設定 › Nearsend Chat › Bluetooth でオンにしてください。</string>
+    <string name="perm_loc_title">位置情報を共有しますか？</string>
+    <string name="perm_loc_body">チャットで共有するときや SOS に添付するときだけ使います。Bluetooth で選んだ相手に届き、私たちには届きません。次に iPhone が確認します。</string>
+    <string name="perm_loc_denied_body">位置を共有するには、設定 › Nearsend Chat › 位置情報で許可してください。</string>
+    <string name="perm_chip_bt">インターネット不要</string>
+    <string name="perm_chip_loc">共有するときだけ</string>
     <string name="report">報告</string>
     <string name="contact_us">お問い合わせ</string>
     <string name="copy_address">アドレスをコピー</string>

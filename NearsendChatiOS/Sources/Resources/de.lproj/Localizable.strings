@@ -434,6 +434,16 @@
 "Vernon Adams. SIL Open Font License 1.1." = "Vernon Adams. SIL Open Font License 1.1.";
 "Everything else is Apple's own system frameworks (SwiftUI, Core Bluetooth, CryptoKit)." = "Alles andere sind Apples eigene System-Frameworks (SwiftUI, Core Bluetooth, CryptoKit).";
 "Bluetooth is off. Turn it on in Control Center to find people nearby." = "Bluetooth ist aus. Schalte es im Kontrollzentrum ein, um Leute in der Nähe zu finden.";
+"Nearsend Chat uses Bluetooth" = "Nearsend Chat nutzt Bluetooth";
+"It finds phones nearby and sends them your messages, with no internet. Your iPhone asks next: tap Allow." = "Sie findet Handys in der Nähe und schickt ihnen deine Nachrichten, ohne Internet. Dein iPhone fragt gleich: Tippe auf „Erlauben“.";
+"Swipe down from the top-right corner to open Control Center, and tap Bluetooth so it turns blue. Apps can't turn it on for you." = "Wische von der oberen rechten Ecke nach unten, um das Kontrollzentrum zu öffnen, und tippe auf Bluetooth, bis es blau ist. Apps können es nicht für dich einschalten.";
+"Bluetooth is not allowed" = "Bluetooth ist nicht erlaubt";
+"Nearsend Chat needs Bluetooth to find people nearby. Turn it on in Settings › Nearsend Chat › Bluetooth." = "Nearsend Chat braucht Bluetooth, um Leute in der Nähe zu finden. Schalte es in Einstellungen › Nearsend Chat › Bluetooth ein.";
+"Share your location?" = "Standort teilen?";
+"Only when you share it in a chat or attach it to an SOS. It goes over Bluetooth to the people you choose, never to us. Your iPhone asks next." = "Nur wenn du ihn in einem Chat teilst oder an ein SOS anhängst. Er geht per Bluetooth an die Leute, die du wählst, nie an uns. Dein iPhone fragt gleich.";
+"To share your position, allow location in Settings › Nearsend Chat › Location." = "Um deine Position zu teilen, erlaube den Standort in Einstellungen › Nearsend Chat › Standort.";
+"No internet needed" = "Kein Internet nötig";
+"Only when you share" = "Nur wenn du teilst";
 "Report" = "Melden";
 "Contact us" = "Kontakt";
 "Copy address" = "Adresse kopieren";

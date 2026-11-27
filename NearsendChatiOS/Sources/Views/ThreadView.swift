@@ -22,6 +22,7 @@ struct ThreadView: View {
     @State private var pickedPhoto: PhotosPickerItem?
     @State private var bigPhoto: String?
     @State private var noPosition = false
+    @State private var locationAsk: PermissionAsk?
     @State private var blockTarget: String?
     @State private var report: URL?
     @State private var replyTo: Message?
@@ -114,7 +115,9 @@ struct ThreadView: View {
                 switch choice {
                 case .photo: afterAttach = { showPhotoPicker = true }
                 case .camera: afterAttach = { showCamera = true }
-                case .location: store.sendLocation(in: conversationID) { ok in if !ok { noPosition = true } }
+                case .location:
+                    if store.hasLocationPermission { store.sendLocation(in: conversationID) { ok in if !ok { noPosition = true } } }
+                    else { let a: PermissionAsk = store.locationStatus == .notDetermined ? .location : .locationDenied; afterAttach = { locationAsk = a } }
                 }
                 showAttach = false
             }
@@ -144,6 +147,9 @@ struct ThreadView: View {
         .opensMail($report)
         .alert("Couldn't use this picture", isPresented: $store.photoError) { Button("Close", role: .cancel) {} }
         .alert("No position yet. Try again outdoors.", isPresented: $noPosition) { Button("Close", role: .cancel) {} }
+        .sheet(item: $locationAsk) { a in
+            PermissionSheet(ask: a) { if a == .location { store.requestLocation() } else { SystemSettings.open() } }
+        }
         .fullScreenCover(isPresented: Binding(get: { bigPhoto != nil }, set: { if !$0 { bigPhoto = nil } })) {
             ZStack {
                 Color.black.ignoresSafeArea()

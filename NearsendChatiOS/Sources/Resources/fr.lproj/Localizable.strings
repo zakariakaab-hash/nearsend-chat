@@ -434,6 +434,16 @@
 "Vernon Adams. SIL Open Font License 1.1." = "Vernon Adams. SIL Open Font License 1.1.";
 "Everything else is Apple's own system frameworks (SwiftUI, Core Bluetooth, CryptoKit)." = "Tout le reste provient des frameworks système d'Apple (SwiftUI, Core Bluetooth, CryptoKit).";
 "Bluetooth is off. Turn it on in Control Center to find people nearby." = "Le Bluetooth est désactivé. Activez-le dans le Centre de contrôle pour trouver des personnes à proximité.";
+"Nearsend Chat uses Bluetooth" = "Nearsend Chat utilise le Bluetooth";
+"It finds phones nearby and sends them your messages, with no internet. Your iPhone asks next: tap Allow." = "Elle trouve les téléphones à proximité et leur envoie vos messages, sans internet. Votre iPhone vous demande ensuite : touchez Autoriser.";
+"Swipe down from the top-right corner to open Control Center, and tap Bluetooth so it turns blue. Apps can't turn it on for you." = "Balayez vers le bas depuis le coin supérieur droit pour ouvrir le Centre de contrôle, puis touchez Bluetooth pour qu'il devienne bleu. Les apps ne peuvent pas l'activer à votre place.";
+"Bluetooth is not allowed" = "Le Bluetooth n'est pas autorisé";
+"Nearsend Chat needs Bluetooth to find people nearby. Turn it on in Settings › Nearsend Chat › Bluetooth." = "Nearsend Chat a besoin du Bluetooth pour trouver des personnes à proximité. Activez-le dans Réglages › Nearsend Chat › Bluetooth.";
+"Share your location?" = "Partager votre position ?";
+"Only when you share it in a chat or attach it to an SOS. It goes over Bluetooth to the people you choose, never to us. Your iPhone asks next." = "Uniquement quand vous la partagez dans une discussion ou la joignez à un SOS. Elle passe par Bluetooth aux personnes que vous choisissez, jamais à nous. Votre iPhone vous demande ensuite.";
+"To share your position, allow location in Settings › Nearsend Chat › Location." = "Pour partager votre position, autorisez la localisation dans Réglages › Nearsend Chat › Position.";
+"No internet needed" = "Sans internet";
+"Only when you share" = "Seulement quand vous partagez";
 "Report" = "Signaler";
 "Contact us" = "Nous contacter";
 "Copy address" = "Copier l'adresse";

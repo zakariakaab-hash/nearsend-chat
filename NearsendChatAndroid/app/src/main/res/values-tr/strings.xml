@@ -436,6 +436,16 @@
     <string name="lic_font">Vernon Adams. SIL Open Font License 1.1.</string>
     <string name="lic_foot">Geri kalan her şey Apple\'ın kendi sistem çerçeveleridir (SwiftUI, Core Bluetooth, CryptoKit).</string>
     <string name="bt_off_cc">Bluetooth kapalı. Yakındaki kişileri bulmak için Denetim Merkezi\'nden aç.</string>
+    <string name="perm_bt_title">Nearsend Chat Bluetooth kullanır</string>
+    <string name="perm_bt_body">Yakındaki telefonları bulur ve mesajlarını internetsiz onlara gönderir. Ardından iPhone soracak: İzin Ver\'e dokun.</string>
+    <string name="perm_bt_off_body">Denetim Merkezi\'ni açmak için sağ üst köşeden aşağı kaydır ve Bluetooth\'a dokunup mavi yap. Uygulamalar bunu senin yerine açamaz.</string>
+    <string name="perm_bt_denied_title">Bluetooth\'a izin verilmedi</string>
+    <string name="perm_bt_denied_body">Nearsend Chat\'in yakındaki kişileri bulmak için Bluetooth\'a ihtiyacı var. Ayarlar › Nearsend Chat › Bluetooth\'tan aç.</string>
+    <string name="perm_loc_title">Konumunu paylaşmak ister misin?</string>
+    <string name="perm_loc_body">Yalnızca bir sohbette paylaştığında veya SOS\'a eklediğinde. Bluetooth ile seçtiğin kişilere gider, asla bize değil. Ardından iPhone soracak.</string>
+    <string name="perm_loc_denied_body">Konumunu paylaşmak için Ayarlar › Nearsend Chat › Konum\'dan izin ver.</string>
+    <string name="perm_chip_bt">İnternet gerekmez</string>
+    <string name="perm_chip_loc">Yalnızca paylaştığında</string>
     <string name="report">Bildir</string>
     <string name="contact_us">Bize ulaşın</string>
     <string name="copy_address">Adresi kopyala</string>

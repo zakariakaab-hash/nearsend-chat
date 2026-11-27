@@ -4,6 +4,8 @@ struct NearbyView: View {
     @EnvironmentObject var store: ChatStore
     @State private var chat: Peer?
     @State private var newPost = false
+    @State private var ask: PermissionAsk?
+    private static var toldThisLaunch = Set<String>()
 
     var body: some View {
         NavigationStack {
@@ -30,6 +32,15 @@ struct NearbyView: View {
             .toolbar(.hidden, for: .navigationBar)
             .navigationDestination(item: $chat) { p in ThreadView(conversationID: p.id, peer: p) }
             .sheet(isPresented: $newPost) { NewPostSheet().environmentObject(store) }
+            .sheet(item: $ask) { a in PermissionSheet(ask: a) { if a == .bluetoothDenied { SystemSettings.open() } } }
+            // Bluetooth off or not allowed: say so once per launch, in a sheet like iOS's own prompts.
+            .onChange(of: store.bluetoothState, initial: true) { _, s in
+                guard !store.simulated, ["off", "unauthorized"].contains(s), !Self.toldThisLaunch.contains(s) else { return }
+                Self.toldThisLaunch.insert(s)
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+                    if store.bluetoothState == s { ask = s == "off" ? .bluetoothOff : .bluetoothDenied }
+                }
+            }
         }
     }
 

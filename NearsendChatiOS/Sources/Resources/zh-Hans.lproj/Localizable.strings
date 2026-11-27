@@ -434,6 +434,16 @@
 "Vernon Adams. SIL Open Font License 1.1." = "Vernon Adams。SIL Open Font License 1.1。";
 "Everything else is Apple's own system frameworks (SwiftUI, Core Bluetooth, CryptoKit)." = "其余均为 Apple 自带的系统框架（SwiftUI、Core Bluetooth、CryptoKit）。";
 "Bluetooth is off. Turn it on in Control Center to find people nearby." = "蓝牙已关闭。请在控制中心打开它以查找附近的人。";
+"Nearsend Chat uses Bluetooth" = "Nearsend Chat 使用蓝牙";
+"It finds phones nearby and sends them your messages, with no internet. Your iPhone asks next: tap Allow." = "它会找到附近的手机并把你的消息发给它们，无需联网。接下来 iPhone 会询问：请轻点“允许”。";
+"Swipe down from the top-right corner to open Control Center, and tap Bluetooth so it turns blue. Apps can't turn it on for you." = "从右上角向下轻扫打开控制中心，轻点蓝牙使其变为蓝色。应用无法替你打开蓝牙。";
+"Bluetooth is not allowed" = "未允许使用蓝牙";
+"Nearsend Chat needs Bluetooth to find people nearby. Turn it on in Settings › Nearsend Chat › Bluetooth." = "Nearsend Chat 需要蓝牙来查找附近的人。请在“设置 › Nearsend Chat › 蓝牙”中打开。";
+"Share your location?" = "共享你的位置？";
+"Only when you share it in a chat or attach it to an SOS. It goes over Bluetooth to the people you choose, never to us. Your iPhone asks next." = "仅在你在聊天中分享或附加到 SOS 时使用。它通过蓝牙发送给你选择的人，绝不会发给我们。接下来 iPhone 会询问。";
+"To share your position, allow location in Settings › Nearsend Chat › Location." = "要分享你的位置，请在“设置 › Nearsend Chat › 位置”中允许。";
+"No internet needed" = "无需联网";
+"Only when you share" = "仅在分享时";
 "Report" = "举报";
 "Contact us" = "联系我们";
 "Copy address" = "复制地址";

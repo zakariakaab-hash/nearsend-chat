@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct OnboardingView: View {
+    @State private var askBluetooth = false
     var done: () -> Void
     @State private var page = 0
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -48,8 +49,12 @@ struct OnboardingView: View {
                 }
                 .tabViewStyle(.page(indexDisplayMode: .always))
                 PrimaryButton(title: page == pages.count ? "Allow Bluetooth & start" : "Continue") {
-                    if page == pages.count { finish() } else { withAnimation { page += 1 } }
+                    if page == pages.count { askBluetooth = true } else { withAnimation { page += 1 } }
                 }.padding(.horizontal, 24).padding(.bottom, 24)
+                // Explains Bluetooth in our own words first; Continue lets iOS show its permission alert.
+                .sheet(isPresented: $askBluetooth) {
+                    PermissionSheet(ask: .bluetooth) { DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { finish() } }
+                }
             }
         }
 

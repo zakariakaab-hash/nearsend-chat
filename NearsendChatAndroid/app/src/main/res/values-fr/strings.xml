@@ -436,6 +436,16 @@
     <string name="lic_font">Vernon Adams. SIL Open Font License 1.1.</string>
     <string name="lic_foot">Tout le reste provient des frameworks système d\'Apple (SwiftUI, Core Bluetooth, CryptoKit).</string>
     <string name="bt_off_cc">Le Bluetooth est désactivé. Activez-le dans le Centre de contrôle pour trouver des personnes à proximité.</string>
+    <string name="perm_bt_title">Nearsend Chat utilise le Bluetooth</string>
+    <string name="perm_bt_body">Elle trouve les téléphones à proximité et leur envoie vos messages, sans internet. Votre iPhone vous demande ensuite : touchez Autoriser.</string>
+    <string name="perm_bt_off_body">Balayez vers le bas depuis le coin supérieur droit pour ouvrir le Centre de contrôle, puis touchez Bluetooth pour qu\'il devienne bleu. Les apps ne peuvent pas l\'activer à votre place.</string>
+    <string name="perm_bt_denied_title">Le Bluetooth n\'est pas autorisé</string>
+    <string name="perm_bt_denied_body">Nearsend Chat a besoin du Bluetooth pour trouver des personnes à proximité. Activez-le dans Réglages › Nearsend Chat › Bluetooth.</string>
+    <string name="perm_loc_title">Partager votre position ?</string>
+    <string name="perm_loc_body">Uniquement quand vous la partagez dans une discussion ou la joignez à un SOS. Elle passe par Bluetooth aux personnes que vous choisissez, jamais à nous. Votre iPhone vous demande ensuite.</string>
+    <string name="perm_loc_denied_body">Pour partager votre position, autorisez la localisation dans Réglages › Nearsend Chat › Position.</string>
+    <string name="perm_chip_bt">Sans internet</string>
+    <string name="perm_chip_loc">Seulement quand vous partagez</string>
     <string name="report">Signaler</string>
     <string name="contact_us">Nous contacter</string>
     <string name="copy_address">Copier l\'adresse</string>

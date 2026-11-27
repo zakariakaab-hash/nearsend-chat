@@ -434,6 +434,16 @@
 "Vernon Adams. SIL Open Font License 1.1." = "Vernon Adams. SIL Open Font License 1.1.";
 "Everything else is Apple's own system frameworks (SwiftUI, Core Bluetooth, CryptoKit)." = "Everything else is Apple's own system frameworks (SwiftUI, Core Bluetooth, CryptoKit).";
 "Bluetooth is off. Turn it on in Control Center to find people nearby." = "Bluetooth is off. Turn it on in Control Center to find people nearby.";
+"Nearsend Chat uses Bluetooth" = "Nearsend Chat uses Bluetooth";
+"It finds phones nearby and sends them your messages, with no internet. Your iPhone asks next: tap Allow." = "It finds phones nearby and sends them your messages, with no internet. Your iPhone asks next: tap Allow.";
+"Swipe down from the top-right corner to open Control Center, and tap Bluetooth so it turns blue. Apps can't turn it on for you." = "Swipe down from the top-right corner to open Control Center, and tap Bluetooth so it turns blue. Apps can't turn it on for you.";
+"Bluetooth is not allowed" = "Bluetooth is not allowed";
+"Nearsend Chat needs Bluetooth to find people nearby. Turn it on in Settings › Nearsend Chat › Bluetooth." = "Nearsend Chat needs Bluetooth to find people nearby. Turn it on in Settings › Nearsend Chat › Bluetooth.";
+"Share your location?" = "Share your location?";
+"Only when you share it in a chat or attach it to an SOS. It goes over Bluetooth to the people you choose, never to us. Your iPhone asks next." = "Only when you share it in a chat or attach it to an SOS. It goes over Bluetooth to the people you choose, never to us. Your iPhone asks next.";
+"To share your position, allow location in Settings › Nearsend Chat › Location." = "To share your position, allow location in Settings › Nearsend Chat › Location.";
+"No internet needed" = "No internet needed";
+"Only when you share" = "Only when you share";
 "Report" = "Report";
 "Contact us" = "Contact us";
 "Copy address" = "Copy address";

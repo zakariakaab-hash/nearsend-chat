@@ -434,6 +434,16 @@
 "Vernon Adams. SIL Open Font License 1.1." = "Vernon Adams. SIL Open Font License 1.1.";
 "Everything else is Apple's own system frameworks (SwiftUI, Core Bluetooth, CryptoKit)." = "Allt annat är Apples egna systemramverk (SwiftUI, Core Bluetooth, CryptoKit).";
 "Bluetooth is off. Turn it on in Control Center to find people nearby." = "Bluetooth är av. Slå på det i Kontrollcenter för att hitta personer i närheten.";
+"Nearsend Chat uses Bluetooth" = "Nearsend Chat använder Bluetooth";
+"It finds phones nearby and sends them your messages, with no internet. Your iPhone asks next: tap Allow." = "Den hittar telefoner i närheten och skickar dina meddelanden till dem, utan internet. Din iPhone frågar sedan: tryck på Tillåt.";
+"Swipe down from the top-right corner to open Control Center, and tap Bluetooth so it turns blue. Apps can't turn it on for you." = "Svep nedåt från det övre högra hörnet för att öppna Kontrollcenter och tryck på Bluetooth så att det blir blått. Appar kan inte slå på det åt dig.";
+"Bluetooth is not allowed" = "Bluetooth är inte tillåtet";
+"Nearsend Chat needs Bluetooth to find people nearby. Turn it on in Settings › Nearsend Chat › Bluetooth." = "Nearsend Chat behöver Bluetooth för att hitta personer i närheten. Slå på det i Inställningar › Nearsend Chat › Bluetooth.";
+"Share your location?" = "Dela din plats?";
+"Only when you share it in a chat or attach it to an SOS. It goes over Bluetooth to the people you choose, never to us. Your iPhone asks next." = "Bara när du delar den i en chatt eller bifogar den till ett SOS. Den går via Bluetooth till de personer du väljer, aldrig till oss. Din iPhone frågar sedan.";
+"To share your position, allow location in Settings › Nearsend Chat › Location." = "För att dela din position, tillåt plats i Inställningar › Nearsend Chat › Plats.";
+"No internet needed" = "Inget internet behövs";
+"Only when you share" = "Bara när du delar";
 "Report" = "Rapportera";
 "Contact us" = "Kontakta oss";
 "Copy address" = "Kopiera adress";

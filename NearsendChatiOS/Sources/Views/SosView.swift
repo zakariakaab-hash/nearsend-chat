@@ -15,7 +15,7 @@ func localized(_ key: String) -> String {
 /// Hold-to-send SOS, our own position, and alarms heard from others.
 struct SosView: View {
     @State private var servicesOff = false   // Location Services switched off for the whole phone
-    @State private var locationAlert = false  // permission was refused before: explain and offer Settings
+    @State private var locationAsk: PermissionAsk?   // explain first (or, if refused before, offer Settings)
 
     @EnvironmentObject var store: ChatStore
     @Environment(\.openURL) private var openURL
@@ -26,11 +26,8 @@ struct SosView: View {
             .task(id: store.locationStatus) { servicesOff = await Task.detached { !CLLocationManager.locationServicesEnabled() }.value }
             // Turning "Attach my location" on asks for permission right away, so the position is ready before an emergency.
             .onChange(of: store.shareLocation) { _, on in if on { ensureLocation() } }
-            .alert("Location is off for Nearsend Chat", isPresented: $locationAlert) {
-                Button("Open Settings") { SystemSettings.open() }
-                Button("Not now", role: .cancel) {}
-            } message: {
-                Text("To attach your position to an SOS, allow location for Nearsend Chat in Settings. Until then the alarm is sent without it.")
+            .sheet(item: $locationAsk) { a in
+                PermissionSheet(ask: a) { if a == .location { store.requestLocation() } else { SystemSettings.open() } }
             }
     }
 
@@ -38,7 +35,7 @@ struct SosView: View {
     /// Services off and Screen Time blocks are explained under the switch.
     private func ensureLocation() {
         guard !store.hasLocationPermission, !servicesOff, store.locationStatus != .restricted else { return }
-        if store.locationStatus == .notDetermined { store.requestLocation() } else { locationAlert = true }
+        locationAsk = store.locationStatus == .notDetermined ? .location : .locationDenied
     }
 
     private var sosContent: some View {
@@ -97,7 +94,7 @@ struct SosView: View {
                             Text("Location permission needed.").font(.footnote).foregroundStyle(sosRed)
                             Spacer()
                             Button("Allow") {
-                                if store.locationStatus == .notDetermined { store.requestLocation() } else { SystemSettings.open() }
+                                locationAsk = store.locationStatus == .notDetermined ? .location : .locationDenied
                             }.font(.footnote.weight(.semibold))
                         }
                     } else if let l = store.myLocation {

@@ -434,6 +434,16 @@
 "Vernon Adams. SIL Open Font License 1.1." = "Vernon Adams. رخصة SIL Open Font License 1.1.";
 "Everything else is Apple's own system frameworks (SwiftUI, Core Bluetooth, CryptoKit)." = "كل ما عدا ذلك أطر نظام من Apple (SwiftUI وCore Bluetooth وCryptoKit).";
 "Bluetooth is off. Turn it on in Control Center to find people nearby." = "البلوتوث متوقف. شغّله من مركز التحكم للعثور على أشخاص قريبين.";
+"Nearsend Chat uses Bluetooth" = "يستخدم Nearsend Chat البلوتوث";
+"It finds phones nearby and sends them your messages, with no internet. Your iPhone asks next: tap Allow." = "يعثر على الهواتف القريبة ويرسل إليها رسائلك دون إنترنت. سيسألك iPhone بعد ذلك: انقر على السماح.";
+"Swipe down from the top-right corner to open Control Center, and tap Bluetooth so it turns blue. Apps can't turn it on for you." = "اسحب لأسفل من الزاوية العلوية اليمنى لفتح مركز التحكم، وانقر على البلوتوث ليصبح أزرق. لا يمكن للتطبيقات تشغيله نيابة عنك.";
+"Bluetooth is not allowed" = "البلوتوث غير مسموح";
+"Nearsend Chat needs Bluetooth to find people nearby. Turn it on in Settings › Nearsend Chat › Bluetooth." = "يحتاج Nearsend Chat إلى البلوتوث للعثور على أشخاص قريبين. شغّله من الإعدادات › Nearsend Chat › البلوتوث.";
+"Share your location?" = "مشاركة موقعك؟";
+"Only when you share it in a chat or attach it to an SOS. It goes over Bluetooth to the people you choose, never to us. Your iPhone asks next." = "فقط عندما تشاركه في محادثة أو ترفقه بنداء SOS. يصل عبر البلوتوث إلى الأشخاص الذين تختارهم، ولا يصل إلينا أبدًا. سيسألك iPhone بعد ذلك.";
+"To share your position, allow location in Settings › Nearsend Chat › Location." = "لمشاركة موقعك، اسمح بالموقع من الإعدادات › Nearsend Chat › الموقع.";
+"No internet needed" = "لا حاجة للإنترنت";
+"Only when you share" = "فقط عند المشاركة";
 "Report" = "إبلاغ";
 "Contact us" = "اتصل بنا";
 "Copy address" = "نسخ العنوان";

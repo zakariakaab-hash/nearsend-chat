@@ -434,6 +434,16 @@
 "Vernon Adams. SIL Open Font License 1.1." = "Vernon Adams。SIL Open Font License 1.1。";
 "Everything else is Apple's own system frameworks (SwiftUI, Core Bluetooth, CryptoKit)." = "それ以外はすべて Apple のシステムフレームワーク（SwiftUI、Core Bluetooth、CryptoKit）です。";
 "Bluetooth is off. Turn it on in Control Center to find people nearby." = "Bluetooth がオフです。近くの人を見つけるには、コントロールセンターでオンにしてください。";
+"Nearsend Chat uses Bluetooth" = "Nearsend Chat は Bluetooth を使います";
+"It finds phones nearby and sends them your messages, with no internet. Your iPhone asks next: tap Allow." = "近くのスマホを見つけて、インターネットなしでメッセージを届けます。次に iPhone が確認するので「許可」をタップしてください。";
+"Swipe down from the top-right corner to open Control Center, and tap Bluetooth so it turns blue. Apps can't turn it on for you." = "右上隅から下にスワイプしてコントロールセンターを開き、Bluetooth をタップして青色にします。アプリがオンにすることはできません。";
+"Bluetooth is not allowed" = "Bluetooth が許可されていません";
+"Nearsend Chat needs Bluetooth to find people nearby. Turn it on in Settings › Nearsend Chat › Bluetooth." = "近くの人を見つけるには Bluetooth が必要です。設定 › Nearsend Chat › Bluetooth でオンにしてください。";
+"Share your location?" = "位置情報を共有しますか？";
+"Only when you share it in a chat or attach it to an SOS. It goes over Bluetooth to the people you choose, never to us. Your iPhone asks next." = "チャットで共有するときや SOS に添付するときだけ使います。Bluetooth で選んだ相手に届き、私たちには届きません。次に iPhone が確認します。";
+"To share your position, allow location in Settings › Nearsend Chat › Location." = "位置を共有するには、設定 › Nearsend Chat › 位置情報で許可してください。";
+"No internet needed" = "インターネット不要";
+"Only when you share" = "共有するときだけ";
 "Report" = "報告";
 "Contact us" = "お問い合わせ";
 "Copy address" = "アドレスをコピー";

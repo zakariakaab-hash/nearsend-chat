@@ -434,6 +434,16 @@
 "Vernon Adams. SIL Open Font License 1.1." = "Vernon Adams. SIL Open Font License 1.1.";
 "Everything else is Apple's own system frameworks (SwiftUI, Core Bluetooth, CryptoKit)." = "Todo lo demás son frameworks del sistema de Apple (SwiftUI, Core Bluetooth, CryptoKit).";
 "Bluetooth is off. Turn it on in Control Center to find people nearby." = "El Bluetooth está desactivado. Actívalo en el Centro de control para encontrar personas cerca.";
+"Nearsend Chat uses Bluetooth" = "Nearsend Chat usa Bluetooth";
+"It finds phones nearby and sends them your messages, with no internet. Your iPhone asks next: tap Allow." = "Encuentra teléfonos cercanos y les envía tus mensajes, sin internet. Después el iPhone te preguntará: toca Permitir.";
+"Swipe down from the top-right corner to open Control Center, and tap Bluetooth so it turns blue. Apps can't turn it on for you." = "Desliza hacia abajo desde la esquina superior derecha para abrir el Centro de control y toca Bluetooth para que se ponga azul. Las apps no pueden activarlo por ti.";
+"Bluetooth is not allowed" = "El Bluetooth no está permitido";
+"Nearsend Chat needs Bluetooth to find people nearby. Turn it on in Settings › Nearsend Chat › Bluetooth." = "Nearsend Chat necesita Bluetooth para encontrar personas cerca. Actívalo en Ajustes › Nearsend Chat › Bluetooth.";
+"Share your location?" = "¿Compartir tu ubicación?";
+"Only when you share it in a chat or attach it to an SOS. It goes over Bluetooth to the people you choose, never to us. Your iPhone asks next." = "Solo cuando la compartes en un chat o la adjuntas a un SOS. Viaja por Bluetooth a las personas que elijas, nunca a nosotros. Después te preguntará el iPhone.";
+"To share your position, allow location in Settings › Nearsend Chat › Location." = "Para compartir tu posición, permite la ubicación en Ajustes › Nearsend Chat › Ubicación.";
+"No internet needed" = "Sin internet";
+"Only when you share" = "Solo cuando la compartes";
 "Report" = "Denunciar";
 "Contact us" = "Contáctanos";
 "Copy address" = "Copiar dirección";

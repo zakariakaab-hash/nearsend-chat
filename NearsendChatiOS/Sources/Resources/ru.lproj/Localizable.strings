@@ -434,6 +434,16 @@
 "Vernon Adams. SIL Open Font License 1.1." = "Vernon Adams. SIL Open Font License 1.1.";
 "Everything else is Apple's own system frameworks (SwiftUI, Core Bluetooth, CryptoKit)." = "Всё остальное — системные фреймворки Apple (SwiftUI, Core Bluetooth, CryptoKit).";
 "Bluetooth is off. Turn it on in Control Center to find people nearby." = "Bluetooth выключен. Включите его в Пункте управления, чтобы найти людей рядом.";
+"Nearsend Chat uses Bluetooth" = "Nearsend Chat использует Bluetooth";
+"It finds phones nearby and sends them your messages, with no internet. Your iPhone asks next: tap Allow." = "Приложение находит телефоны рядом и отправляет им ваши сообщения без интернета. Затем iPhone спросит: нажмите «Разрешить».";
+"Swipe down from the top-right corner to open Control Center, and tap Bluetooth so it turns blue. Apps can't turn it on for you." = "Смахните вниз от правого верхнего угла, чтобы открыть Пункт управления, и нажмите Bluetooth, чтобы он стал синим. Приложения не могут включить его за вас.";
+"Bluetooth is not allowed" = "Bluetooth не разрешён";
+"Nearsend Chat needs Bluetooth to find people nearby. Turn it on in Settings › Nearsend Chat › Bluetooth." = "Nearsend Chat нужен Bluetooth, чтобы находить людей рядом. Включите его в Настройки › Nearsend Chat › Bluetooth.";
+"Share your location?" = "Поделиться местоположением?";
+"Only when you share it in a chat or attach it to an SOS. It goes over Bluetooth to the people you choose, never to us. Your iPhone asks next." = "Только когда вы делитесь им в чате или прикрепляете к SOS. Оно идёт по Bluetooth к выбранным вами людям, а не к нам. Затем iPhone спросит.";
+"To share your position, allow location in Settings › Nearsend Chat › Location." = "Чтобы делиться позицией, разрешите геопозицию в Настройки › Nearsend Chat › Геопозиция.";
+"No internet needed" = "Интернет не нужен";
+"Only when you share" = "Только когда вы делитесь";
 "Report" = "Пожаловаться";
 "Contact us" = "Связаться с нами";
 "Copy address" = "Скопировать адрес";

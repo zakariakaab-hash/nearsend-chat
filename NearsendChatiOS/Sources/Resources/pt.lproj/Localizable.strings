@@ -434,6 +434,16 @@
 "Vernon Adams. SIL Open Font License 1.1." = "Vernon Adams. SIL Open Font License 1.1.";
 "Everything else is Apple's own system frameworks (SwiftUI, Core Bluetooth, CryptoKit)." = "Tudo o resto são frameworks de sistema da Apple (SwiftUI, Core Bluetooth, CryptoKit).";
 "Bluetooth is off. Turn it on in Control Center to find people nearby." = "O Bluetooth está desligado. Liga-o na Central de Controlo para encontrar pessoas por perto.";
+"Nearsend Chat uses Bluetooth" = "O Nearsend Chat usa Bluetooth";
+"It finds phones nearby and sends them your messages, with no internet. Your iPhone asks next: tap Allow." = "Encontra telefones por perto e envia-lhes as tuas mensagens, sem internet. A seguir o iPhone pergunta: toca em Permitir.";
+"Swipe down from the top-right corner to open Control Center, and tap Bluetooth so it turns blue. Apps can't turn it on for you." = "Desliza para baixo a partir do canto superior direito para abrir a Central de Controlo e toca em Bluetooth para ficar azul. As apps não o podem ligar por ti.";
+"Bluetooth is not allowed" = "O Bluetooth não está permitido";
+"Nearsend Chat needs Bluetooth to find people nearby. Turn it on in Settings › Nearsend Chat › Bluetooth." = "O Nearsend Chat precisa de Bluetooth para encontrar pessoas por perto. Liga-o em Definições › Nearsend Chat › Bluetooth.";
+"Share your location?" = "Partilhar a tua localização?";
+"Only when you share it in a chat or attach it to an SOS. It goes over Bluetooth to the people you choose, never to us. Your iPhone asks next." = "Só quando a partilhas numa conversa ou a anexas a um SOS. Vai por Bluetooth para as pessoas que escolheres, nunca para nós. A seguir o iPhone pergunta.";
+"To share your position, allow location in Settings › Nearsend Chat › Location." = "Para partilhar a tua posição, permite a localização em Definições › Nearsend Chat › Localização.";
+"No internet needed" = "Sem internet";
+"Only when you share" = "Só quando partilhas";
 "Report" = "Denunciar";
 "Contact us" = "Fale conosco";
 "Copy address" = "Copiar endereço";

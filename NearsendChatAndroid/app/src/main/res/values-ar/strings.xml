@@ -436,6 +436,16 @@
     <string name="lic_font">Vernon Adams. رخصة SIL Open Font License 1.1.</string>
     <string name="lic_foot">كل ما عدا ذلك أطر نظام من Apple (SwiftUI وCore Bluetooth وCryptoKit).</string>
     <string name="bt_off_cc">البلوتوث متوقف. شغّله من مركز التحكم للعثور على أشخاص قريبين.</string>
+    <string name="perm_bt_title">يستخدم Nearsend Chat البلوتوث</string>
+    <string name="perm_bt_body">يعثر على الهواتف القريبة ويرسل إليها رسائلك دون إنترنت. سيسألك iPhone بعد ذلك: انقر على السماح.</string>
+    <string name="perm_bt_off_body">اسحب لأسفل من الزاوية العلوية اليمنى لفتح مركز التحكم، وانقر على البلوتوث ليصبح أزرق. لا يمكن للتطبيقات تشغيله نيابة عنك.</string>
+    <string name="perm_bt_denied_title">البلوتوث غير مسموح</string>
+    <string name="perm_bt_denied_body">يحتاج Nearsend Chat إلى البلوتوث للعثور على أشخاص قريبين. شغّله من الإعدادات › Nearsend Chat › البلوتوث.</string>
+    <string name="perm_loc_title">مشاركة موقعك؟</string>
+    <string name="perm_loc_body">فقط عندما تشاركه في محادثة أو ترفقه بنداء SOS. يصل عبر البلوتوث إلى الأشخاص الذين تختارهم، ولا يصل إلينا أبدًا. سيسألك iPhone بعد ذلك.</string>
+    <string name="perm_loc_denied_body">لمشاركة موقعك، اسمح بالموقع من الإعدادات › Nearsend Chat › الموقع.</string>
+    <string name="perm_chip_bt">لا حاجة للإنترنت</string>
+    <string name="perm_chip_loc">فقط عند المشاركة</string>
     <string name="report">إبلاغ</string>
     <string name="contact_us">اتصل بنا</string>
     <string name="copy_address">نسخ العنوان</string>
