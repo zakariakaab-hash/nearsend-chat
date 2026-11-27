@@ -29,8 +29,15 @@ and floods use **one link per neighbouring phone**.
 | Notify characteristic | `7A3C5E13-9D2B-4F6A-8C1E-4E4541525345` | notify (with the standard CCCD descriptor) |
 
 Identity value (JSON): `{"id": "<device id>", "name": "<nickname>", "pk": "<base64 X25519 public key, 32 bytes>"}`.
-A phone is a *neighbour* once its identity has been read. Signal strength (RSSI) of the link is polled every 2 s.
-Packets are limited to 512 bytes (one ATT long write). Notifications carry at most MTU−3 bytes, so server→client packets are fragmented (below).
+A phone is a *neighbour* once its identity has been read. Signal strength (RSSI) of the link is polled every few seconds
+(iPhone: every 6 s, every 30 s while saving battery). One write carries at most 512 bytes and one notification at most MTU−3 bytes,
+so bigger packets are fragmented in both directions (below).
+
+**Connection timeout (iPhone).** A link that has not become a neighbour within 20 s is closed, so a phone that walked away
+mid-connect, or a device without our service, can be found and tried again.
+
+**Battery saving (iPhone).** With Battery saver on, Low Power Mode on, or the battery at 20 % or less and not charging, the
+phone scans 3 s out of every 9 s while it has at least one neighbour; with no neighbour it scans all the time. Advertising never stops.
 
 ## 2. Packets
 
@@ -63,6 +70,14 @@ MTU−3−3, using the central's maximum update length on iOS and the negotiated
 `seq` is unchanged and `index` is the next expected one; a mismatch drops the packet; the last chunk (`index = count−1`) completes it.
 At most 255 fragments. Shared test vector: the bytes `00 01 … 09` with `seq` 7 and 4-byte chunks give
 `07 00 03 00010203`, `07 01 03 04050607`, `07 02 03 0809`.
+
+### Write fragments (iPhone, build 10 and later)
+A write on an `out:` link is at most 512 bytes. Packets that fit are written whole, exactly as before, so older versions and the
+Android app keep working for texts. Bigger packets (photo and voice chunks are about 1,200 bytes) are cut with the same
+`[seq][index][count][chunk…]` framing, chunk size = the peripheral's maximum write length − 3. `seq` is never `0x7B`: a whole
+packet is JSON and starts with `{` (`0x7B`), so the receiver tells a fragment from a whole packet by its first byte, and
+reassembles fragments per sending phone. **Android does not reassemble write fragments yet**, so photos and voice notes from a
+new iPhone to Android over an `out:` link fail until it does.
 
 ## 3. Relaying
 
@@ -108,6 +123,11 @@ key    = HKDF-SHA256(ikm = shared, salt = "nearsend-chat-v2", info = sorted([myI
 sealed = nonce(12 random bytes) || ChaCha20-Poly1305(key, nonce, plaintext = UTF-8 text, aad = message id) || tag(16)
 ```
 `ct` is `base64(sealed)`. The message id is authenticated, so a ciphertext cannot be replayed under another id.
+
+**Key pinning.** A phone keeps the first public key it learns for a device id (from a link, an announcement, a contact code or
+a saved chat). An `ann` or a link that offers a **different** key for a known id is refused and logged as a possible
+impersonation, so a nearby phone cannot take over a contact's id and receive their messages. Erasing everything on a phone
+gives it a new id, not a new key for the old id.
 
 **Fingerprint** = first 16 bytes of `SHA-256(public key)`, shown as 8 groups of 4 hex digits in two lines
 (`AAA8 FFF7 03B5 0B22` / `97F4 F6E1 3508 F724`). People compare fingerprints in person and tap "Mark as verified",
@@ -241,7 +261,9 @@ A person's picture is an **emoji and a colour**, not an image: `"<emoji>|<colour
 - A receiver accepts `av` only if it is exactly one of those emojis, `|`, and a colour 0 to 7. Anything else is ignored
   (the person is shown with their initial), so a sender cannot put arbitrary text or images on other people's screens.
 - Phones that do not know `av` ignore it. Absent `av` means "no picture".
-- Photos are not supported: Bluetooth messages are too small and slow for them (see section 3 for the limits).
+- **Hide me from strangers (iPhone).** With this switch on, `ann`, `hi` and the identity characteristic carry the name
+  `Nearsend user` and no `av`. Receivers that already have a chat with that id keep showing the name and picture they saved.
+  A contact code still carries the real name.
 
 
 ## 11. Photos (`img`)
@@ -249,7 +271,8 @@ A person's picture is an **emoji and a colour**, not an image: `"<emoji>|<colour
 Photos go **only to one direct Bluetooth neighbour**, end-to-end encrypted, in small chunks. They are never flooded, carried or sent
 over the internet relays.
 
-- **Compression.** The sender resizes the picture (long side at most 800 px) and encodes it as lossy WebP (Android) or JPEG (iPhone) of at most about 40 KB. Receivers decode whatever the platform can read (both read JPEG and WebP).
+- **Compression.** The sender resizes the picture and encodes it as lossy WebP (Android: long side at most 800 px, at most about
+  40 KB) or JPEG (iPhone: long side 640 px or less, at most about 14 KB, about 20 chunks). Receivers decode whatever the platform can read (both read JPEG and WebP).
   Re-encoding drops the camera metadata (GPS position included).
 - **Sealing.** The WebP bytes are sealed like a message (section 4) with the photo id as `aad`: `nonce(12) || ciphertext || tag(16)`.
 - **Chunks.** The sealed bytes are cut into pieces of 700 bytes. Each piece is an `img` packet with `ttl` 1, `dst` = the receiver,
@@ -268,7 +291,32 @@ over the internet relays.
 ### 11.1 Voice notes
 
 A voice note travels exactly like a photo (`img` chunks, sealed, to one direct neighbour, same receipt). The plain bytes
-are an MPEG-4 audio file (`.m4a`: AAC, mono, 16 kHz, about 16 kbit/s, at most 12 seconds, at most 60 KB) instead of
+are an MPEG-4 audio file (`.m4a`: AAC, mono, 16 kHz, 12 kbit/s, at most 12 seconds, about 18 KB) instead of
 an image. Receivers tell the two apart by the first box: bytes 4 to 7 are `ftyp` for audio, while JPEG starts with
 `FF D8` and WebP with `RIFF`. Senders strip the empty `free` padding box Apple's writer adds before `mdat` and shift the
 `stco` offsets back to match. Versions that do not know voice notes treat the bytes as a photo they cannot open.
+
+## 12. Local rules that change nothing on the wire (iPhone)
+
+- **Messages from strangers.** A stranger is a device id with no chat on this phone. Setting *Ask me* (default): their first
+  `msg`, `img` or new group is kept as a request, shown without its text in notifications, and **no read receipt** is sent
+  until the person taps Accept (delivery receipts still go out, as the router sends them). *Block*: such packets are dropped.
+  *Allow*: they arrive like any other.
+- **Friend nearby.** When a person with a private chat (not muted, not a request) becomes reachable after 30 minutes or more
+  out of range, the phone shows a local notification, at most every 2 hours per person. Last-seen times are kept on the phone
+  for 7 days.
+
+## 13. Transfer file ("Move to another phone", iPhone)
+
+A file the user makes and moves themselves (AirDrop, Files). Nothing is uploaded.
+
+```
+file   = "NSXFER1" || salt (16 random bytes) || rounds (UInt32, big-endian, 600000) || sealed
+key    = PBKDF2-HMAC-SHA256(password UTF-8, salt, rounds, 32 bytes)
+sealed = ChaCha20-Poly1305 combined box (nonce 12 || ciphertext || tag 16), aad = "nearsend-transfer-v1"
+plain  = JSON {v: 1, deviceID, nickname, avatar?, key: base64 private key, state?: base64 chat file, photos: {id: base64}}
+```
+
+Restoring replaces the Keychain key, the device id, the name, the chat file and the photos, then restarts Bluetooth as that
+identity. Readers refuse a file whose `rounds` is outside 100,000 to 5,000,000. Passwords must be at least 10 characters.
+The same identity must not run on two phones at once (both would answer as the same id).

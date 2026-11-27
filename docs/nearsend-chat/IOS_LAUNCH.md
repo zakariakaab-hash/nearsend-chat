@@ -1,41 +1,45 @@
 # iOS App Store launch checklist
 
-Written 18 Nov 2026. Priority is iOS first (see memory/decision of the same date). Status words: **DONE** (in the repo, built by CI),
-**TODO-ME** (Claude can do it), **TODO-YOU** (needs your Apple account, money or a real device), **UNKNOWN** (not checked).
+Started 18 Nov 2026, updated 27 Nov 2026. Status words: **DONE**, **TODO-ME** (Claude can do it), **TODO-YOU** (needs your
+Apple account, a decision or real phones).
 
-## A. Accounts and tooling (blocks everything)
-| Item | Who | Notes |
+## Where it stands (27 Nov 2026)
+
+- App Store Connect: app **Nearsend Chat** (Apple ID 6839386595, bundle id `app.nearsend.chat`), version **1.0**,
+  state *Prepare for Submission*. **Build 10** is attached and saved, review notes updated (`APP_REVIEW_NOTES.md`).
+- Builds 3 to 10 were uploaded from the Mac (see `RELEASING.md`). Build 10 is the first with photos and voice notes that
+  work over every Bluetooth link (write fragments), the 20 s connection timeout and key pinning (`AUDIT_2026-11-26.md`).
+- Release setting in App Store Connect: **Automatically release this version**. Switch to manual if you want to pick the day.
+- **Not yet done:** a test of build 10 on two real iPhones, and **Add for Review**.
+
+## A. Accounts and tooling
+| Item | Status | Notes |
 |---|---|---|
-| Apple Developer Program, about 99 USD per year (about 1,000 SEK) | TODO-YOU | Needed for TestFlight and the App Store. Enrol as an individual (days) or an organisation (needs a D-U-N-S number, weeks). I cannot create the account or pay |
-| A build made with **Xcode 26 / iOS 26 SDK** | TODO-ME + YOU | Apple only accepts uploads built with Xcode 26 since 28 Apr 2026 ([Apple news](https://developer.apple.com/news/upcoming-requirements/)). **Update 18 Nov: you installed Xcode 27.2 on the MacBook (reported by you, not checked by me), so the Mac can now archive and upload once the developer account exists; CI is no longer needed for that.** CI still uses `macos-15-intel` (older Xcode). Original options, now mostly optional: **Xcode Cloud** (Apple's own build service, free hours come with the developer account; I have not verified the current free allowance), a GitHub macOS 26 runner (arm64 only, and arm64 runners were out of capacity for us before), or a newer Mac |
-| Signing (certificate, provisioning profile) | TODO-YOU first | Created in your developer account. Bundle id is `app.nearsend.chat` (change it now if you want another, it is permanent once the app is created) |
-| App created in App Store Connect | TODO-YOU | Name "Nearsend Chat" may already be taken; have a second name ready |
+| Apple Developer Program | DONE | Team HW9XRXBJZA |
+| Xcode 26 / iOS 26.5 SDK | DONE | Apple requires the iOS 27 SDK (Xcode 27) for uploads from April 2027 |
+| Signing | DONE | Automatic signing, `-allowProvisioningUpdates` |
+| App in App Store Connect | DONE | Name, subtitle, keywords, description, screenshots, privacy and support URLs entered |
 
-## B. Product gaps found in the iOS code
-| Item | State | Notes |
+## B. Product items
+| Item | Status | Notes |
 |---|---|---|
-| **Block people** | **Written, not yet compiled** (18 Nov) | Contact info has Block/Unblock; long-press on a public-channel or group message, or on an announcement, blocks its sender. Blocked phones' messages, photos, announcements and SOS alerts are dropped and their earlier public/group content is removed. Saved in `chat.json` |
-| **Report content** | **Built, checked in the simulator** (18 Nov) | Long-press any received message or announcement → Report, or Report in contact info. Opens a prefilled email (person, id, time, content); with no mail app it shows the address with a Copy button. "Contact us" on the You tab. **TODO-YOU:** the address is the placeholder `support@nearsend.app` in `Support.email` (`FeatureViews.swift`); make it a real inbox or change it. A support web page is still needed for the store listing |
-| Real-iPhone Bluetooth test | TODO-YOU (+ tablet) | Never run. See REAL_PHONE_TEST_PLAN.md. Reviewers will run it on real phones too |
-| Review notes and a demo path | **Notes written** (21 Nov) | `APP_REVIEW_NOTES.md`: paste-ready notes, two-phone test steps, background-mode reason. TODO-YOU: record a two-phone video. **Demo mode** (You tab) added 21 Nov so a one-phone reviewer can see every screen; built for iPhone, switching on/off not yet tried on a real phone |
-| SOS wording | **DONE** (21 Nov) | SOS screen now says the alarm reaches phones with the app and does not call emergency services (12 languages); store text says the same |
-| Privacy policy page | **Written** (21 Nov); TODO-YOU: upload | Contact filled in (support@nearsend.app), iPhone note added. Web pages for `/chat/privacy` and `/chat/support` are in `docs/nearsend-chat/web/` (rebuild: `python3 scripts/build_chat_web_pages.py`); upload them to nearsend.app |
-| Privacy "nutrition label" answers | **Drafted** (21 Nov) | "Data not collected", no tracking: `APP_REVIEW_NOTES.md`. Privacy manifest `PrivacyInfo.xcprivacy` added (UserDefaults, CA92.1) |
-| Unused local-network permission text | **DONE** (21 Nov) | Removed from `Info.plist` and `project.yml` |
-| Version | **1.0 (build 1)** | `Info.plist` now reads `MARKETING_VERSION` / `CURRENT_PROJECT_VERSION`; raise the build number for each upload |
+| Block and Report | DONE | Long-press, contact info, and Block on message requests |
+| Messages from strangers | DONE (build 10) | Ask me (default) / Allow / Block; Hide me from strangers |
+| App lock, Move to another phone, Invite a friend | DONE (build 10) | Checked in the simulator; Face ID and the transfer file need a real phone |
+| Demo mode for one-phone review | DONE | You → Bluetooth → Demo mode |
+| SOS wording | DONE | States it does not call emergency services; local emergency number |
+| Privacy policy and support pages | DONE | https://chat.nearsend.app/privacy/ and /support/, built from `PRIVACY.md` / `SUPPORT.md` (`python3 scripts/build_chat_web_pages.py`), uploaded by hand to Cloudflare Pages. **TODO-YOU: re-upload `website/chat/` after the 26 Nov policy changes** |
+| Privacy label | DONE | Data not collected; `PrivacyInfo.xcprivacy` |
+| Export compliance | DONE | `ITSAppUsesNonExemptEncryption = false` (CryptoKit only), answered 25 Nov 2026 |
+| Real-phone test | **TODO-YOU** | `REAL_PHONE_TEST_PLAN.md`, with build 10 from TestFlight |
+| Demo video for the review notes | TODO-YOU (optional) | Script in `APP_REVIEW_NOTES.md` section 2 |
+| Support inbox | TODO-YOU | Confirm `support@nearsend.app` receives mail |
 
-## C. Store page
-Icon (exists), screenshots in the sizes Apple asks (6.9-inch iPhone and 13-inch iPad; CI already makes simulator shots, sizes
-to be checked), description and keywords (draft in `STORE_LISTING.md`, written for Google Play first), age rating, support URL,
-category (Social Networking), export-compliance answer (the app uses standard encryption, answer in App Store Connect).
+## C. Order of work from here
+1. TODO-YOU: install build 10 from TestFlight on two iPhones and run the test plan (at least tests 1 to 8).
+2. TODO-ME: fix whatever fails, upload build 11 if needed and attach it to version 1.0.
+3. TODO-YOU: re-upload `website/chat/` so the policy matches the app.
+4. TODO-YOU: Add for Review.
 
-## D. Order of work (one step at a time)
-1. TODO-YOU: start the Apple Developer enrolment (takes time, so start now).
-2. TODO-ME: add block and report on iOS (small, fixes a likely rejection).
-3. TODO-ME: clean up permissions and wording, fill the privacy placeholders.
-4. TODO-YOU + ME: first TestFlight build (Xcode Cloud or runner), install on your iPhone.
-5. TODO-YOU: run the real-phone test plan with the iPhone and the tablet; fix what breaks.
-6. TODO-ME: store page, screenshots, review notes. Submit for review.
-
-Honest status: the iOS app compiles in CI and renders in the simulator. **No part of it has run on a real iPhone**, no Bluetooth link
-has ever been made between two real phones, and the encryption has not been reviewed by a specialist.
+Honest status: the protocol tests pass (77 checks) and every screen has been checked in the simulator, but the Bluetooth
+fixes in build 10 have **not** run on real phones yet, and the encryption has not been reviewed by a specialist.

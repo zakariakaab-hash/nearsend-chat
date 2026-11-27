@@ -4,6 +4,16 @@ Written 18 November 2026 in answer to the "Master development prompt". Step one 
 changing anything. Nothing was changed. **"Verified" below means tests or CI prove it. Nothing in Nearsend Chat has been tested on
 two real phones yet, so no Bluetooth item can be called verified in the field.**
 
+## Update 27 Nov 2026 (iOS)
+
+The table below is the 18 Nov snapshot. Since then the **iPhone app** gained: photos and voice notes over Bluetooth with
+write fragments (D/B improved), contacts by QR or pasted code (L: **I**), message requests from strangers, app lock,
+an encrypted transfer file to move to a new phone, friend-nearby notifications, an honest signal-strength radar,
+automatic battery saving and a WhatsApp-style settings page. It is uploaded to App Store Connect as version 1.0 build 10.
+Texts have worked between two real iPhones; the rest still needs the real-phone test. Android has not changed and is now
+behind iOS (no write-fragment reassembly, voice notes, contact codes or message requests). Current status lives in
+`IOS_LAUNCH.md` and `NEARSEND_CHAT.md`.
+
 ## 1. What exists today (three separate pieces)
 
 | Piece | Where | Stack | State |

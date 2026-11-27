@@ -709,7 +709,7 @@ extension Message {
 
 // MARK: voice notes
 
-/// Records a short voice note as small AAC (mono, 16 kHz, 16 kbit/s): about 2 KB a second, so 12 seconds fit Bluetooth like a photo.
+/// Records a short voice note as small AAC (mono, 16 kHz, 12 kbit/s): about 1.5 KB a second, so 12 seconds fit Bluetooth like a photo.
 @MainActor final class VoiceRecorder: NSObject, ObservableObject, AVAudioRecorderDelegate {
     @Published private(set) var isRecording = false
     @Published private(set) var elapsed: TimeInterval = 0

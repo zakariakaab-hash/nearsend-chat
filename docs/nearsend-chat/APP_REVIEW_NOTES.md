@@ -1,6 +1,6 @@
 # Nearsend Chat — App Store Connect answers and App Review notes
 
-Written 21 Nov 2026 for the first iOS submission (version 1.0, build 1, bundle id `app.nearsend.chat`).
+Written 21 Nov 2026 for the first iOS submission, updated 27 Nov 2026 for version 1.0 build 10 (bundle id `app.nearsend.chat`).
 Everything here is a draft for you to check; questions marked **YOU DECIDE** are yours to answer.
 
 ## 1. App Review notes (paste into "Notes" under App Review Information)
@@ -93,13 +93,11 @@ between two phones.
   project `nearsend-chat` (see `website/README.md`). The privacy and support pages are built from `PRIVACY.md` and
   `SUPPORT.md` by `python3 scripts/build_chat_web_pages.py`. Entered in App Store Connect on 26 Nov 2026.
 
-## 5. Export compliance (encryption) — YOU DECIDE
+## 5. Export compliance (encryption)
 
-App Store Connect asks about encryption for every build. The app uses encryption (end-to-end encrypted chats) and only
-standard algorithms through Apple's CryptoKit. For this kind of app the usual answers are "Yes, it uses encryption" and
-that it qualifies for the mass-market / standard-encryption exemption. This is a legal export question, so read Apple's
-page "Complying with encryption export regulations" and answer it yourself. Once you know the answer you can add
-`ITSAppUsesNonExemptEncryption` to `Info.plist` so you are not asked on every upload; I have not added it.
+Answered 25 Nov 2026: the app uses only standard encryption from Apple's CryptoKit (exempt). `ITSAppUsesNonExemptEncryption`
+is set to `false` in `Info.plist` and `project.yml`, so App Store Connect no longer asks on every upload. If the app ever adds
+its own or non-standard cryptography, revisit this.
 
 ## 6. Age rating — YOU DECIDE
 
@@ -121,5 +119,5 @@ Chat with strangers usually leads to a teen rating rather than 4+.
 
 - **One-device testing** (guideline 2.1): if the reviewer cannot test with two devices they may reject or ask
   questions. The notes and video above are the answer; reply in App Store Connect if asked.
-- **Real-phone behaviour is untested.** Run `REAL_PHONE_TEST_PLAN.md` with TestFlight before submitting.
+- **Build 10 is not tested on real phones yet.** Texts worked between two iPhones on earlier builds; run `REAL_PHONE_TEST_PLAN.md` with build 10 before submitting.
 - **Bitchat fork:** the app is a GPL-3.0 fork. Keep the source public (it is) and do not use the Bitchat name or icon.

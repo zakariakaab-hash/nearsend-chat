@@ -3,16 +3,28 @@
 What is still needed before real people can install the apps. Items marked **(you)** need your accounts or decisions.
 
 ## 0. Before any release
-- [ ] **Test on real phones:** iPhone↔iPhone, Android↔Android, iPhone↔Android, and a 3-phone chain for relaying. Nothing has run on hardware yet.
+- [ ] **Test on real phones:** iPhone↔iPhone, Android↔Android, iPhone↔Android, and a 3-phone chain for relaying. Texts have worked between two iPhones (TestFlight builds 3 to 8); photos, voice notes and the build 10 fixes are not tested yet (`REAL_PHONE_TEST_PLAN.md`).
 - [ ] Decide the Bitchat question: this app is **not** compatible with Bitchat. The repo is a GPL-3.0 fork, so releases must offer source (the repo does).
 - [ ] Get the protocol reviewed (`PROTOCOL.md` section 5). Do not market it for protests, emergencies or anything safety-critical until then.
-- [ ] Publish `PRIVACY.md` at a URL (e.g. nearsend.app/chat/privacy) and fill in the contact details. **(you)**
+- [x] `PRIVACY.md` is published at https://chat.nearsend.app/privacy/ (rebuild with `python3 scripts/build_chat_web_pages.py`, then upload `website/chat/`). **(you, after each policy change)**
 
 ## 1. iOS — TestFlight, then App Store
-1. Apple Developer Program, about **US$99 / year**. **(you)**
-2. In Xcode open `NearsendChatiOS/NearsendChat.xcodeproj` → Signing & Capabilities → pick your team. Keep the bundle id `app.nearsend.chat` or change it in `project.yml` and re-run `xcodegen generate`.
-3. Bump `MARKETING_VERSION` / `CURRENT_PROJECT_VERSION` in `project.yml`.
-4. Product → Archive → Distribute App → App Store Connect → Upload. Add testers in TestFlight.
+1. Apple Developer Program (team `HW9XRXBJZA`): done. Xcode must be signed in (Xcode → Settings → Accounts); an upload that
+   fails with "No Accounts with App Store Connect Access" means the sign-in expired. **(you)**
+2. Raise the build number in **both** `NearsendChatiOS/project.yml` (`CURRENT_PROJECT_VERSION`) and
+   `NearsendChat.xcodeproj/project.pbxproj` (two lines), because the project file is also edited by hand. The last upload was **build 10**.
+3. Run the protocol tests (they must print `ALL PASSED`):
+   `swiftc -o /tmp/proto Sources/Models/Models.swift Sources/Mesh/MeshCrypto.swift Sources/Mesh/Framing.swift Sources/Mesh/NLog.swift Sources/Mesh/MeshRouter.swift Tests/main.swift && /tmp/proto`
+4. Archive and upload from `NearsendChatiOS/` (or Product → Archive → Distribute App in Xcode):
+   ```
+   xcodebuild -project NearsendChat.xcodeproj -scheme NearsendChat -configuration Release \
+     -destination 'generic/platform=iOS' -archivePath build/NearsendChat.xcarchive -allowProvisioningUpdates archive
+   xcodebuild -exportArchive -archivePath build/NearsendChat.xcarchive -exportPath build/export \
+     -exportOptionsPlist upload.plist -allowProvisioningUpdates
+   ```
+   `upload.plist`: `method` = `app-store-connect`, `destination` = `upload`, `teamID` = `HW9XRXBJZA`, `signingStyle` = `automatic`,
+   `manageAppVersionAndBuildNumber` = false. Apple processes the build in 15 to 30 minutes and sends an email.
+5. In App Store Connect, version page → Build: remove the old build (minus button), Add Build, pick the new one, Save.
 5. App Store listing: name, subtitle, description, privacy policy URL, age rating, screenshots (see `NearsendChatiOS/previews/`; App Store needs 6.9″/6.5″ sizes — re-shoot from the matching simulators).
 6. **App Review notes:** explain that the app needs two physical devices to demonstrate Bluetooth, and why it declares the `bluetooth-central` and `bluetooth-peripheral` background modes (receive messages while the screen is off). Provide a short demo video. State restoration (`bluetooth-central`/`bluetooth-peripheral` plus restore identifiers) is the reason for the background modes. Reviewers cannot test Bluetooth alone — expect questions.
 7. Privacy "nutrition label": *Data not collected*.

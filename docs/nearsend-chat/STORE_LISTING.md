@@ -22,7 +22,7 @@ WHAT YOU CAN DO
 • Out of range? Your message waits and is carried by phones nearby for up to 24 hours, then handed over when the person shows up.
 • Optional Internet switch: reach contacts who are far away through public relay servers. Off by default, still encrypted.
 • A public Nearby channel for everyone in range (clearly labelled: not encrypted).
-• Group chats, announcements that stay visible for a few hours, and small photos to a contact in range.
+• Group chats, announcements that stay visible for a few hours, and small photos and voice notes to a contact in range.
 • SOS: hold a button to alert every phone nearby, with your position if you choose. It does NOT call emergency services.
 • Emoji and colour profile pictures, a radar view and a network view of who is nearby and how they connect.
 • Verify a contact by scanning their QR code or comparing fingerprints in person.
@@ -44,8 +44,8 @@ Questions or feedback: support@nearsend.app
 
 ## App Store (iPhone)
 
-Rewritten 21 Nov 2026 against the iOS code, not the Android one. The iPhone app has **no** QR scanning, Internet switch,
-battery saver or network view, so they are left out. Character counts checked.
+Rewritten 21 Nov 2026 against the iOS code, updated 26 Nov 2026 for build 10. The iPhone app has **no** Internet switch
+or network view, so they are left out. Character counts checked.
 
 | Field | Text |
 |---|---|
@@ -54,8 +54,8 @@ battery saver or network view, so they are left out. Character counts checked.
 | Keywords (95 of 100) | `offline,mesh,nearby,private,encrypted,messenger,festival,hiking,camping,sos,group,walkie talkie` |
 | Promotional text (113 of 170) | `Message people nearby with no internet and no signal. Private, end-to-end encrypted, no account, no phone number.` |
 | Category | Social Networking (secondary: Utilities) |
-| Support URL | `https://nearsend.app/contact` until a Nearsend Chat page exists (see SEO_AUDIT.md) |
-| Privacy policy URL | Needed. `nearsend.app/privacy` covers the file-transfer site only (no mention of Bluetooth or Nearsend Chat) |
+| Support URL | `https://chat.nearsend.app/support/` (entered in App Store Connect 26 Nov 2026) |
+| Privacy policy URL | `https://chat.nearsend.app/privacy/` (built from `PRIVACY.md`; re-upload `website/chat/` after each change) |
 | Privacy label | Data not collected |
 
 The keywords skip words already in the name and subtitle (Apple indexes those anyway), and use no spaces after commas.
@@ -73,11 +73,13 @@ WHAT YOU CAN DO
 • A public Nearby channel for everyone in range (clearly labelled: not encrypted).
 • Group chats, announcements that stay visible for a few hours, and small photos to a contact in range.
 • SOS: alert every phone nearby, with your position if you choose. It does NOT call emergency services.
-• Emoji and colour profile pictures, and a radar view of who is nearby.
-• Verify a contact by comparing fingerprints in person.
+• Emoji and colour profile pictures, and a radar that shows who is near by signal strength.
+• Add a contact by scanning their QR code, and verify them by comparing fingerprints in person.
+• Message requests: strangers can't start a chat until you accept. Or hide your name from strangers.
+• App lock with Face ID, and Move to another phone with a password-protected file.
 • Block and report: long-press a message to report it or block the sender.
 • Privacy switches: stop passing on others' messages, turn off delivery receipts, hide message text in notifications, delete messages automatically.
-• "Erase everything" wipes the phone in one tap.
+• Battery saver, and "Erase everything" wipes the phone in one tap.
 • 12 languages: English, Svenska, Español, Français, Deutsch, Português, Italiano, العربية, Türkçe, Русский, 简体中文, 日本語.
 
 NO TRACKING
@@ -92,7 +94,7 @@ GOOD TO KNOW
 Questions or feedback: support@nearsend.app
 ```
 
-Before submitting, check each line on a real iPhone (none of it has run on hardware yet), and confirm `support@nearsend.app` receives mail.
+Before submitting, check each line on a real iPhone with build 10 (`REAL_PHONE_TEST_PLAN.md`), and confirm `support@nearsend.app` receives mail. The description in App Store Connect still has the 21 Nov text: paste this version in when you submit.
 
 ## Images
 
