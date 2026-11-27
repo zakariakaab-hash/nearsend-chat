@@ -26,7 +26,7 @@ Apple account, a decision or real phones).
 | Block and Report | DONE | Long-press, contact info, and Block on message requests |
 | Messages from strangers | DONE (build 10) | Ask me (default) / Allow / Block; Hide me from strangers |
 | App lock, Move to another phone, Invite a friend | DONE (build 10) | Checked in the simulator; Face ID and the transfer file need a real phone |
-| Demo mode for one-phone review | DONE | You → Bluetooth → Demo mode |
+| Demo mode | REMOVED (27 Nov) | One-phone review relies on the demo video (APP_REVIEW_NOTES.md §2) |
 | SOS wording | DONE | States it does not call emergency services; local emergency number |
 | Privacy policy and support pages | DONE | https://chat.nearsend.app/privacy/ and /support/, built from `PRIVACY.md` / `SUPPORT.md` (`python3 scripts/build_chat_web_pages.py`), uploaded by hand to Cloudflare Pages. **TODO-YOU: re-upload `website/chat/` after the 26 Nov policy changes** |
 | Privacy label | DONE | Data not collected; `PrivacyInfo.xcprivacy` |

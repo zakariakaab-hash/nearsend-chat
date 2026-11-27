@@ -40,9 +40,9 @@ No. An SOS alarm reaches phones nearby that have Nearsend Chat. If you have cell
 Open the iPhone Settings app, tap Nearsend Chat and switch Bluetooth on. On Android: Settings → Apps → Nearsend Chat →
 Permissions → Nearby devices.
 
-**Can I try the app alone?**
-Yes. On iPhone open You → Bluetooth and turn on **Demo mode**: it shows sample people and chats. Bluetooth is off while it
-is on, and your own chats come back when you turn it off.
+**Can I use the app alone?**
+Not really: Nearsend Chat talks to phones nearby, so you need at least one friend with the app. Use You → Invite a friend
+to show them the QR code for the App Store.
 
 **I have a new phone. How do I keep my chats?**
 On the old iPhone: You → Move to another phone → "This is the old phone", choose a password and make the file, then send

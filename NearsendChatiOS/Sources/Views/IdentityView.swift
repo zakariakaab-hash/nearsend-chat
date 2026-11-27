@@ -307,7 +307,6 @@ struct HelpSettingsView: View {
                 Button { mail = Support.feedbackURL } label: { Label("Send feedback", systemImage: "bubble.left.and.text.bubble.right") }
                     .foregroundStyle(Theme.ink)
                 NavigationLink { TermsView() } label: { Label("Terms and Privacy Policy", systemImage: "doc.text") }
-                NavigationLink { LicencesView() } label: { Label("Licences", systemImage: "doc.plaintext") }
                 HStack {
                     Label("App version", systemImage: "info.circle")
                     Spacer()
@@ -340,31 +339,6 @@ struct TermsView: View {
                     .foregroundStyle(Theme.ink)
             } footer: {
                 settingFoot("Nearsend Chat has no accounts and collects no data. The terms of use are Apple's standard licence agreement for App Store apps.")
-            }
-        }
-    }
-}
-
-/// The licences of the app and of what it includes.
-struct LicencesView: View {
-    @Environment(\.openURL) private var openURL
-    var body: some View {
-        SettingsPage(title: "Licences") {
-            Section {
-                licence("Nearsend Chat", "GNU General Public License v3.0. A fork of Bitchat. The source code is public.",
-                        url: "https://github.com/zakariakaab-hash/nearsend-chat")
-                licence("Anton font", "Vernon Adams. SIL Open Font License 1.1.", url: "https://openfontlicense.org")
-            } footer: {
-                settingFoot("Everything else is Apple's own system frameworks (SwiftUI, Core Bluetooth, CryptoKit).")
-            }
-        }
-    }
-
-    private func licence(_ name: String, _ text: LocalizedStringKey, url: String) -> some View {
-        Button { if let u = URL(string: url) { openURL(u) } } label: {
-            VStack(alignment: .leading, spacing: 3) {
-                Text(verbatim: name).font(.headline).foregroundStyle(Theme.ink)
-                Text(text).font(.footnote).foregroundStyle(Theme.inkSecondary)
             }
         }
     }
@@ -403,8 +377,6 @@ struct ConnectionView: View {
                               icon: "battery.25", $power.saver)
                 settingToggle("Pass on messages for others", "Helps messages travel further and reach people who are away. Uses some battery.",
                               icon: "arrow.triangle.branch", $store.relayOthers)
-                settingToggle("Demo mode", "Shows sample people and chats, so you can try the app without another phone. Bluetooth is off while it is on; your own chats come back when you turn it off.",
-                              icon: "play.rectangle", Binding(get: { store.simulated }, set: { store.setDemo($0) }))
             }
             Section {
                 if let saving = savingText {

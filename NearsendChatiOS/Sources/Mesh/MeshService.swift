@@ -40,7 +40,7 @@ final class ChatStore: ObservableObject {
     @Published private(set) var verified: Set<String> = []
     @Published private(set) var blocked: Set<String> = []      // peer ids: everything new from them is dropped
 
-    /// Demo data instead of Bluetooth: always in the simulator; on a phone while "Demo mode" (You tab) is on.
+    /// Demo data instead of Bluetooth, in the simulator only (it has no Bluetooth). Real iPhones always use Bluetooth.
     @Published private(set) var simulated: Bool
     var activeConversation: String?
     private var deviceID: String
@@ -126,7 +126,8 @@ final class ChatStore: ObservableObject {
         #if targetEnvironment(simulator)
         simulated = !d.bool(forKey: "realBluetooth")   // the simulator has no Bluetooth: demo data, unless testing the prompts
         #else
-        simulated = d.bool(forKey: "demoMode")
+        simulated = false
+        d.removeObject(forKey: "demoMode")   // the Demo mode switch is gone: phones that had it on go back to real chats
         #endif
         if simulated { seed() } else { load() }
         drift()
@@ -247,31 +248,6 @@ final class ChatStore: ObservableObject {
         // Bluetooth starts again only from the onboarding's last page ("Allow Bluetooth & start"), as on a first launch,
         // so iOS does not ask about Bluetooth while page 1 is showing.
         if simulated { seed() }
-    }
-
-    /// Demo mode on a real phone, for App Review and for trying the app without a second phone: sample people and chats,
-    /// Bluetooth off. Real chats are saved first and nothing is written while it is on; turning it off loads them back.
-    /// The choice is remembered across launches. In the simulator the app is always in demo mode.
-    func setDemo(_ on: Bool) {
-        #if targetEnvironment(simulator)
-        return
-        #else
-        guard on != simulated else { return }
-        UserDefaults.standard.set(on, forKey: "demoMode")
-        if on {
-            stopSos()
-            saveNow()
-            transport?.stop()
-            simulated = true
-            seed()
-        } else {
-            simulated = false
-            peers = []; posts = []; alerts = []; conversations = []; myLocation = nil
-            load()
-            ensurePublicChannel()
-            if started { if meshActive { transport?.start() } } else { startIfNeeded() }
-        }
-        #endif
     }
 
     // MARK: conversations
@@ -1064,13 +1040,13 @@ final class ChatStore: ObservableObject {
 /// password nobody can open it. Layout: "NSXFER1" | salt (16 bytes) | rounds (UInt32, big-endian) | sealed box.
 extension ChatStore {
     enum TransferError: LocalizedError {
-        case wrongPassword, notATransferFile, noIdentity, demoMode
+        case wrongPassword, notATransferFile, noIdentity, simulator
         var errorDescription: String? {
             switch self {
             case .wrongPassword: localized("Wrong password, or the file is damaged.")
             case .notATransferFile: localized("This is not a Nearsend transfer file.")
             case .noIdentity: localized("This phone has no identity to move yet.")
-            case .demoMode: localized("Turn off Demo mode first.")
+            case .simulator: "Moving to another phone needs a real iPhone."   // simulator only, never shown to users
             }
         }
     }
@@ -1101,7 +1077,7 @@ extension ChatStore {
 
     /// Writes the transfer file to a temporary folder and returns it, to be shared (AirDrop, Files…).
     func makeTransferFile(password: String, includePhotos: Bool) throws -> URL {
-        guard !simulated else { throw TransferError.demoMode }
+        guard !simulated else { throw TransferError.simulator }
         saveNow()
         guard let key = KeyStore.exportKey() else { throw TransferError.noIdentity }
         var photos: [String: Data] = [:]
@@ -1125,7 +1101,7 @@ extension ChatStore {
 
     /// Replaces this phone's identity, chats and settings with the ones in the file. Bluetooth restarts as that identity.
     func restoreTransfer(from url: URL, password: String) throws {
-        guard !simulated else { throw TransferError.demoMode }
+        guard !simulated else { throw TransferError.simulator }
         let scoped = url.startAccessingSecurityScopedResource()
         defer { if scoped { url.stopAccessingSecurityScopedResource() } }
         let file = try Data(contentsOf: url)

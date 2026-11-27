@@ -9,7 +9,7 @@ says PASS on real devices, it is not verified. Updated 27 Nov 2026 for **iOS bui
 - Optional D: the Android tablet (SM-T500) with a debug build, for the iPhone↔Android rows. Note: Android does not reassemble
   write fragments yet (`PROTOCOL.md` section 2), so photos and voice notes **from** an iPhone **to** Android are expected to fail.
 
-Turn Bluetooth on, allow the prompts, keep both screens on at first. Demo mode must be **off** (You → Bluetooth).
+Turn Bluetooth on, allow the prompts, keep both screens on at first.
 
 ## Tests (do in order, stop at the first FAIL and note it)
 

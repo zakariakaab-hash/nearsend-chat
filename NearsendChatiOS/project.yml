@@ -38,3 +38,14 @@ targets:
         CODE_SIGN_IDENTITY: Apple Development
         GENERATE_INFOPLIST_FILE: NO
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+schemes:
+  NearsendChat:
+    build:
+      targets:
+        NearsendChat: all
+    run:
+      config: Debug
+      commandLineArguments:
+        "-realBluetooth YES": true   # simulator: use real Core Bluetooth (shows the prompts) instead of demo data
+    archive:
+      config: Release

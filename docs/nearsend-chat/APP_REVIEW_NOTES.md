@@ -10,12 +10,10 @@ Updated 26 Nov 2026 for build 10 (about 2,500 characters; the field allows 4,000
 ```
 Nearsend Chat is an offline messenger. Phones talk directly to each other over Bluetooth Low Energy: no internet, no account, no server. Messages hop from phone to phone (up to 5 hops), and private chats are end-to-end encrypted.
 
-QUICK REVIEW WITH ONE DEVICE (recommended)
-1. Open the app and go through the 4 onboarding screens (the last one asks for a name).
-2. Open the You tab > Bluetooth and turn on "Demo mode".
-3. The app now shows sample people, chats, a group, announcements and an SOS alarm, so every screen can be reviewed without a second phone. Bluetooth is off while Demo mode is on.
+ONE DEVICE
+The app needs a second phone nearby to show people and chats. A demo video showing two iPhones chatting in Airplane Mode is attached (see the video link in these notes). On one phone you can still review onboarding, the Nearby radar, SOS, You > Privacy, Notifications, Bluetooth, Account and Help.
 
-FULL TEST WITH TWO DEVICES
+FULL TEST WITH TWO DEVICES (recommended)
 1. Install on two iPhones and turn Bluetooth on. Airplane Mode can stay on: the app needs no Wi-Fi or cellular.
 2. Open the app on both and allow Bluetooth. Each phone appears on the other's Nearby tab within seconds.
 3. Tap the other person to chat. The first message from someone you have never chatted with arrives as a "Message request" (You > Privacy > Messages from strangers is "Ask me" by default). Tap Accept to reply.
@@ -48,12 +46,12 @@ support@nearsend.app
 
 ## 2. Demo video script (about 40 seconds, no sound needed)
 
-**Why:** App Review often has only one device. Demo mode covers the screens; this video proves the real Bluetooth link
+**Why:** App Review often has only one device, and the app has no demo data: this video shows the real Bluetooth link
 between two phones.
 
 **Before you record**
 - Two iPhones with the TestFlight build. Give them different nicknames on the You tab (for example "Anna" and "Ben").
-- On both: **Airplane Mode on, then Bluetooth back on** (so the video shows there is no internet), Demo mode **off**,
+- On both: **Airplane Mode on, then Bluetooth back on** (so the video shows there is no internet),
   Do Not Disturb off so the notification shows.
 - Put both phones side by side on a table. Film from above with a third phone, or use screen recording on both and put
   the two recordings side by side.
