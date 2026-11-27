@@ -448,6 +448,13 @@
 "Location Services is off" = "位置情報サービスがオフです";
 "Attaching your position needs Location Services. Tap Turn on Location Services, then Settings, and switch it on." = "位置を添付するには位置情報サービスが必要です。「位置情報サービスをオン」をタップし、「設定」でオンにしてください。";
 "Turn on Location Services" = "位置情報サービスをオン";
+"Camera is off for Nearsend Chat" = "Nearsend Chat のカメラがオフです";
+"To take photos and scan QR codes, allow the camera in Settings › Nearsend Chat › Camera." = "写真を撮ったり QR コードを読み取ったりするには、設定 › Nearsend Chat › カメラで許可してください。";
+"Microphone is off for Nearsend Chat" = "Nearsend Chat のマイクがオフです";
+"To record voice notes, allow the microphone in Settings › Nearsend Chat › Microphone." = "ボイスメモを録音するには、設定 › Nearsend Chat › マイクで許可してください。";
+"Only while you use it" = "使っている間だけ";
+"Notifications are off" = "通知がオフです";
+"Nearsend Chat can't show notifications. Turn them on in Settings › Nearsend Chat › Notifications." = "Nearsend Chat は通知を表示できません。設定 › Nearsend Chat › 通知でオンにしてください。";
 "Report" = "報告";
 "Contact us" = "お問い合わせ";
 "Copy address" = "アドレスをコピー";

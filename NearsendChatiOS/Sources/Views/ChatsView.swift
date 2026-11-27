@@ -357,12 +357,15 @@ struct AddContactSheet: View {
     @State private var scanning = false
     @State private var problem: LocalizedStringKey?
     @State private var showMine = false
+    @State private var cameraAsk: PermissionAsk?
     var body: some View {
         NavigationStack {
             Form {
                 Section {
-                    if CodeScanner.available {
-                        Button { scanning = true } label: { Label("Scan their code", systemImage: "qrcode.viewfinder") }
+                    if CodeScanner.supported {
+                        Button { CameraAccess.check(ok: { scanning = true }, denied: { cameraAsk = .cameraDenied }) } label: {
+                            Label("Scan their code", systemImage: "qrcode.viewfinder")
+                        }
                     }
                     Button { showMine = true } label: { Label("Show my code", systemImage: "qrcode") }
                 } footer: { Text("Scan each other's codes, so you can both write. Messages reach them even far away, carried by phones in between.") }
@@ -380,6 +383,7 @@ struct AddContactSheet: View {
             .fullScreenCover(isPresented: $scanning) {
                 CodeScanner { code in scanning = false; if let code { add(code, inPerson: true) } }.ignoresSafeArea()
             }
+            .sheet(item: $cameraAsk) { a in PermissionSheet(ask: a) { SystemSettings.open() } }
             .sheet(isPresented: $showMine) {
                 MyCodeSheet(payload: store.myCodePayload, fingerprint: store.myFingerprint, contactCode: store.myContactCode)
             }

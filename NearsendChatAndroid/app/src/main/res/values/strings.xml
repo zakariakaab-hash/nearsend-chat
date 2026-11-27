@@ -451,6 +451,13 @@
     <string name="perm_ls_title">Location Services is off</string>
     <string name="perm_ls_body">Attaching your position needs Location Services. Tap Turn on Location Services, then Settings, and switch it on.</string>
     <string name="perm_ls_button">Turn on Location Services</string>
+    <string name="perm_cam_title">Camera is off for Nearsend Chat</string>
+    <string name="perm_cam_body">To take photos and scan QR codes, allow the camera in Settings › Nearsend Chat › Camera.</string>
+    <string name="perm_mic_title">Microphone is off for Nearsend Chat</string>
+    <string name="perm_mic_body">To record voice notes, allow the microphone in Settings › Nearsend Chat › Microphone.</string>
+    <string name="perm_chip_use">Only while you use it</string>
+    <string name="notif_off_head">Notifications are off</string>
+    <string name="notif_off_foot">Nearsend Chat can\'t show notifications. Turn them on in Settings › Nearsend Chat › Notifications.</string>
     <string name="report">Report</string>
     <string name="contact_us">Contact us</string>
     <string name="copy_address">Copy address</string>

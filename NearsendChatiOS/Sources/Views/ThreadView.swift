@@ -114,7 +114,7 @@ struct ThreadView: View {
                         hasCamera: UIImagePickerController.isSourceTypeAvailable(.camera)) { choice in
                 switch choice {
                 case .photo: afterAttach = { showPhotoPicker = true }
-                case .camera: afterAttach = { showCamera = true }
+                case .camera: afterAttach = { CameraAccess.check(ok: { showCamera = true }, denied: { locationAsk = .cameraDenied }) }
                 case .location:
                     if store.hasLocationPermission { store.sendLocation(in: conversationID) { ok in if !ok { noPosition = true } } }
                     else { let a: PermissionAsk = store.locationStatus == .notDetermined ? .location : .locationDenied; afterAttach = { locationAsk = a } }
@@ -838,10 +838,7 @@ struct VoiceRecordButton: View {
             .accessibilityAddTraits(.isButton)
             // VoiceOver cannot hold: activating starts recording, activating again sends it.
             .accessibilityAction { if recorder.isRecording { recorder.stop() } else { recorder.start(onFinish: send) } }
-            .alert("Microphone not allowed", isPresented: $recorder.denied) {
-                Button("Open Settings") { SystemSettings.open() }
-                Button("Close", role: .cancel) {}
-            } message: { Text("Allow the microphone for Nearsend Chat in Settings to send voice messages.") }
+            .sheet(isPresented: $recorder.denied) { PermissionSheet(ask: .microphoneDenied) { SystemSettings.open() } }
     }
 }
 

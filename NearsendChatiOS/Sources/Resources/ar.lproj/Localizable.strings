@@ -448,6 +448,13 @@
 "Location Services is off" = "خدمات الموقع متوقفة";
 "Attaching your position needs Location Services. Tap Turn on Location Services, then Settings, and switch it on." = "يتطلب إرفاق موقعك تشغيل خدمات الموقع. انقر على تشغيل خدمات الموقع، ثم الإعدادات، وشغّلها.";
 "Turn on Location Services" = "تشغيل خدمات الموقع";
+"Camera is off for Nearsend Chat" = "الكاميرا متوقفة لـ Nearsend Chat";
+"To take photos and scan QR codes, allow the camera in Settings › Nearsend Chat › Camera." = "لالتقاط الصور ومسح رموز QR، اسمح بالكاميرا من الإعدادات › Nearsend Chat › الكاميرا.";
+"Microphone is off for Nearsend Chat" = "الميكروفون متوقف لـ Nearsend Chat";
+"To record voice notes, allow the microphone in Settings › Nearsend Chat › Microphone." = "لتسجيل الرسائل الصوتية، اسمح بالميكروفون من الإعدادات › Nearsend Chat › الميكروفون.";
+"Only while you use it" = "فقط أثناء استخدامه";
+"Notifications are off" = "الإشعارات متوقفة";
+"Nearsend Chat can't show notifications. Turn them on in Settings › Nearsend Chat › Notifications." = "لا يمكن لـ Nearsend Chat عرض الإشعارات. شغّلها من الإعدادات › Nearsend Chat › الإشعارات.";
 "Report" = "إبلاغ";
 "Contact us" = "اتصل بنا";
 "Copy address" = "نسخ العنوان";

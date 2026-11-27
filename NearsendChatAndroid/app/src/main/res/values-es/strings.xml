@@ -450,6 +450,13 @@
     <string name="perm_ls_title">Localización está desactivada</string>
     <string name="perm_ls_body">Para adjuntar tu posición hace falta Localización. Toca Activar Localización, luego Ajustes, y actívala.</string>
     <string name="perm_ls_button">Activar Localización</string>
+    <string name="perm_cam_title">La cámara está desactivada para Nearsend Chat</string>
+    <string name="perm_cam_body">Para hacer fotos y escanear códigos QR, permite la cámara en Ajustes › Nearsend Chat › Cámara.</string>
+    <string name="perm_mic_title">El micrófono está desactivado para Nearsend Chat</string>
+    <string name="perm_mic_body">Para grabar notas de voz, permite el micrófono en Ajustes › Nearsend Chat › Micrófono.</string>
+    <string name="perm_chip_use">Solo mientras lo usas</string>
+    <string name="notif_off_head">Las notificaciones están desactivadas</string>
+    <string name="notif_off_foot">Nearsend Chat no puede mostrar notificaciones. Actívalas en Ajustes › Nearsend Chat › Notificaciones.</string>
     <string name="report">Denunciar</string>
     <string name="contact_us">Contáctanos</string>
     <string name="copy_address">Copiar dirección</string>

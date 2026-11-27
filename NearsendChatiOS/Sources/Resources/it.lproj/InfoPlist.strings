@@ -1,5 +1,5 @@
 "NSBluetoothAlwaysUsageDescription" = "Nearsend Chat usa il Bluetooth per trovare persone vicine e scambiare messaggi senza internet.";
-"NSLocalNetworkUsageDescription" = "Nearsend Chat usa la rete locale per raggiungere i dispositivi vicini.";
+"NSFaceIDUsageDescription" = "Nearsend Chat usa Face ID per aprire l'app o le chat che hai bloccato.";
 "NSLocationWhenInUseUsageDescription" = "Usata solo quando condividi la tua posizione in una chat o invii un SOS, così le persone vicine possono trovarti.";
-"NSCameraUsageDescription" = "Usata solo quando scatti una foto da inviare in una chat.";
+"NSCameraUsageDescription" = "Usata quando scatti una foto da inviare in una chat o inquadri il codice QR di un amico. Niente viene registrato o caricato.";
 "NSMicrophoneUsageDescription" = "Usato solo mentre tieni premuto il pulsante del microfono per registrare un messaggio vocale.";

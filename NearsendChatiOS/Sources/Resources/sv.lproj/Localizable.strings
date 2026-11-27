@@ -448,6 +448,13 @@
 "Location Services is off" = "Platstjänster är avstängda";
 "Attaching your position needs Location Services. Tap Turn on Location Services, then Settings, and switch it on." = "För att bifoga din position behövs Platstjänster. Tryck på Slå på Platstjänster, sedan Inställningar, och slå på det.";
 "Turn on Location Services" = "Slå på Platstjänster";
+"Camera is off for Nearsend Chat" = "Kameran är avstängd för Nearsend Chat";
+"To take photos and scan QR codes, allow the camera in Settings › Nearsend Chat › Camera." = "För att ta foton och skanna QR-koder, tillåt kameran i Inställningar › Nearsend Chat › Kamera.";
+"Microphone is off for Nearsend Chat" = "Mikrofonen är avstängd för Nearsend Chat";
+"To record voice notes, allow the microphone in Settings › Nearsend Chat › Microphone." = "För att spela in röstmeddelanden, tillåt mikrofonen i Inställningar › Nearsend Chat › Mikrofon.";
+"Only while you use it" = "Bara när du använder den";
+"Notifications are off" = "Notiser är avstängda";
+"Nearsend Chat can't show notifications. Turn them on in Settings › Nearsend Chat › Notifications." = "Nearsend Chat kan inte visa notiser. Slå på dem i Inställningar › Nearsend Chat › Notiser.";
 "Report" = "Rapportera";
 "Contact us" = "Kontakta oss";
 "Copy address" = "Kopiera adress";

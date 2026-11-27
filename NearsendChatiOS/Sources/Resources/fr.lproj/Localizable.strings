@@ -448,6 +448,13 @@
 "Location Services is off" = "Le service de localisation est désactivé";
 "Attaching your position needs Location Services. Tap Turn on Location Services, then Settings, and switch it on." = "Pour joindre votre position, le service de localisation doit être activé. Touchez Activer la localisation, puis Réglages, et activez-le.";
 "Turn on Location Services" = "Activer la localisation";
+"Camera is off for Nearsend Chat" = "L'appareil photo est désactivé pour Nearsend Chat";
+"To take photos and scan QR codes, allow the camera in Settings › Nearsend Chat › Camera." = "Pour prendre des photos et scanner des codes QR, autorisez l'appareil photo dans Réglages › Nearsend Chat › Appareil photo.";
+"Microphone is off for Nearsend Chat" = "Le micro est désactivé pour Nearsend Chat";
+"To record voice notes, allow the microphone in Settings › Nearsend Chat › Microphone." = "Pour enregistrer des messages vocaux, autorisez le micro dans Réglages › Nearsend Chat › Micro.";
+"Only while you use it" = "Seulement pendant l'utilisation";
+"Notifications are off" = "Les notifications sont désactivées";
+"Nearsend Chat can't show notifications. Turn them on in Settings › Nearsend Chat › Notifications." = "Nearsend Chat ne peut pas afficher de notifications. Activez-les dans Réglages › Nearsend Chat › Notifications.";
 "Report" = "Signaler";
 "Contact us" = "Nous contacter";
 "Copy address" = "Copier l'adresse";

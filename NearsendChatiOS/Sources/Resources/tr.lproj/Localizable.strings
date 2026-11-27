@@ -448,6 +448,13 @@
 "Location Services is off" = "Konum Servisleri kapalı";
 "Attaching your position needs Location Services. Tap Turn on Location Services, then Settings, and switch it on." = "Konumunu eklemek için Konum Servisleri gerekir. Konum Servislerini aç'a, ardından Ayarlar'a dokun ve aç.";
 "Turn on Location Services" = "Konum Servislerini aç";
+"Camera is off for Nearsend Chat" = "Nearsend Chat için kamera kapalı";
+"To take photos and scan QR codes, allow the camera in Settings › Nearsend Chat › Camera." = "Fotoğraf çekmek ve QR kod taramak için Ayarlar › Nearsend Chat › Kamera'dan izin ver.";
+"Microphone is off for Nearsend Chat" = "Nearsend Chat için mikrofon kapalı";
+"To record voice notes, allow the microphone in Settings › Nearsend Chat › Microphone." = "Sesli not kaydetmek için Ayarlar › Nearsend Chat › Mikrofon'dan izin ver.";
+"Only while you use it" = "Yalnızca kullanırken";
+"Notifications are off" = "Bildirimler kapalı";
+"Nearsend Chat can't show notifications. Turn them on in Settings › Nearsend Chat › Notifications." = "Nearsend Chat bildirim gösteremiyor. Ayarlar › Nearsend Chat › Bildirimler'den aç.";
 "Report" = "Bildir";
 "Contact us" = "Bize ulaşın";
 "Copy address" = "Adresi kopyala";

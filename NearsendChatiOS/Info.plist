@@ -44,7 +44,7 @@
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Only used while you hold the microphone button to record a voice message.</string>
 	<key>NSCameraUsageDescription</key>
-	<string>Only used when you take a photo to send in a chat.</string>
+	<string>Used when you take a photo to send in a chat or scan a friend's QR code. Nothing is recorded or uploaded.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Only used when you share your location in a chat or send an SOS, so people nearby can find you.</string>
 	<key>UIAppFonts</key>

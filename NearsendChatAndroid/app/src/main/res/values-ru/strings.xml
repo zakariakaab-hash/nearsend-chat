@@ -450,6 +450,13 @@
     <string name="perm_ls_title">Службы геолокации выключены</string>
     <string name="perm_ls_body">Чтобы прикрепить позицию, нужны службы геолокации. Нажмите «Включить геолокацию», затем «Настройки», и включите её.</string>
     <string name="perm_ls_button">Включить геолокацию</string>
+    <string name="perm_cam_title">Камера выключена для Nearsend Chat</string>
+    <string name="perm_cam_body">Чтобы снимать фото и сканировать QR-коды, разрешите камеру в Настройки › Nearsend Chat › Камера.</string>
+    <string name="perm_mic_title">Микрофон выключен для Nearsend Chat</string>
+    <string name="perm_mic_body">Чтобы записывать голосовые, разрешите микрофон в Настройки › Nearsend Chat › Микрофон.</string>
+    <string name="perm_chip_use">Только во время использования</string>
+    <string name="notif_off_head">Уведомления выключены</string>
+    <string name="notif_off_foot">Nearsend Chat не может показывать уведомления. Включите их в Настройки › Nearsend Chat › Уведомления.</string>
     <string name="report">Пожаловаться</string>
     <string name="contact_us">Связаться с нами</string>
     <string name="copy_address">Скопировать адрес</string>

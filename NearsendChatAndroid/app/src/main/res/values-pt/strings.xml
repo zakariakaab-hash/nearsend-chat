@@ -450,6 +450,13 @@
     <string name="perm_ls_title">Os serviços de localização estão desligados</string>
     <string name="perm_ls_body">Para anexar a tua posição precisas dos serviços de localização. Toca em Ligar serviços de localização, depois em Definições, e liga-os.</string>
     <string name="perm_ls_button">Ligar serviços de localização</string>
+    <string name="perm_cam_title">A câmara está desligada para o Nearsend Chat</string>
+    <string name="perm_cam_body">Para tirar fotos e ler códigos QR, permite a câmara em Definições › Nearsend Chat › Câmara.</string>
+    <string name="perm_mic_title">O microfone está desligado para o Nearsend Chat</string>
+    <string name="perm_mic_body">Para gravar notas de voz, permite o microfone em Definições › Nearsend Chat › Microfone.</string>
+    <string name="perm_chip_use">Só enquanto o usas</string>
+    <string name="notif_off_head">As notificações estão desligadas</string>
+    <string name="notif_off_foot">O Nearsend Chat não pode mostrar notificações. Liga-as em Definições › Nearsend Chat › Notificações.</string>
     <string name="report">Denunciar</string>
     <string name="contact_us">Fale conosco</string>
     <string name="copy_address">Copiar endereço</string>

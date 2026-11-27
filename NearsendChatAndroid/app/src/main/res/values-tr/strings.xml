@@ -450,6 +450,13 @@
     <string name="perm_ls_title">Konum Servisleri kapalı</string>
     <string name="perm_ls_body">Konumunu eklemek için Konum Servisleri gerekir. Konum Servislerini aç\'a, ardından Ayarlar\'a dokun ve aç.</string>
     <string name="perm_ls_button">Konum Servislerini aç</string>
+    <string name="perm_cam_title">Nearsend Chat için kamera kapalı</string>
+    <string name="perm_cam_body">Fotoğraf çekmek ve QR kod taramak için Ayarlar › Nearsend Chat › Kamera\'dan izin ver.</string>
+    <string name="perm_mic_title">Nearsend Chat için mikrofon kapalı</string>
+    <string name="perm_mic_body">Sesli not kaydetmek için Ayarlar › Nearsend Chat › Mikrofon\'dan izin ver.</string>
+    <string name="perm_chip_use">Yalnızca kullanırken</string>
+    <string name="notif_off_head">Bildirimler kapalı</string>
+    <string name="notif_off_foot">Nearsend Chat bildirim gösteremiyor. Ayarlar › Nearsend Chat › Bildirimler\'den aç.</string>
     <string name="report">Bildir</string>
     <string name="contact_us">Bize ulaşın</string>
     <string name="copy_address">Adresi kopyala</string>

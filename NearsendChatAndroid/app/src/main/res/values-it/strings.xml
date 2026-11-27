@@ -450,6 +450,13 @@
     <string name="perm_ls_title">I servizi di localizzazione sono disattivati</string>
     <string name="perm_ls_body">Per allegare la tua posizione servono i servizi di localizzazione. Tocca Attiva localizzazione, poi Impostazioni, e attivali.</string>
     <string name="perm_ls_button">Attiva localizzazione</string>
+    <string name="perm_cam_title">La fotocamera è disattivata per Nearsend Chat</string>
+    <string name="perm_cam_body">Per scattare foto e inquadrare codici QR, consenti la fotocamera in Impostazioni › Nearsend Chat › Fotocamera.</string>
+    <string name="perm_mic_title">Il microfono è disattivato per Nearsend Chat</string>
+    <string name="perm_mic_body">Per registrare note vocali, consenti il microfono in Impostazioni › Nearsend Chat › Microfono.</string>
+    <string name="perm_chip_use">Solo mentre lo usi</string>
+    <string name="notif_off_head">Le notifiche sono disattivate</string>
+    <string name="notif_off_foot">Nearsend Chat non può mostrare notifiche. Attivale in Impostazioni › Nearsend Chat › Notifiche.</string>
     <string name="report">Segnala</string>
     <string name="contact_us">Contattaci</string>
     <string name="copy_address">Copia indirizzo</string>

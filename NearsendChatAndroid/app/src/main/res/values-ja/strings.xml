@@ -450,6 +450,13 @@
     <string name="perm_ls_title">位置情報サービスがオフです</string>
     <string name="perm_ls_body">位置を添付するには位置情報サービスが必要です。「位置情報サービスをオン」をタップし、「設定」でオンにしてください。</string>
     <string name="perm_ls_button">位置情報サービスをオン</string>
+    <string name="perm_cam_title">Nearsend Chat のカメラがオフです</string>
+    <string name="perm_cam_body">写真を撮ったり QR コードを読み取ったりするには、設定 › Nearsend Chat › カメラで許可してください。</string>
+    <string name="perm_mic_title">Nearsend Chat のマイクがオフです</string>
+    <string name="perm_mic_body">ボイスメモを録音するには、設定 › Nearsend Chat › マイクで許可してください。</string>
+    <string name="perm_chip_use">使っている間だけ</string>
+    <string name="notif_off_head">通知がオフです</string>
+    <string name="notif_off_foot">Nearsend Chat は通知を表示できません。設定 › Nearsend Chat › 通知でオンにしてください。</string>
     <string name="report">報告</string>
     <string name="contact_us">お問い合わせ</string>
     <string name="copy_address">アドレスをコピー</string>

@@ -450,6 +450,13 @@
     <string name="perm_ls_title">Le service de localisation est désactivé</string>
     <string name="perm_ls_body">Pour joindre votre position, le service de localisation doit être activé. Touchez Activer la localisation, puis Réglages, et activez-le.</string>
     <string name="perm_ls_button">Activer la localisation</string>
+    <string name="perm_cam_title">L\'appareil photo est désactivé pour Nearsend Chat</string>
+    <string name="perm_cam_body">Pour prendre des photos et scanner des codes QR, autorisez l\'appareil photo dans Réglages › Nearsend Chat › Appareil photo.</string>
+    <string name="perm_mic_title">Le micro est désactivé pour Nearsend Chat</string>
+    <string name="perm_mic_body">Pour enregistrer des messages vocaux, autorisez le micro dans Réglages › Nearsend Chat › Micro.</string>
+    <string name="perm_chip_use">Seulement pendant l\'utilisation</string>
+    <string name="notif_off_head">Les notifications sont désactivées</string>
+    <string name="notif_off_foot">Nearsend Chat ne peut pas afficher de notifications. Activez-les dans Réglages › Nearsend Chat › Notifications.</string>
     <string name="report">Signaler</string>
     <string name="contact_us">Nous contacter</string>
     <string name="copy_address">Copier l\'adresse</string>

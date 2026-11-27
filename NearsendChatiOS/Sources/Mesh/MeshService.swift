@@ -49,6 +49,7 @@ final class ChatStore: ObservableObject {
     private var started = false
     private var timer: Timer?
     private var saverWatch: AnyCancellable?
+    private var askedNotifications = false
     private var inflight = Set<String>()
     private var leftGroups = Set<String>()                  // group ids we left: their messages are dropped
     private var groupPending: [String: Set<String>] = [:]   // group message id -> members not sent to yet
@@ -163,7 +164,6 @@ final class ChatStore: ObservableObject {
     func startIfNeeded() {
         guard !simulated, !started else { return }
         started = true
-        Notifier.requestPermission()
         let crypto = KeyStore.loadOrCreate()
         myFingerprint = crypto.fingerprint
         myPublicKey = crypto.publicKey
@@ -199,6 +199,9 @@ final class ChatStore: ObservableObject {
             Task { @MainActor in
                 self?.bluetoothState = s
                 if s != "ready" { r?.forgetEveryone() }   // Bluetooth off: show nobody in range
+                // Notifications are asked once the Bluetooth prompt is answered, not at the same moment (two iOS
+                // alerts at once). iOS shows the question only the first time; later calls do nothing.
+                if s != "starting", self?.askedNotifications == false { self?.askedNotifications = true; Notifier.requestPermission() }
             }
         }
         router = r; transport = t

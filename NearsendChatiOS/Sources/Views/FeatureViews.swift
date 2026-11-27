@@ -1,3 +1,4 @@
+import AVFoundation
 import SwiftUI
 
 /// A small selectable pill (time choices, auto-delete choices).
@@ -258,9 +259,17 @@ struct ConfirmSheet: View {
 /// something is off or was refused) the app shows this sheet in the same spirit as iOS's location prompt: icon, title,
 /// one honest paragraph, a small picture of what it is for, and large buttons.
 enum PermissionAsk: String, Identifiable {
-    case bluetooth, bluetoothOff, bluetoothDenied, location, locationDenied, locationServicesOff
+    case bluetooth, bluetoothOff, bluetoothDenied, location, locationDenied, locationServicesOff, cameraDenied, microphoneDenied
     var id: String { rawValue }
     var isBluetooth: Bool { [.bluetooth, .bluetoothOff, .bluetoothDenied].contains(self) }
+    var isLocation: Bool { [.location, .locationDenied, .locationServicesOff].contains(self) }
+    var symbol: String {
+        switch self {
+        case .cameraDenied: "camera.fill"
+        case .microphoneDenied: "mic.fill"
+        default: isBluetooth ? "antenna.radiowaves.left.and.right" : "location.fill"
+        }
+    }
 
     var title: LocalizedStringKey {
         switch self {
@@ -270,6 +279,8 @@ enum PermissionAsk: String, Identifiable {
         case .location: "Share your location?"
         case .locationDenied: "Location is off for Nearsend Chat"
         case .locationServicesOff: "Location Services is off"
+        case .cameraDenied: "Camera is off for Nearsend Chat"
+        case .microphoneDenied: "Microphone is off for Nearsend Chat"
         }
     }
     var message: LocalizedStringKey {
@@ -280,19 +291,22 @@ enum PermissionAsk: String, Identifiable {
         case .location: "Only when you share it in a chat or attach it to an SOS. It goes over Bluetooth to the people you choose, never to us. Your iPhone asks next."
         case .locationDenied: "To share your position, allow location in Settings › Nearsend Chat › Location."
         case .locationServicesOff: "Attaching your position needs Location Services. Tap Turn on Location Services, then Settings, and switch it on."
+        case .cameraDenied: "To take photos and scan QR codes, allow the camera in Settings › Nearsend Chat › Camera."
+        case .microphoneDenied: "To record voice notes, allow the microphone in Settings › Nearsend Chat › Microphone."
         }
     }
     var chip: LocalizedStringKey {
         switch self {
         case .bluetooth, .bluetoothOff, .bluetoothDenied: "No internet needed"
         case .location, .locationDenied, .locationServicesOff: "Only when you share"
+        case .cameraDenied, .microphoneDenied: "Only while you use it"
         }
     }
     var primary: LocalizedStringKey {
         switch self {
         case .bluetooth, .location: "Continue"
         case .bluetoothOff: "Turn on Bluetooth"
-        case .bluetoothDenied, .locationDenied: "Open Settings"
+        case .bluetoothDenied, .locationDenied, .cameraDenied, .microphoneDenied: "Open Settings"
         case .locationServicesOff: "Turn on Location Services"
         }
     }
@@ -312,7 +326,7 @@ struct PermissionSheet: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             ZStack(alignment: .bottomTrailing) {
-                Image(systemName: ask.isBluetooth ? "antenna.radiowaves.left.and.right" : "location.fill")
+                Image(systemName: ask.symbol)
                     .font(.system(size: 34, weight: .semibold)).foregroundStyle(.white)
                     .frame(width: 76, height: 76)
                     .background(LinearGradient(colors: [Color(hex: 0x3F8CFF), Theme.actionBlue], startPoint: .top, endPoint: .bottom),
@@ -354,7 +368,14 @@ struct PermissionSheet: View {
     }
 
     @ViewBuilder private var illustration: some View {
-        if ask.isBluetooth { RadarPicture() } else { MapPicture() }
+        if ask.isBluetooth { RadarPicture() }
+        else if ask.isLocation { MapPicture() }
+        else {
+            ZStack {
+                LinearGradient(colors: [Color(hex: 0xE8F1FF), Color(hex: 0xD3E4FF)], startPoint: .top, endPoint: .bottom)
+                Image(systemName: ask.symbol).font(.system(size: 64, weight: .regular)).foregroundStyle(Theme.actionBlue.opacity(0.75))
+            }
+        }
     }
 }
 
@@ -404,6 +425,18 @@ private struct MapPicture: View {
                 .shadow(color: .black.opacity(0.2), radius: 4)
                 .background(Circle().fill(Theme.actionBlue.opacity(0.15)).frame(width: 70, height: 70))
                 .offset(x: 10, y: 6)
+        }
+    }
+}
+
+/// The camera for photos and QR scanning: go ahead when allowed, ask iOS the first time, or report that it was refused.
+enum CameraAccess {
+    static func check(ok: @escaping () -> Void, denied: @escaping () -> Void) {
+        switch AVCaptureDevice.authorizationStatus(for: .video) {
+        case .authorized: ok()
+        case .notDetermined:
+            AVCaptureDevice.requestAccess(for: .video) { granted in DispatchQueue.main.async { granted ? ok() : denied() } }
+        default: denied()
         }
     }
 }

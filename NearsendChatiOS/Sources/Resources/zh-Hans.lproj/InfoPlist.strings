@@ -1,5 +1,5 @@
 "NSBluetoothAlwaysUsageDescription" = "Nearsend Chat 使用蓝牙查找附近的人并在无网络时收发消息。";
-"NSLocalNetworkUsageDescription" = "Nearsend Chat 使用本地网络连接附近的设备。";
+"NSFaceIDUsageDescription" = "Nearsend Chat 使用面容 ID 打开应用或你已锁定的聊天。";
 "NSLocationWhenInUseUsageDescription" = "仅在你于聊天中分享位置或发送 SOS 时使用，以便附近的人找到你。";
-"NSCameraUsageDescription" = "仅在你拍照并发送到聊天时使用。";
+"NSCameraUsageDescription" = "仅在你拍照发送到聊天或扫描朋友的二维码时使用。不会录制或上传任何内容。";
 "NSMicrophoneUsageDescription" = "仅在你按住麦克风按钮录制语音消息时使用。";

@@ -448,6 +448,13 @@
 "Location Services is off" = "Службы геолокации выключены";
 "Attaching your position needs Location Services. Tap Turn on Location Services, then Settings, and switch it on." = "Чтобы прикрепить позицию, нужны службы геолокации. Нажмите «Включить геолокацию», затем «Настройки», и включите её.";
 "Turn on Location Services" = "Включить геолокацию";
+"Camera is off for Nearsend Chat" = "Камера выключена для Nearsend Chat";
+"To take photos and scan QR codes, allow the camera in Settings › Nearsend Chat › Camera." = "Чтобы снимать фото и сканировать QR-коды, разрешите камеру в Настройки › Nearsend Chat › Камера.";
+"Microphone is off for Nearsend Chat" = "Микрофон выключен для Nearsend Chat";
+"To record voice notes, allow the microphone in Settings › Nearsend Chat › Microphone." = "Чтобы записывать голосовые, разрешите микрофон в Настройки › Nearsend Chat › Микрофон.";
+"Only while you use it" = "Только во время использования";
+"Notifications are off" = "Уведомления выключены";
+"Nearsend Chat can't show notifications. Turn them on in Settings › Nearsend Chat › Notifications." = "Nearsend Chat не может показывать уведомления. Включите их в Настройки › Nearsend Chat › Уведомления.";
 "Report" = "Пожаловаться";
 "Contact us" = "Связаться с нами";
 "Copy address" = "Скопировать адрес";

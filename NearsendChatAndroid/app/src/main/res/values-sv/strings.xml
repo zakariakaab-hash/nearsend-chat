@@ -450,6 +450,13 @@
     <string name="perm_ls_title">Platstjänster är avstängda</string>
     <string name="perm_ls_body">För att bifoga din position behövs Platstjänster. Tryck på Slå på Platstjänster, sedan Inställningar, och slå på det.</string>
     <string name="perm_ls_button">Slå på Platstjänster</string>
+    <string name="perm_cam_title">Kameran är avstängd för Nearsend Chat</string>
+    <string name="perm_cam_body">För att ta foton och skanna QR-koder, tillåt kameran i Inställningar › Nearsend Chat › Kamera.</string>
+    <string name="perm_mic_title">Mikrofonen är avstängd för Nearsend Chat</string>
+    <string name="perm_mic_body">För att spela in röstmeddelanden, tillåt mikrofonen i Inställningar › Nearsend Chat › Mikrofon.</string>
+    <string name="perm_chip_use">Bara när du använder den</string>
+    <string name="notif_off_head">Notiser är avstängda</string>
+    <string name="notif_off_foot">Nearsend Chat kan inte visa notiser. Slå på dem i Inställningar › Nearsend Chat › Notiser.</string>
     <string name="report">Rapportera</string>
     <string name="contact_us">Kontakta oss</string>
     <string name="copy_address">Kopiera adress</string>

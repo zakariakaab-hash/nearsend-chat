@@ -1,5 +1,6 @@
 import LocalAuthentication
 import SwiftUI
+import UserNotifications
 import VisionKit
 
 struct IdentityView: View {
@@ -8,6 +9,7 @@ struct IdentityView: View {
     @State private var pickAvatar = false
 
     @State private var showScanner = false
+    @State private var cameraAsk: PermissionAsk?
     @AppStorage("language") private var language = "system"
     @State private var showMyCode = false
     @State private var scanResult: String?      // the verified person's name, or "" when the code matched nobody
@@ -36,8 +38,8 @@ struct IdentityView: View {
                             Label("My code", systemImage: "qrcode").font(.subheadline.weight(.semibold)).frame(maxWidth: .infinity, minHeight: 44)
                                 .foregroundStyle(.white).background(Theme.actionBlue, in: Capsule())
                         }
-                        if CodeScanner.available {
-                            Button { showScanner = true } label: {
+                        if CodeScanner.supported {
+                            Button { CameraAccess.check(ok: { showScanner = true }, denied: { cameraAsk = .cameraDenied }) } label: {
                                 Label("Scan", systemImage: "qrcode.viewfinder").font(.subheadline.weight(.semibold)).frame(maxWidth: .infinity, minHeight: 44)
                                     .foregroundStyle(Theme.link).background(Theme.actionBlue.opacity(0.12), in: Capsule())
                             }
@@ -90,6 +92,7 @@ struct IdentityView: View {
             }
             .toolbar(.hidden, for: .navigationBar)
             .sheet(isPresented: $pickAvatar) { AvatarPickerSheet().environmentObject(store) }
+            .sheet(item: $cameraAsk) { a in PermissionSheet(ask: a) { SystemSettings.open() } }
             .sheet(isPresented: $showMyCode) { MyCodeSheet(payload: store.myCodePayload, fingerprint: store.myFingerprint, contactCode: store.myContactCode) }
             .fullScreenCover(isPresented: $showScanner) {
                 CodeScanner { code in
@@ -225,8 +228,18 @@ struct PrivacySettingsView: View {
 
 struct NotificationSettingsView: View {
     @EnvironmentObject var store: ChatStore
+    @Environment(\.scenePhase) private var scenePhase
+    @State private var systemOff = false
     var body: some View {
         SettingsPage(title: "Notifications") {
+            if systemOff {
+                // Switched off for the whole app in iOS Settings: nothing below can show until it is on again.
+                Section {
+                    Button { SystemSettings.open() } label: { Label("Open Settings", systemImage: "gear") }.foregroundStyle(Theme.ink)
+                } header: { settingHead("Notifications are off") } footer: {
+                    settingFoot("Nearsend Chat can't show notifications. Turn them on in Settings › Nearsend Chat › Notifications.")
+                }
+            }
             Section {
                 settingToggle("Hide text in notifications", "Notifications show who wrote, not what.", icon: "bell.slash", $store.hidePreviews)
                 settingToggle("Notify me when a friend is nearby", "When someone you chat with comes back in range after 30 minutes away. At most every 2 hours per person. Works while the app is open or running in the background.",
@@ -234,6 +247,9 @@ struct NotificationSettingsView: View {
                 settingToggle("Announcements", "Show announcements from people nearby and notify me. Off: they are hidden, but your phone still passes them on.",
                               icon: "megaphone", $store.showAnnouncements)
             }
+        }
+        .task(id: scenePhase) {
+            systemOff = await UNUserNotificationCenter.current().notificationSettings().authorizationStatus == .denied
         }
     }
 }
@@ -622,6 +638,8 @@ struct MyCodeSheet: View {
 struct CodeScanner: UIViewControllerRepresentable {
     let done: (String?) -> Void
     static var available: Bool { DataScannerViewController.isSupported && DataScannerViewController.isAvailable }
+    /// The device can scan (it may still need the camera permission): decides whether Scan buttons are shown.
+    static var supported: Bool { DataScannerViewController.isSupported }
     func makeUIViewController(context: Context) -> UINavigationController {
         let scanner = DataScannerViewController(recognizedDataTypes: [.barcode(symbologies: [.qr])], qualityLevel: .balanced,
                                                 isHighlightingEnabled: true)

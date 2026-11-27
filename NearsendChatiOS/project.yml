@@ -25,7 +25,7 @@ targets:
         ITSAppUsesNonExemptEncryption: false   # only Apple's CryptoKit (exempt); answered in App Store Connect on 25 Nov 2026
         NSFaceIDUsageDescription: Nearsend Chat uses Face ID to open the app or chats you have locked.
         NSMicrophoneUsageDescription: Only used while you hold the microphone button to record a voice message.
-        NSCameraUsageDescription: Only used when you take a photo to send in a chat.
+        NSCameraUsageDescription: Used when you take a photo to send in a chat or scan a friend's QR code. Nothing is recorded or uploaded.
         NSLocationWhenInUseUsageDescription: Only used when you share your location in a chat or send an SOS, so people nearby can find you.
         UIBackgroundModes: [bluetooth-central, bluetooth-peripheral]
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
