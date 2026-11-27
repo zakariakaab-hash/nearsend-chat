@@ -298,6 +298,8 @@ enum PermissionAsk: String, Identifiable {
 
 struct PermissionSheet: View {
     let ask: PermissionAsk
+    /// Off at the end of onboarding: "Not now" would leave the person stuck on the last page.
+    var allowsLater = true
     var onPrimary: () -> Void = {}
     @Environment(\.dismiss) private var dismiss
 
@@ -330,7 +332,7 @@ struct PermissionSheet: View {
                     Text(ask.primary).font(.headline).frame(maxWidth: .infinity, minHeight: 52)
                         .foregroundStyle(.white).background(Theme.actionBlue, in: Capsule())
                 }
-                if ask.hasSecondary {
+                if ask.hasSecondary && allowsLater {
                     Button { dismiss() } label: {
                         Text("Not now").font(.headline).frame(maxWidth: .infinity, minHeight: 52)
                             .foregroundStyle(Theme.ink).background(Theme.ink.opacity(0.08), in: Capsule())
@@ -340,7 +342,7 @@ struct PermissionSheet: View {
         }
         .padding(24)
         .frame(maxHeight: .infinity, alignment: .top)
-        .presentationDetents([.height(ask.hasSecondary ? 680 : 620), .large])
+        .presentationDetents([.height(ask.hasSecondary && allowsLater ? 680 : 620), .large])
         .presentationCornerRadius(36)
     }
 
