@@ -1,4 +1,4 @@
-import AVFoundation
+@preconcurrency import AVFoundation
 import LocalAuthentication
 import MapKit
 import PhotosUI
@@ -23,6 +23,7 @@ struct ThreadView: View {
     @State private var bigPhoto: String?
     @State private var noPosition = false
     @State private var locationAsk: PermissionAsk?
+    private static var offeredNotifications = false
     @State private var blockTarget: String?
     @State private var report: URL?
     @State private var replyTo: Message?
@@ -114,10 +115,10 @@ struct ThreadView: View {
                         hasCamera: UIImagePickerController.isSourceTypeAvailable(.camera)) { choice in
                 switch choice {
                 case .photo: afterAttach = { showPhotoPicker = true }
-                case .camera: afterAttach = { CameraAccess.check(ok: { showCamera = true }, denied: { locationAsk = .cameraDenied }) }
+                case .camera: afterAttach = { if let a = Permissions.cameraAsk() { locationAsk = a } else { showCamera = true } }
                 case .location:
-                    if store.hasLocationPermission { store.sendLocation(in: conversationID) { ok in if !ok { noPosition = true } } }
-                    else { let a: PermissionAsk = store.locationStatus == .notDetermined ? .location : .locationDenied; afterAttach = { locationAsk = a } }
+                    if let a = Permissions.locationAsk(store.locationStatus) { afterAttach = { locationAsk = a } }
+                    else { store.sendLocation(in: conversationID) { ok in if !ok { noPosition = true } } }
                 }
                 showAttach = false
             }
@@ -147,7 +148,28 @@ struct ThreadView: View {
         .opensMail($report)
         .alert("Couldn't use this picture", isPresented: $store.photoError) { Button("Close", role: .cancel) {} }
         .alert("No position yet. Try again outdoors.", isPresented: $noPosition) { Button("Close", role: .cancel) {} }
-        .permissionDialog(item: $locationAsk, onPrimary: { a in if a == .location { store.requestLocation() } else { SystemSettings.open() } })
+        // One dialog slot for this chat: location, camera and notifications, each explained before iOS asks.
+        .permissionDialog(item: $locationAsk, onPrimary: { a in
+            switch a {
+            case .location: store.requestLocation()
+            case .camera: Permissions.requestCamera { if $0 { showCamera = true } }
+            case .notifications: Notifier.requestPermission()
+            case .restricted: break
+            default: SystemSettings.open()
+            }
+        })
+        // Notifications are offered after the person's first sent message, not on first launch.
+        .onChange(of: messages.last?.id) { _, _ in
+            guard messages.last?.mine == true else { return }
+            Task {
+                let status = await Permissions.notifications()
+                guard NotificationOffer.shouldOffer(status: status, hasSentMessage: true, offeredThisLaunch: Self.offeredNotifications)
+                else { return }
+                Self.offeredNotifications = true
+                try? await Task.sleep(for: .milliseconds(800))
+                if locationAsk == nil { locationAsk = .notifications }
+            }
+        }
         .fullScreenCover(isPresented: Binding(get: { bigPhoto != nil }, set: { if !$0 { bigPhoto = nil } })) {
             ZStack {
                 Color.black.ignoresSafeArea()
@@ -813,6 +835,17 @@ struct VoiceRecordButton: View {
     @ObservedObject var recorder: VoiceRecorder
     let send: (Data) -> Void
     @State private var cancelling = false
+    @State private var micAsk: PermissionAsk?
+    @State private var checkedThisPress = false
+
+    /// Records only when the microphone is allowed; otherwise explains first (or says it is off) instead of starting.
+    private func startIfAllowed() {
+        if let a = Permissions.microphoneAsk() {
+            if !checkedThisPress { checkedThisPress = true; micAsk = a }
+        } else {
+            recorder.start(onFinish: send)
+        }
+    }
     var body: some View {
         Image(systemName: "mic.fill").font(.system(size: 18, weight: .bold)).foregroundStyle(.white)
             .frame(width: 46, height: 46)
@@ -823,19 +856,23 @@ struct VoiceRecordButton: View {
             .gesture(
                 DragGesture(minimumDistance: 0)
                     .onChanged { v in
-                        if !recorder.isRecording && !cancelling { recorder.start(onFinish: send) }
+                        if !recorder.isRecording && !cancelling { startIfAllowed() }
                         cancelling = v.translation.width < -90
                         if cancelling { recorder.stop(cancel: true) }
                     }
                     .onEnded { _ in
                         if !cancelling { recorder.stop() }
-                        cancelling = false
+                        cancelling = false; checkedThisPress = false
                     }
             )
             .accessibilityLabel(Text(recorder.isRecording ? "Stop and send voice message" : "Record voice message"))
             .accessibilityAddTraits(.isButton)
             // VoiceOver cannot hold: activating starts recording, activating again sends it.
-            .accessibilityAction { if recorder.isRecording { recorder.stop() } else { recorder.start(onFinish: send) } }
+            .accessibilityAction { if recorder.isRecording { recorder.stop() } else { checkedThisPress = false; startIfAllowed() } }
+            .permissionDialog(item: $micAsk, onPrimary: { a in
+                if a == .microphone { Permissions.requestMicrophone { _ in } }
+                else if a == .microphoneDenied { SystemSettings.open() }
+            })
             .permissionDialog(isPresented: $recorder.denied, ask: .microphoneDenied, onPrimary: { SystemSettings.open() })
     }
 }

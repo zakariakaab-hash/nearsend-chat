@@ -457,6 +457,16 @@
     <string name="perm_chip_use">Yalnızca kullanırken</string>
     <string name="notif_off_head">Bildirimler kapalı</string>
     <string name="notif_off_foot">Nearsend Chat bildirim gösteremiyor. Ayarlar › Nearsend Chat › Bildirimler\'den aç.</string>
+    <string name="perm_cam_ask_title">Kamera kullanılsın mı?</string>
+    <string name="perm_cam_ask_body">Sohbet için fotoğraf çekmek veya bir arkadaşının QR kodunu taramak için. Hiçbir şey kaydedilmez veya yüklenmez. Ardından iPhone soracak.</string>
+    <string name="perm_mic_ask_title">Mikrofon kullanılsın mı?</string>
+    <string name="perm_mic_ask_body">Yalnızca sesli not kaydetmek için mikrofon düğmesini basılı tuttuğunda. Ardından iPhone soracak; sonra düğmeyi tekrar basılı tut.</string>
+    <string name="perm_notif_title">Yanıt verdiklerinde haberin olsun mu?</string>
+    <string name="perm_notif_body">Nearsend Chat, uygulama arka plandayken mesaj geldiğinde sana haber verebilir. Metni gizleyebilir veya bunu istediğin zaman kapatabilirsin. Ardından iPhone soracak.</string>
+    <string name="perm_restricted_title">Bu iPhone\'da engellendi</string>
+    <string name="perm_restricted_body">Bu, bu iPhone\'da Ekran Süresi veya bir profil tarafından kapatılmış; Nearsend Chat\'in kendi ayarları bunu değiştiremez. Telefonu yöneten kişiye sor veya Ayarlar › Ekran Süresi › İçerik ve Gizlilik Sınırlamaları\'na bak.</string>
+    <string name="perm_chip_notif">Metni istediğin zaman gizle</string>
+    <string name="perm_chip_restricted">Ekran Süresi tarafından yönetiliyor</string>
     <string name="report">Bildir</string>
     <string name="contact_us">Bize ulaşın</string>
     <string name="copy_address">Adresi kopyala</string>

@@ -457,6 +457,16 @@
     <string name="perm_chip_use">Seulement pendant l\'utilisation</string>
     <string name="notif_off_head">Les notifications sont désactivées</string>
     <string name="notif_off_foot">Nearsend Chat ne peut pas afficher de notifications. Activez-les dans Réglages › Nearsend Chat › Notifications.</string>
+    <string name="perm_cam_ask_title">Utiliser l\'appareil photo ?</string>
+    <string name="perm_cam_ask_body">Pour prendre une photo pour une discussion ou scanner le code QR d\'un ami. Rien n\'est enregistré ni envoyé en ligne. Votre iPhone vous demande ensuite.</string>
+    <string name="perm_mic_ask_title">Utiliser le micro ?</string>
+    <string name="perm_mic_ask_body">Seulement pendant que vous maintenez le bouton du micro pour enregistrer un message vocal. Votre iPhone vous demande ensuite ; puis maintenez à nouveau le bouton.</string>
+    <string name="perm_notif_title">Savoir quand on vous répond ?</string>
+    <string name="perm_notif_body">Nearsend Chat peut vous prévenir quand un message arrive pendant que l\'app est en arrière-plan. Vous pouvez masquer le texte ou désactiver cela à tout moment. Votre iPhone vous demande ensuite.</string>
+    <string name="perm_restricted_title">Bloqué sur cet iPhone</string>
+    <string name="perm_restricted_body">C\'est désactivé par Temps d\'écran ou un profil sur cet iPhone, donc les réglages de Nearsend Chat ne peuvent pas le changer. Demandez à la personne qui gère le téléphone, ou vérifiez Réglages › Temps d\'écran › Restrictions relatives au contenu et à la confidentialité.</string>
+    <string name="perm_chip_notif">Masquez le texte à tout moment</string>
+    <string name="perm_chip_restricted">Géré par Temps d\'écran</string>
     <string name="report">Signaler</string>
     <string name="contact_us">Nous contacter</string>
     <string name="copy_address">Copier l\'adresse</string>

@@ -39,7 +39,7 @@ struct IdentityView: View {
                                 .foregroundStyle(.white).background(Theme.actionBlue, in: Capsule())
                         }
                         if CodeScanner.supported {
-                            Button { CameraAccess.check(ok: { showScanner = true }, denied: { cameraAsk = .cameraDenied }) } label: {
+                            Button { if let a = Permissions.cameraAsk() { cameraAsk = a } else { showScanner = true } } label: {
                                 Label("Scan", systemImage: "qrcode.viewfinder").font(.subheadline.weight(.semibold)).frame(maxWidth: .infinity, minHeight: 44)
                                     .foregroundStyle(Theme.link).background(Theme.actionBlue.opacity(0.12), in: Capsule())
                             }
@@ -92,7 +92,10 @@ struct IdentityView: View {
             }
             .toolbar(.hidden, for: .navigationBar)
             .sheet(isPresented: $pickAvatar) { AvatarPickerSheet().environmentObject(store) }
-            .permissionDialog(item: $cameraAsk, onPrimary: { _ in SystemSettings.open() })
+            .permissionDialog(item: $cameraAsk, onPrimary: { a in
+                if a == .camera { Permissions.requestCamera { if $0 { showScanner = true } } }
+                else if a == .cameraDenied { SystemSettings.open() }
+            })
             .sheet(isPresented: $showMyCode) { MyCodeSheet(payload: store.myCodePayload, fingerprint: store.myFingerprint, contactCode: store.myContactCode) }
             .fullScreenCover(isPresented: $showScanner) {
                 CodeScanner { code in

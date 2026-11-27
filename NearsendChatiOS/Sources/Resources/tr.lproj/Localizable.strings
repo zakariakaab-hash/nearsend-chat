@@ -455,6 +455,16 @@
 "Only while you use it" = "Yalnızca kullanırken";
 "Notifications are off" = "Bildirimler kapalı";
 "Nearsend Chat can't show notifications. Turn them on in Settings › Nearsend Chat › Notifications." = "Nearsend Chat bildirim gösteremiyor. Ayarlar › Nearsend Chat › Bildirimler'den aç.";
+"Use the camera?" = "Kamera kullanılsın mı?";
+"To take a photo for a chat or scan a friend's QR code. Nothing is recorded or uploaded. Your iPhone asks next." = "Sohbet için fotoğraf çekmek veya bir arkadaşının QR kodunu taramak için. Hiçbir şey kaydedilmez veya yüklenmez. Ardından iPhone soracak.";
+"Use the microphone?" = "Mikrofon kullanılsın mı?";
+"Only while you hold the microphone button to record a voice note. Your iPhone asks next; then hold the button again." = "Yalnızca sesli not kaydetmek için mikrofon düğmesini basılı tuttuğunda. Ardından iPhone soracak; sonra düğmeyi tekrar basılı tut.";
+"Know when they reply?" = "Yanıt verdiklerinde haberin olsun mu?";
+"Nearsend Chat can tell you when a message arrives while the app is in the background. You can hide the text or turn this off any time. Your iPhone asks next." = "Nearsend Chat, uygulama arka plandayken mesaj geldiğinde sana haber verebilir. Metni gizleyebilir veya bunu istediğin zaman kapatabilirsin. Ardından iPhone soracak.";
+"Blocked on this iPhone" = "Bu iPhone'da engellendi";
+"This is turned off by Screen Time or a profile on this iPhone, so Nearsend Chat's own settings can't change it. Ask whoever manages the phone, or check Settings › Screen Time › Content & Privacy Restrictions." = "Bu, bu iPhone'da Ekran Süresi veya bir profil tarafından kapatılmış; Nearsend Chat'in kendi ayarları bunu değiştiremez. Telefonu yöneten kişiye sor veya Ayarlar › Ekran Süresi › İçerik ve Gizlilik Sınırlamaları'na bak.";
+"Hide the text any time" = "Metni istediğin zaman gizle";
+"Managed by Screen Time" = "Ekran Süresi tarafından yönetiliyor";
 "Report" = "Bildir";
 "Contact us" = "Bize ulaşın";
 "Copy address" = "Adresi kopyala";

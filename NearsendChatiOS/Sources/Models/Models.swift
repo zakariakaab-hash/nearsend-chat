@@ -201,3 +201,34 @@ struct SosAlert: Identifiable, Hashable {
 
 /// The public "everyone nearby" channel lives in a conversation with this id.
 let publicChannelID = "public"
+
+// MARK: - Permissions
+
+/// Where a permission stands, the same four states for every kind (Bluetooth, location, camera, microphone,
+/// notifications). App code maps each framework's own status onto this, so one rule decides what to show.
+enum PermissionStatus: Equatable { case notAsked, allowed, denied, restricted }
+
+/// What to do before using a feature that needs a permission.
+enum PermissionStep: Equatable {
+    case proceed          // allowed: use it
+    case explainThenAsk   // never asked: our explanation first, then iOS's own prompt
+    case openSettings     // refused: say so and offer the app's page in Settings
+    case blocked          // restricted (Screen Time or a device profile): say so; the app's Settings page cannot change it
+
+    static func step(_ s: PermissionStatus) -> PermissionStep {
+        switch s {
+        case .allowed: .proceed
+        case .notAsked: .explainThenAsk
+        case .denied: .openSettings
+        case .restricted: .blocked
+        }
+    }
+}
+
+/// Notifications are offered once the person has chatted (after their first sent message), never on first launch,
+/// at most once per launch, and only while iOS has not asked yet.
+enum NotificationOffer {
+    static func shouldOffer(status: PermissionStatus, hasSentMessage: Bool, offeredThisLaunch: Bool) -> Bool {
+        status == .notAsked && hasSentMessage && !offeredThisLaunch
+    }
+}

@@ -455,6 +455,16 @@
 "Only while you use it" = "Solo mentre lo usi";
 "Notifications are off" = "Le notifiche sono disattivate";
 "Nearsend Chat can't show notifications. Turn them on in Settings › Nearsend Chat › Notifications." = "Nearsend Chat non può mostrare notifiche. Attivale in Impostazioni › Nearsend Chat › Notifiche.";
+"Use the camera?" = "Usare la fotocamera?";
+"To take a photo for a chat or scan a friend's QR code. Nothing is recorded or uploaded. Your iPhone asks next." = "Per scattare una foto per una chat o inquadrare il codice QR di un amico. Niente viene registrato o caricato. Poi te lo chiede l'iPhone.";
+"Use the microphone?" = "Usare il microfono?";
+"Only while you hold the microphone button to record a voice note. Your iPhone asks next; then hold the button again." = "Solo mentre tieni premuto il pulsante del microfono per registrare una nota vocale. Poi te lo chiede l'iPhone; quindi tieni di nuovo premuto il pulsante.";
+"Know when they reply?" = "Sapere quando rispondono?";
+"Nearsend Chat can tell you when a message arrives while the app is in the background. You can hide the text or turn this off any time. Your iPhone asks next." = "Nearsend Chat può avvisarti quando arriva un messaggio mentre l'app è in background. Puoi nascondere il testo o disattivarlo quando vuoi. Poi te lo chiede l'iPhone.";
+"Blocked on this iPhone" = "Bloccato su questo iPhone";
+"This is turned off by Screen Time or a profile on this iPhone, so Nearsend Chat's own settings can't change it. Ask whoever manages the phone, or check Settings › Screen Time › Content & Privacy Restrictions." = "È disattivato da Tempo di utilizzo o da un profilo su questo iPhone, quindi le impostazioni di Nearsend Chat non possono cambiarlo. Chiedi a chi gestisce il telefono o controlla Impostazioni › Tempo di utilizzo › Restrizioni contenuti e privacy.";
+"Hide the text any time" = "Nascondi il testo quando vuoi";
+"Managed by Screen Time" = "Gestito da Tempo di utilizzo";
 "Report" = "Segnala";
 "Contact us" = "Contattaci";
 "Copy address" = "Copia indirizzo";

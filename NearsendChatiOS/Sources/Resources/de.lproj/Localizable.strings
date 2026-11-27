@@ -455,6 +455,16 @@
 "Only while you use it" = "Nur während du es nutzt";
 "Notifications are off" = "Mitteilungen sind aus";
 "Nearsend Chat can't show notifications. Turn them on in Settings › Nearsend Chat › Notifications." = "Nearsend Chat kann keine Mitteilungen anzeigen. Schalte sie in Einstellungen › Nearsend Chat › Mitteilungen ein.";
+"Use the camera?" = "Kamera verwenden?";
+"To take a photo for a chat or scan a friend's QR code. Nothing is recorded or uploaded. Your iPhone asks next." = "Um ein Foto für einen Chat aufzunehmen oder den QR-Code eines Freundes zu scannen. Nichts wird aufgezeichnet oder hochgeladen. Dein iPhone fragt gleich.";
+"Use the microphone?" = "Mikrofon verwenden?";
+"Only while you hold the microphone button to record a voice note. Your iPhone asks next; then hold the button again." = "Nur während du die Mikrofontaste gedrückt hältst, um eine Sprachnachricht aufzunehmen. Dein iPhone fragt gleich; halte die Taste danach erneut gedrückt.";
+"Know when they reply?" = "Wissen, wann sie antworten?";
+"Nearsend Chat can tell you when a message arrives while the app is in the background. You can hide the text or turn this off any time. Your iPhone asks next." = "Nearsend Chat kann dir Bescheid geben, wenn eine Nachricht ankommt, während die App im Hintergrund ist. Du kannst den Text ausblenden oder das jederzeit ausschalten. Dein iPhone fragt gleich.";
+"Blocked on this iPhone" = "Auf diesem iPhone gesperrt";
+"This is turned off by Screen Time or a profile on this iPhone, so Nearsend Chat's own settings can't change it. Ask whoever manages the phone, or check Settings › Screen Time › Content & Privacy Restrictions." = "Das ist durch Bildschirmzeit oder ein Profil auf diesem iPhone gesperrt, deshalb können die Einstellungen von Nearsend Chat es nicht ändern. Frag die Person, die das Handy verwaltet, oder prüfe Einstellungen › Bildschirmzeit › Beschränkungen.";
+"Hide the text any time" = "Text jederzeit ausblenden";
+"Managed by Screen Time" = "Von Bildschirmzeit verwaltet";
 "Report" = "Melden";
 "Contact us" = "Kontakt";
 "Copy address" = "Adresse kopieren";

@@ -458,6 +458,16 @@
     <string name="perm_chip_use">Only while you use it</string>
     <string name="notif_off_head">Notifications are off</string>
     <string name="notif_off_foot">Nearsend Chat can\'t show notifications. Turn them on in Settings › Nearsend Chat › Notifications.</string>
+    <string name="perm_cam_ask_title">Use the camera?</string>
+    <string name="perm_cam_ask_body">To take a photo for a chat or scan a friend\'s QR code. Nothing is recorded or uploaded. Your iPhone asks next.</string>
+    <string name="perm_mic_ask_title">Use the microphone?</string>
+    <string name="perm_mic_ask_body">Only while you hold the microphone button to record a voice note. Your iPhone asks next; then hold the button again.</string>
+    <string name="perm_notif_title">Know when they reply?</string>
+    <string name="perm_notif_body">Nearsend Chat can tell you when a message arrives while the app is in the background. You can hide the text or turn this off any time. Your iPhone asks next.</string>
+    <string name="perm_restricted_title">Blocked on this iPhone</string>
+    <string name="perm_restricted_body">This is turned off by Screen Time or a profile on this iPhone, so Nearsend Chat\'s own settings can\'t change it. Ask whoever manages the phone, or check Settings › Screen Time › Content &amp; Privacy Restrictions.</string>
+    <string name="perm_chip_notif">Hide the text any time</string>
+    <string name="perm_chip_restricted">Managed by Screen Time</string>
     <string name="report">Report</string>
     <string name="contact_us">Contact us</string>
     <string name="copy_address">Copy address</string>

@@ -455,6 +455,16 @@
 "Only while you use it" = "Seulement pendant l'utilisation";
 "Notifications are off" = "Les notifications sont désactivées";
 "Nearsend Chat can't show notifications. Turn them on in Settings › Nearsend Chat › Notifications." = "Nearsend Chat ne peut pas afficher de notifications. Activez-les dans Réglages › Nearsend Chat › Notifications.";
+"Use the camera?" = "Utiliser l'appareil photo ?";
+"To take a photo for a chat or scan a friend's QR code. Nothing is recorded or uploaded. Your iPhone asks next." = "Pour prendre une photo pour une discussion ou scanner le code QR d'un ami. Rien n'est enregistré ni envoyé en ligne. Votre iPhone vous demande ensuite.";
+"Use the microphone?" = "Utiliser le micro ?";
+"Only while you hold the microphone button to record a voice note. Your iPhone asks next; then hold the button again." = "Seulement pendant que vous maintenez le bouton du micro pour enregistrer un message vocal. Votre iPhone vous demande ensuite ; puis maintenez à nouveau le bouton.";
+"Know when they reply?" = "Savoir quand on vous répond ?";
+"Nearsend Chat can tell you when a message arrives while the app is in the background. You can hide the text or turn this off any time. Your iPhone asks next." = "Nearsend Chat peut vous prévenir quand un message arrive pendant que l'app est en arrière-plan. Vous pouvez masquer le texte ou désactiver cela à tout moment. Votre iPhone vous demande ensuite.";
+"Blocked on this iPhone" = "Bloqué sur cet iPhone";
+"This is turned off by Screen Time or a profile on this iPhone, so Nearsend Chat's own settings can't change it. Ask whoever manages the phone, or check Settings › Screen Time › Content & Privacy Restrictions." = "C'est désactivé par Temps d'écran ou un profil sur cet iPhone, donc les réglages de Nearsend Chat ne peuvent pas le changer. Demandez à la personne qui gère le téléphone, ou vérifiez Réglages › Temps d'écran › Restrictions relatives au contenu et à la confidentialité.";
+"Hide the text any time" = "Masquez le texte à tout moment";
+"Managed by Screen Time" = "Géré par Temps d'écran";
 "Report" = "Signaler";
 "Contact us" = "Nous contacter";
 "Copy address" = "Copier l'adresse";

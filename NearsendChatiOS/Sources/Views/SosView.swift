@@ -36,6 +36,7 @@ struct SosView: View {
             .permissionDialog(item: $locationAsk, onPrimary: { a in
                 switch a {
                 case .location: store.requestLocation()
+                case .restricted: store.shareLocation = false
                 case .locationServicesOff: DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { LocationServicesAlert.show() }
                 default: SystemSettings.open()
                 }
@@ -45,9 +46,8 @@ struct SosView: View {
     /// Location for the SOS: ask iOS the first time; if it was refused, explain and offer Settings. Phone-wide Location
     /// Services off and Screen Time blocks are explained under the switch.
     private func ensureLocation() {
-        guard !store.hasLocationPermission, store.locationStatus != .restricted else { return }
-        if servicesOff { locationAsk = .locationServicesOff; return }
-        locationAsk = store.locationStatus == .notDetermined ? .location : .locationDenied
+        if servicesOff && !store.hasLocationPermission { locationAsk = .locationServicesOff; return }
+        locationAsk = Permissions.locationAsk(store.locationStatus)
     }
 
     private var sosContent: some View {
@@ -109,7 +109,7 @@ struct SosView: View {
                             Text("Location permission needed.").font(.footnote).foregroundStyle(sosRed)
                             Spacer()
                             Button("Allow") {
-                                locationAsk = store.locationStatus == .notDetermined ? .location : .locationDenied
+                                locationAsk = Permissions.locationAsk(store.locationStatus)
                             }.font(.footnote.weight(.semibold))
                         }
                     } else if let l = store.myLocation {

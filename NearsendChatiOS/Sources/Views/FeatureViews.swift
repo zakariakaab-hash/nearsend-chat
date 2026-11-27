@@ -1,5 +1,7 @@
 import AVFoundation
+import CoreLocation
 import SwiftUI
+import UserNotifications
 
 /// A small selectable pill (time choices, auto-delete choices).
 struct ChipButton<Label: View>: View {
@@ -259,14 +261,17 @@ struct ConfirmSheet: View {
 /// something is off or was refused) the app shows this sheet in the same spirit as iOS's location prompt: icon, title,
 /// one honest paragraph, a small picture of what it is for, and large buttons.
 enum PermissionAsk: String, Identifiable {
-    case bluetooth, bluetoothOff, bluetoothDenied, location, locationDenied, locationServicesOff, cameraDenied, microphoneDenied
+    case bluetooth, bluetoothOff, bluetoothDenied, location, locationDenied, locationServicesOff
+    case camera, cameraDenied, microphone, microphoneDenied, notifications, restricted
     var id: String { rawValue }
     var isBluetooth: Bool { [.bluetooth, .bluetoothOff, .bluetoothDenied].contains(self) }
     var isLocation: Bool { [.location, .locationDenied, .locationServicesOff].contains(self) }
     var symbol: String {
         switch self {
-        case .cameraDenied: "camera.fill"
-        case .microphoneDenied: "mic.fill"
+        case .camera, .cameraDenied: "camera.fill"
+        case .microphone, .microphoneDenied: "mic.fill"
+        case .notifications: "bell.badge.fill"
+        case .restricted: "lock.fill"
         default: isBluetooth ? "antenna.radiowaves.left.and.right" : "location.fill"
         }
     }
@@ -279,8 +284,12 @@ enum PermissionAsk: String, Identifiable {
         case .location: "Share your location?"
         case .locationDenied: "Location is off for Nearsend Chat"
         case .locationServicesOff: "Location Services is off"
+        case .camera: "Use the camera?"
         case .cameraDenied: "Camera is off for Nearsend Chat"
+        case .microphone: "Use the microphone?"
         case .microphoneDenied: "Microphone is off for Nearsend Chat"
+        case .notifications: "Know when they reply?"
+        case .restricted: "Blocked on this iPhone"
         }
     }
     var message: LocalizedStringKey {
@@ -291,26 +300,33 @@ enum PermissionAsk: String, Identifiable {
         case .location: "Only when you share it in a chat or attach it to an SOS. It goes over Bluetooth to the people you choose, never to us. Your iPhone asks next."
         case .locationDenied: "To share your position, allow location in Settings › Nearsend Chat › Location."
         case .locationServicesOff: "Attaching your position needs Location Services. Tap Turn on Location Services, then Settings, and switch it on."
+        case .camera: "To take a photo for a chat or scan a friend's QR code. Nothing is recorded or uploaded. Your iPhone asks next."
         case .cameraDenied: "To take photos and scan QR codes, allow the camera in Settings › Nearsend Chat › Camera."
+        case .microphone: "Only while you hold the microphone button to record a voice note. Your iPhone asks next; then hold the button again."
         case .microphoneDenied: "To record voice notes, allow the microphone in Settings › Nearsend Chat › Microphone."
+        case .notifications: "Nearsend Chat can tell you when a message arrives while the app is in the background. You can hide the text or turn this off any time. Your iPhone asks next."
+        case .restricted: "This is turned off by Screen Time or a profile on this iPhone, so Nearsend Chat's own settings can't change it. Ask whoever manages the phone, or check Settings › Screen Time › Content & Privacy Restrictions."
         }
     }
     var chip: LocalizedStringKey {
         switch self {
         case .bluetooth, .bluetoothOff, .bluetoothDenied: "No internet needed"
         case .location, .locationDenied, .locationServicesOff: "Only when you share"
-        case .cameraDenied, .microphoneDenied: "Only while you use it"
+        case .camera, .cameraDenied, .microphone, .microphoneDenied: "Only while you use it"
+        case .notifications: "Hide the text any time"
+        case .restricted: "Managed by Screen Time"
         }
     }
     var primary: LocalizedStringKey {
         switch self {
-        case .bluetooth, .location: "Continue"
+        case .bluetooth, .location, .camera, .microphone, .notifications: "Continue"
+        case .restricted: "OK"
         case .bluetoothOff: "Turn on Bluetooth"
         case .bluetoothDenied, .locationDenied, .cameraDenied, .microphoneDenied: "Open Settings"
         case .locationServicesOff: "Turn on Location Services"
         }
     }
-    var hasSecondary: Bool { true }
+    var hasSecondary: Bool { self != .restricted }
 }
 
 /// A dialog like iOS's own permission prompts: a solid card in the middle of a dimmed screen, fading in and out.
@@ -459,15 +475,59 @@ private struct MapPicture: View {
     }
 }
 
-/// The camera for photos and QR scanning: go ahead when allowed, ask iOS the first time, or report that it was refused.
-enum CameraAccess {
-    static func check(ok: @escaping () -> Void, denied: @escaping () -> Void) {
+/// Each framework's own permission status mapped onto the shared `PermissionStatus` (see `PermissionStep`), plus the
+/// requests themselves. Nothing here shows UI; callers pick the dialog from the step.
+enum Permissions {
+    static var camera: PermissionStatus {
         switch AVCaptureDevice.authorizationStatus(for: .video) {
-        case .authorized: ok()
-        case .notDetermined:
-            AVCaptureDevice.requestAccess(for: .video) { granted in DispatchQueue.main.async { granted ? ok() : denied() } }
-        default: denied()
+        case .authorized: .allowed
+        case .notDetermined: .notAsked
+        case .restricted: .restricted
+        default: .denied
         }
+    }
+    static var microphone: PermissionStatus {
+        switch AVAudioApplication.shared.recordPermission {
+        case .granted: .allowed
+        case .undetermined: .notAsked
+        default: .denied            // iOS reports Screen Time blocks as denied for the microphone
+        }
+    }
+    static func location(_ s: CLAuthorizationStatus) -> PermissionStatus {
+        switch s {
+        case .authorizedWhenInUse, .authorizedAlways: .allowed
+        case .notDetermined: .notAsked
+        case .restricted: .restricted
+        default: .denied
+        }
+    }
+    static func notifications() async -> PermissionStatus {
+        switch await UNUserNotificationCenter.current().notificationSettings().authorizationStatus {
+        case .authorized, .provisional, .ephemeral: .allowed
+        case .notDetermined: .notAsked
+        default: .denied
+        }
+    }
+
+    /// The dialog to show before using the camera, or nil when it may be used now.
+    static func cameraAsk() -> PermissionAsk? { ask(PermissionStep.step(camera), explain: .camera, denied: .cameraDenied) }
+    static func microphoneAsk() -> PermissionAsk? { ask(PermissionStep.step(microphone), explain: .microphone, denied: .microphoneDenied) }
+    static func locationAsk(_ s: CLAuthorizationStatus) -> PermissionAsk? { ask(PermissionStep.step(location(s)), explain: .location, denied: .locationDenied) }
+
+    private static func ask(_ step: PermissionStep, explain: PermissionAsk, denied: PermissionAsk) -> PermissionAsk? {
+        switch step {
+        case .proceed: nil
+        case .explainThenAsk: explain
+        case .openSettings: denied
+        case .blocked: .restricted
+        }
+    }
+
+    static func requestCamera(then done: @escaping (Bool) -> Void) {
+        AVCaptureDevice.requestAccess(for: .video) { ok in DispatchQueue.main.async { done(ok) } }
+    }
+    static func requestMicrophone(then done: @escaping (Bool) -> Void) {
+        AVAudioApplication.requestRecordPermission { ok in DispatchQueue.main.async { done(ok) } }
     }
 }
 

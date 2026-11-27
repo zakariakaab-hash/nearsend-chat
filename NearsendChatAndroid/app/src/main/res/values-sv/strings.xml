@@ -457,6 +457,16 @@
     <string name="perm_chip_use">Bara när du använder den</string>
     <string name="notif_off_head">Notiser är avstängda</string>
     <string name="notif_off_foot">Nearsend Chat kan inte visa notiser. Slå på dem i Inställningar › Nearsend Chat › Notiser.</string>
+    <string name="perm_cam_ask_title">Använda kameran?</string>
+    <string name="perm_cam_ask_body">För att ta ett foto till en chatt eller skanna en väns QR-kod. Inget spelas in eller laddas upp. Din iPhone frågar sedan.</string>
+    <string name="perm_mic_ask_title">Använda mikrofonen?</string>
+    <string name="perm_mic_ask_body">Bara medan du håller in mikrofonknappen för att spela in ett röstmeddelande. Din iPhone frågar sedan; håll sedan in knappen igen.</string>
+    <string name="perm_notif_title">Vill du veta när de svarar?</string>
+    <string name="perm_notif_body">Nearsend Chat kan meddela dig när ett meddelande kommer medan appen är i bakgrunden. Du kan dölja texten eller stänga av det när som helst. Din iPhone frågar sedan.</string>
+    <string name="perm_restricted_title">Blockerat på den här iPhonen</string>
+    <string name="perm_restricted_body">Det här är avstängt av Skärmtid eller en profil på den här iPhonen, så Nearsend Chats egna inställningar kan inte ändra det. Fråga den som hanterar telefonen eller kontrollera Inställningar › Skärmtid › Innehålls- och integritetsbegränsningar.</string>
+    <string name="perm_chip_notif">Dölj texten när som helst</string>
+    <string name="perm_chip_restricted">Hanteras av Skärmtid</string>
     <string name="report">Rapportera</string>
     <string name="contact_us">Kontakta oss</string>
     <string name="copy_address">Kopiera adress</string>

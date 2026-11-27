@@ -457,6 +457,16 @@
     <string name="perm_chip_use">Nur während du es nutzt</string>
     <string name="notif_off_head">Mitteilungen sind aus</string>
     <string name="notif_off_foot">Nearsend Chat kann keine Mitteilungen anzeigen. Schalte sie in Einstellungen › Nearsend Chat › Mitteilungen ein.</string>
+    <string name="perm_cam_ask_title">Kamera verwenden?</string>
+    <string name="perm_cam_ask_body">Um ein Foto für einen Chat aufzunehmen oder den QR-Code eines Freundes zu scannen. Nichts wird aufgezeichnet oder hochgeladen. Dein iPhone fragt gleich.</string>
+    <string name="perm_mic_ask_title">Mikrofon verwenden?</string>
+    <string name="perm_mic_ask_body">Nur während du die Mikrofontaste gedrückt hältst, um eine Sprachnachricht aufzunehmen. Dein iPhone fragt gleich; halte die Taste danach erneut gedrückt.</string>
+    <string name="perm_notif_title">Wissen, wann sie antworten?</string>
+    <string name="perm_notif_body">Nearsend Chat kann dir Bescheid geben, wenn eine Nachricht ankommt, während die App im Hintergrund ist. Du kannst den Text ausblenden oder das jederzeit ausschalten. Dein iPhone fragt gleich.</string>
+    <string name="perm_restricted_title">Auf diesem iPhone gesperrt</string>
+    <string name="perm_restricted_body">Das ist durch Bildschirmzeit oder ein Profil auf diesem iPhone gesperrt, deshalb können die Einstellungen von Nearsend Chat es nicht ändern. Frag die Person, die das Handy verwaltet, oder prüfe Einstellungen › Bildschirmzeit › Beschränkungen.</string>
+    <string name="perm_chip_notif">Text jederzeit ausblenden</string>
+    <string name="perm_chip_restricted">Von Bildschirmzeit verwaltet</string>
     <string name="report">Melden</string>
     <string name="contact_us">Kontakt</string>
     <string name="copy_address">Adresse kopieren</string>

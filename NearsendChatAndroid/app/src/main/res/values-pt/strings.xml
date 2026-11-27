@@ -457,6 +457,16 @@
     <string name="perm_chip_use">Só enquanto o usas</string>
     <string name="notif_off_head">As notificações estão desligadas</string>
     <string name="notif_off_foot">O Nearsend Chat não pode mostrar notificações. Liga-as em Definições › Nearsend Chat › Notificações.</string>
+    <string name="perm_cam_ask_title">Usar a câmara?</string>
+    <string name="perm_cam_ask_body">Para tirar uma foto para uma conversa ou ler o código QR de um amigo. Nada é gravado nem enviado. A seguir o iPhone pergunta.</string>
+    <string name="perm_mic_ask_title">Usar o microfone?</string>
+    <string name="perm_mic_ask_body">Só enquanto manténs premido o botão do microfone para gravar uma nota de voz. A seguir o iPhone pergunta; depois mantém o botão premido outra vez.</string>
+    <string name="perm_notif_title">Saber quando respondem?</string>
+    <string name="perm_notif_body">O Nearsend Chat pode avisar-te quando chega uma mensagem com a app em segundo plano. Podes ocultar o texto ou desligar isto quando quiseres. A seguir o iPhone pergunta.</string>
+    <string name="perm_restricted_title">Bloqueado neste iPhone</string>
+    <string name="perm_restricted_body">Isto está desligado pelo Tempo de ecrã ou por um perfil neste iPhone, por isso as definições do Nearsend Chat não o podem mudar. Pergunta a quem gere o telefone ou vê Definições › Tempo de ecrã › Restrições de conteúdo e privacidade.</string>
+    <string name="perm_chip_notif">Oculta o texto quando quiseres</string>
+    <string name="perm_chip_restricted">Gerido pelo Tempo de ecrã</string>
     <string name="report">Denunciar</string>
     <string name="contact_us">Fale conosco</string>
     <string name="copy_address">Copiar endereço</string>

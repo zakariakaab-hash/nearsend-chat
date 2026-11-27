@@ -457,6 +457,16 @@
     <string name="perm_chip_use">Solo mentre lo usi</string>
     <string name="notif_off_head">Le notifiche sono disattivate</string>
     <string name="notif_off_foot">Nearsend Chat non può mostrare notifiche. Attivale in Impostazioni › Nearsend Chat › Notifiche.</string>
+    <string name="perm_cam_ask_title">Usare la fotocamera?</string>
+    <string name="perm_cam_ask_body">Per scattare una foto per una chat o inquadrare il codice QR di un amico. Niente viene registrato o caricato. Poi te lo chiede l\'iPhone.</string>
+    <string name="perm_mic_ask_title">Usare il microfono?</string>
+    <string name="perm_mic_ask_body">Solo mentre tieni premuto il pulsante del microfono per registrare una nota vocale. Poi te lo chiede l\'iPhone; quindi tieni di nuovo premuto il pulsante.</string>
+    <string name="perm_notif_title">Sapere quando rispondono?</string>
+    <string name="perm_notif_body">Nearsend Chat può avvisarti quando arriva un messaggio mentre l\'app è in background. Puoi nascondere il testo o disattivarlo quando vuoi. Poi te lo chiede l\'iPhone.</string>
+    <string name="perm_restricted_title">Bloccato su questo iPhone</string>
+    <string name="perm_restricted_body">È disattivato da Tempo di utilizzo o da un profilo su questo iPhone, quindi le impostazioni di Nearsend Chat non possono cambiarlo. Chiedi a chi gestisce il telefono o controlla Impostazioni › Tempo di utilizzo › Restrizioni contenuti e privacy.</string>
+    <string name="perm_chip_notif">Nascondi il testo quando vuoi</string>
+    <string name="perm_chip_restricted">Gestito da Tempo di utilizzo</string>
     <string name="report">Segnala</string>
     <string name="contact_us">Contattaci</string>
     <string name="copy_address">Copia indirizzo</string>

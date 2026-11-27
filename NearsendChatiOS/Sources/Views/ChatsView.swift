@@ -363,7 +363,7 @@ struct AddContactSheet: View {
             Form {
                 Section {
                     if CodeScanner.supported {
-                        Button { CameraAccess.check(ok: { scanning = true }, denied: { cameraAsk = .cameraDenied }) } label: {
+                        Button { if let a = Permissions.cameraAsk() { cameraAsk = a } else { scanning = true } } label: {
                             Label("Scan their code", systemImage: "qrcode.viewfinder")
                         }
                     }
@@ -383,7 +383,10 @@ struct AddContactSheet: View {
             .fullScreenCover(isPresented: $scanning) {
                 CodeScanner { code in scanning = false; if let code { add(code, inPerson: true) } }.ignoresSafeArea()
             }
-            .permissionDialog(item: $cameraAsk, onPrimary: { _ in SystemSettings.open() })
+            .permissionDialog(item: $cameraAsk, onPrimary: { a in
+                if a == .camera { Permissions.requestCamera { if $0 { scanning = true } } }
+                else if a == .cameraDenied { SystemSettings.open() }
+            })
             .sheet(isPresented: $showMine) {
                 MyCodeSheet(payload: store.myCodePayload, fingerprint: store.myFingerprint, contactCode: store.myContactCode)
             }

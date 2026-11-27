@@ -455,6 +455,16 @@
 "Only while you use it" = "Só enquanto o usas";
 "Notifications are off" = "As notificações estão desligadas";
 "Nearsend Chat can't show notifications. Turn them on in Settings › Nearsend Chat › Notifications." = "O Nearsend Chat não pode mostrar notificações. Liga-as em Definições › Nearsend Chat › Notificações.";
+"Use the camera?" = "Usar a câmara?";
+"To take a photo for a chat or scan a friend's QR code. Nothing is recorded or uploaded. Your iPhone asks next." = "Para tirar uma foto para uma conversa ou ler o código QR de um amigo. Nada é gravado nem enviado. A seguir o iPhone pergunta.";
+"Use the microphone?" = "Usar o microfone?";
+"Only while you hold the microphone button to record a voice note. Your iPhone asks next; then hold the button again." = "Só enquanto manténs premido o botão do microfone para gravar uma nota de voz. A seguir o iPhone pergunta; depois mantém o botão premido outra vez.";
+"Know when they reply?" = "Saber quando respondem?";
+"Nearsend Chat can tell you when a message arrives while the app is in the background. You can hide the text or turn this off any time. Your iPhone asks next." = "O Nearsend Chat pode avisar-te quando chega uma mensagem com a app em segundo plano. Podes ocultar o texto ou desligar isto quando quiseres. A seguir o iPhone pergunta.";
+"Blocked on this iPhone" = "Bloqueado neste iPhone";
+"This is turned off by Screen Time or a profile on this iPhone, so Nearsend Chat's own settings can't change it. Ask whoever manages the phone, or check Settings › Screen Time › Content & Privacy Restrictions." = "Isto está desligado pelo Tempo de ecrã ou por um perfil neste iPhone, por isso as definições do Nearsend Chat não o podem mudar. Pergunta a quem gere o telefone ou vê Definições › Tempo de ecrã › Restrições de conteúdo e privacidade.";
+"Hide the text any time" = "Oculta o texto quando quiseres";
+"Managed by Screen Time" = "Gerido pelo Tempo de ecrã";
 "Report" = "Denunciar";
 "Contact us" = "Fale conosco";
 "Copy address" = "Copiar endereço";

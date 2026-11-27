@@ -49,7 +49,6 @@ final class ChatStore: ObservableObject {
     private var started = false
     private var timer: Timer?
     private var saverWatch: AnyCancellable?
-    private var askedNotifications = false
     private var inflight = Set<String>()
     private var leftGroups = Set<String>()                  // group ids we left: their messages are dropped
     private var groupPending: [String: Set<String>] = [:]   // group message id -> members not sent to yet
@@ -199,9 +198,6 @@ final class ChatStore: ObservableObject {
             Task { @MainActor in
                 self?.bluetoothState = s
                 if s != "ready" { r?.forgetEveryone() }   // Bluetooth off: show nobody in range
-                // Notifications are asked once the Bluetooth prompt is answered, not at the same moment (two iOS
-                // alerts at once). iOS shows the question only the first time; later calls do nothing.
-                if s != "starting", self?.askedNotifications == false { self?.askedNotifications = true; Notifier.requestPermission() }
             }
         }
         router = r; transport = t
@@ -210,11 +206,11 @@ final class ChatStore: ObservableObject {
         saverWatch = PowerMode.shared.$saver.sink { [weak t] on in t?.saver = on }
         if meshActive { t.start() }
         // Announce every 8 s, or every 16 s in Low Power Mode (relayed people are forgotten after 40 s of silence).
-        timer = Timer.scheduledTimer(withTimeInterval: 4, repeats: true) { [weak self, weak r] _ in
+        timer = Timer.scheduledTimer(withTimeInterval: 4, repeats: true) { [weak self] _ in
             Task { @MainActor in
                 guard let self else { return }
                 self.tickCount += 1
-                if self.tickCount % (ProcessInfo.processInfo.isLowPowerModeEnabled ? 4 : 2) == 0 { r?.tick() }
+                if self.tickCount % (ProcessInfo.processInfo.isLowPowerModeEnabled ? 4 : 2) == 0 { self.router?.tick() }
                 self.prune(); self.flushOutbox(); self.rememberSeen()
             }
         }
@@ -678,9 +674,9 @@ final class ChatStore: ObservableObject {
     func sendPhoto(_ data: Data, in id: String) {
         guard id != publicChannelID, !id.hasPrefix("g:"), index(id) != nil else { return }
         // Shrinking a big picture takes a moment: do it off the main thread so the screen does not stall.
-        Task.detached(priority: .userInitiated) { [weak self] in
-            let bytes = Photos.compress(data)
-            await MainActor.run { self?.addPhoto(bytes, in: id) }
+        Task { [weak self] in
+            let bytes = await Task.detached(priority: .userInitiated) { Photos.compress(data) }.value
+            self?.addPhoto(bytes, in: id)
         }
     }
 

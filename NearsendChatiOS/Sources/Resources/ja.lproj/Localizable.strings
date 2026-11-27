@@ -455,6 +455,16 @@
 "Only while you use it" = "使っている間だけ";
 "Notifications are off" = "通知がオフです";
 "Nearsend Chat can't show notifications. Turn them on in Settings › Nearsend Chat › Notifications." = "Nearsend Chat は通知を表示できません。設定 › Nearsend Chat › 通知でオンにしてください。";
+"Use the camera?" = "カメラを使いますか？";
+"To take a photo for a chat or scan a friend's QR code. Nothing is recorded or uploaded. Your iPhone asks next." = "チャット用の写真を撮ったり、友達の QR コードを読み取ったりするためです。録画やアップロードはしません。次に iPhone が確認します。";
+"Use the microphone?" = "マイクを使いますか？";
+"Only while you hold the microphone button to record a voice note. Your iPhone asks next; then hold the button again." = "マイクボタンを押している間だけ、ボイスメモの録音に使います。次に iPhone が確認するので、その後もう一度ボタンを押し続けてください。";
+"Know when they reply?" = "返信が来たら知りたいですか？";
+"Nearsend Chat can tell you when a message arrives while the app is in the background. You can hide the text or turn this off any time. Your iPhone asks next." = "アプリがバックグラウンドにあるとき、メッセージが届いたら Nearsend Chat がお知らせします。本文を隠したり、いつでもオフにしたりできます。次に iPhone が確認します。";
+"Blocked on this iPhone" = "この iPhone でブロックされています";
+"This is turned off by Screen Time or a profile on this iPhone, so Nearsend Chat's own settings can't change it. Ask whoever manages the phone, or check Settings › Screen Time › Content & Privacy Restrictions." = "この iPhone のスクリーンタイムまたはプロファイルでオフにされているため、Nearsend Chat の設定では変更できません。管理している人に確認するか、設定 › スクリーンタイム › コンテンツとプライバシーの制限を確認してください。";
+"Hide the text any time" = "本文はいつでも非表示に";
+"Managed by Screen Time" = "スクリーンタイムで管理";
 "Report" = "報告";
 "Contact us" = "お問い合わせ";
 "Copy address" = "アドレスをコピー";

@@ -457,6 +457,16 @@
     <string name="perm_chip_use">使っている間だけ</string>
     <string name="notif_off_head">通知がオフです</string>
     <string name="notif_off_foot">Nearsend Chat は通知を表示できません。設定 › Nearsend Chat › 通知でオンにしてください。</string>
+    <string name="perm_cam_ask_title">カメラを使いますか？</string>
+    <string name="perm_cam_ask_body">チャット用の写真を撮ったり、友達の QR コードを読み取ったりするためです。録画やアップロードはしません。次に iPhone が確認します。</string>
+    <string name="perm_mic_ask_title">マイクを使いますか？</string>
+    <string name="perm_mic_ask_body">マイクボタンを押している間だけ、ボイスメモの録音に使います。次に iPhone が確認するので、その後もう一度ボタンを押し続けてください。</string>
+    <string name="perm_notif_title">返信が来たら知りたいですか？</string>
+    <string name="perm_notif_body">アプリがバックグラウンドにあるとき、メッセージが届いたら Nearsend Chat がお知らせします。本文を隠したり、いつでもオフにしたりできます。次に iPhone が確認します。</string>
+    <string name="perm_restricted_title">この iPhone でブロックされています</string>
+    <string name="perm_restricted_body">この iPhone のスクリーンタイムまたはプロファイルでオフにされているため、Nearsend Chat の設定では変更できません。管理している人に確認するか、設定 › スクリーンタイム › コンテンツとプライバシーの制限を確認してください。</string>
+    <string name="perm_chip_notif">本文はいつでも非表示に</string>
+    <string name="perm_chip_restricted">スクリーンタイムで管理</string>
     <string name="report">報告</string>
     <string name="contact_us">お問い合わせ</string>
     <string name="copy_address">アドレスをコピー</string>

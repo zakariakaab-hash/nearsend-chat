@@ -455,6 +455,16 @@
 "Only while you use it" = "فقط أثناء استخدامه";
 "Notifications are off" = "الإشعارات متوقفة";
 "Nearsend Chat can't show notifications. Turn them on in Settings › Nearsend Chat › Notifications." = "لا يمكن لـ Nearsend Chat عرض الإشعارات. شغّلها من الإعدادات › Nearsend Chat › الإشعارات.";
+"Use the camera?" = "استخدام الكاميرا؟";
+"To take a photo for a chat or scan a friend's QR code. Nothing is recorded or uploaded. Your iPhone asks next." = "لالتقاط صورة لمحادثة أو مسح رمز QR لصديق. لا يُسجَّل أو يُرفع أي شيء. سيسألك iPhone بعد ذلك.";
+"Use the microphone?" = "استخدام الميكروفون؟";
+"Only while you hold the microphone button to record a voice note. Your iPhone asks next; then hold the button again." = "فقط أثناء الضغط المستمر على زر الميكروفون لتسجيل رسالة صوتية. سيسألك iPhone بعد ذلك، ثم اضغط مطولًا على الزر مرة أخرى.";
+"Know when they reply?" = "هل تريد أن تعرف متى يردّون؟";
+"Nearsend Chat can tell you when a message arrives while the app is in the background. You can hide the text or turn this off any time. Your iPhone asks next." = "يمكن لـ Nearsend Chat إعلامك عند وصول رسالة والتطبيق في الخلفية. يمكنك إخفاء النص أو إيقاف ذلك في أي وقت. سيسألك iPhone بعد ذلك.";
+"Blocked on this iPhone" = "محظور على هذا الـ iPhone";
+"This is turned off by Screen Time or a profile on this iPhone, so Nearsend Chat's own settings can't change it. Ask whoever manages the phone, or check Settings › Screen Time › Content & Privacy Restrictions." = "هذا متوقف بواسطة مدة استخدام الجهاز أو ملف تعريف على هذا الـ iPhone، لذا لا يمكن لإعدادات Nearsend Chat تغييره. اسأل من يدير الهاتف أو راجع الإعدادات › مدة استخدام الجهاز › قيود المحتوى والخصوصية.";
+"Hide the text any time" = "أخفِ النص في أي وقت";
+"Managed by Screen Time" = "تُديره مدة استخدام الجهاز";
 "Report" = "إبلاغ";
 "Contact us" = "اتصل بنا";
 "Copy address" = "نسخ العنوان";

@@ -455,6 +455,16 @@
 "Only while you use it" = "Bara när du använder den";
 "Notifications are off" = "Notiser är avstängda";
 "Nearsend Chat can't show notifications. Turn them on in Settings › Nearsend Chat › Notifications." = "Nearsend Chat kan inte visa notiser. Slå på dem i Inställningar › Nearsend Chat › Notiser.";
+"Use the camera?" = "Använda kameran?";
+"To take a photo for a chat or scan a friend's QR code. Nothing is recorded or uploaded. Your iPhone asks next." = "För att ta ett foto till en chatt eller skanna en väns QR-kod. Inget spelas in eller laddas upp. Din iPhone frågar sedan.";
+"Use the microphone?" = "Använda mikrofonen?";
+"Only while you hold the microphone button to record a voice note. Your iPhone asks next; then hold the button again." = "Bara medan du håller in mikrofonknappen för att spela in ett röstmeddelande. Din iPhone frågar sedan; håll sedan in knappen igen.";
+"Know when they reply?" = "Vill du veta när de svarar?";
+"Nearsend Chat can tell you when a message arrives while the app is in the background. You can hide the text or turn this off any time. Your iPhone asks next." = "Nearsend Chat kan meddela dig när ett meddelande kommer medan appen är i bakgrunden. Du kan dölja texten eller stänga av det när som helst. Din iPhone frågar sedan.";
+"Blocked on this iPhone" = "Blockerat på den här iPhonen";
+"This is turned off by Screen Time or a profile on this iPhone, so Nearsend Chat's own settings can't change it. Ask whoever manages the phone, or check Settings › Screen Time › Content & Privacy Restrictions." = "Det här är avstängt av Skärmtid eller en profil på den här iPhonen, så Nearsend Chats egna inställningar kan inte ändra det. Fråga den som hanterar telefonen eller kontrollera Inställningar › Skärmtid › Innehålls- och integritetsbegränsningar.";
+"Hide the text any time" = "Dölj texten när som helst";
+"Managed by Screen Time" = "Hanteras av Skärmtid";
 "Report" = "Rapportera";
 "Contact us" = "Kontakta oss";
 "Copy address" = "Kopiera adress";

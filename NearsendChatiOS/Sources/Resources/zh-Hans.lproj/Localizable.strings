@@ -455,6 +455,16 @@
 "Only while you use it" = "仅在使用时";
 "Notifications are off" = "通知已关闭";
 "Nearsend Chat can't show notifications. Turn them on in Settings › Nearsend Chat › Notifications." = "Nearsend Chat 无法显示通知。请在“设置 › Nearsend Chat › 通知”中打开。";
+"Use the camera?" = "使用相机？";
+"To take a photo for a chat or scan a friend's QR code. Nothing is recorded or uploaded. Your iPhone asks next." = "用于拍照发送到聊天或扫描朋友的二维码。不会录制或上传任何内容。接下来 iPhone 会询问。";
+"Use the microphone?" = "使用麦克风？";
+"Only while you hold the microphone button to record a voice note. Your iPhone asks next; then hold the button again." = "仅在你按住麦克风按钮录制语音消息时使用。接下来 iPhone 会询问，然后请再次按住按钮。";
+"Know when they reply?" = "想知道对方何时回复吗？";
+"Nearsend Chat can tell you when a message arrives while the app is in the background. You can hide the text or turn this off any time. Your iPhone asks next." = "当应用在后台时，Nearsend Chat 可以在消息到达时通知你。你可以随时隐藏文字或关闭此功能。接下来 iPhone 会询问。";
+"Blocked on this iPhone" = "此 iPhone 上已被阻止";
+"This is turned off by Screen Time or a profile on this iPhone, so Nearsend Chat's own settings can't change it. Ask whoever manages the phone, or check Settings › Screen Time › Content & Privacy Restrictions." = "此功能已被此 iPhone 上的屏幕使用时间或描述文件关闭，Nearsend Chat 自身的设置无法更改。请询问管理此手机的人，或查看“设置 › 屏幕使用时间 › 内容和隐私访问限制”。";
+"Hide the text any time" = "随时隐藏文字";
+"Managed by Screen Time" = "由屏幕使用时间管理";
 "Report" = "举报";
 "Contact us" = "联系我们";
 "Copy address" = "复制地址";

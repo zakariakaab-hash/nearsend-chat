@@ -455,6 +455,16 @@
 "Only while you use it" = "Only while you use it";
 "Notifications are off" = "Notifications are off";
 "Nearsend Chat can't show notifications. Turn them on in Settings › Nearsend Chat › Notifications." = "Nearsend Chat can't show notifications. Turn them on in Settings › Nearsend Chat › Notifications.";
+"Use the camera?" = "Use the camera?";
+"To take a photo for a chat or scan a friend's QR code. Nothing is recorded or uploaded. Your iPhone asks next." = "To take a photo for a chat or scan a friend's QR code. Nothing is recorded or uploaded. Your iPhone asks next.";
+"Use the microphone?" = "Use the microphone?";
+"Only while you hold the microphone button to record a voice note. Your iPhone asks next; then hold the button again." = "Only while you hold the microphone button to record a voice note. Your iPhone asks next; then hold the button again.";
+"Know when they reply?" = "Know when they reply?";
+"Nearsend Chat can tell you when a message arrives while the app is in the background. You can hide the text or turn this off any time. Your iPhone asks next." = "Nearsend Chat can tell you when a message arrives while the app is in the background. You can hide the text or turn this off any time. Your iPhone asks next.";
+"Blocked on this iPhone" = "Blocked on this iPhone";
+"This is turned off by Screen Time or a profile on this iPhone, so Nearsend Chat's own settings can't change it. Ask whoever manages the phone, or check Settings › Screen Time › Content & Privacy Restrictions." = "This is turned off by Screen Time or a profile on this iPhone, so Nearsend Chat's own settings can't change it. Ask whoever manages the phone, or check Settings › Screen Time › Content & Privacy Restrictions.";
+"Hide the text any time" = "Hide the text any time";
+"Managed by Screen Time" = "Managed by Screen Time";
 "Report" = "Report";
 "Contact us" = "Contact us";
 "Copy address" = "Copy address";

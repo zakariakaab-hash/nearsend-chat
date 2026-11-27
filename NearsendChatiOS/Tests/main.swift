@@ -285,5 +285,22 @@ do {
     check(outcome == .sent && b.texts.map { $0.text } == ["for B only"], "a different key for a known id is refused; B still reads its messages")
     check(m.texts.isEmpty, "the impostor gets nothing readable")
 }
+print("\n# 7. Permission state logic")
+do {
+    check(PermissionStep.step(.allowed) == .proceed, "allowed: the feature is used straight away")
+    check(PermissionStep.step(.notAsked) == .explainThenAsk, "never asked: explanation first, then iOS's prompt")
+    check(PermissionStep.step(.denied) == .openSettings, "denied: a message with Open Settings, never a dead end")
+    check(PermissionStep.step(.restricted) == .blocked, "restricted: told it is blocked, not sent to a Settings page that cannot help")
+    check(!NotificationOffer.shouldOffer(status: .notAsked, hasSentMessage: false, offeredThisLaunch: false),
+          "notifications are not offered before the first chat")
+    check(NotificationOffer.shouldOffer(status: .notAsked, hasSentMessage: true, offeredThisLaunch: false),
+          "notifications are offered after the first sent message")
+    check(!NotificationOffer.shouldOffer(status: .notAsked, hasSentMessage: true, offeredThisLaunch: true),
+          "notifications are offered at most once per launch")
+    for s in [PermissionStatus.allowed, .denied, .restricted] {
+        check(!NotificationOffer.shouldOffer(status: s, hasSentMessage: true, offeredThisLaunch: false),
+              "notifications are not offered again once iOS has an answer (\(s))")
+    }
+}
 print(failures == 0 ? "ALL PASSED" : "\(failures) FAILED")
 exit(failures == 0 ? 0 : 1)

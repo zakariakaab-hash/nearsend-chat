@@ -455,6 +455,16 @@
 "Only while you use it" = "Solo mientras lo usas";
 "Notifications are off" = "Las notificaciones están desactivadas";
 "Nearsend Chat can't show notifications. Turn them on in Settings › Nearsend Chat › Notifications." = "Nearsend Chat no puede mostrar notificaciones. Actívalas en Ajustes › Nearsend Chat › Notificaciones.";
+"Use the camera?" = "¿Usar la cámara?";
+"To take a photo for a chat or scan a friend's QR code. Nothing is recorded or uploaded. Your iPhone asks next." = "Para hacer una foto para un chat o escanear el código QR de un amigo. No se graba ni se sube nada. Después te preguntará el iPhone.";
+"Use the microphone?" = "¿Usar el micrófono?";
+"Only while you hold the microphone button to record a voice note. Your iPhone asks next; then hold the button again." = "Solo mientras mantienes pulsado el botón del micrófono para grabar una nota de voz. Después te preguntará el iPhone; luego vuelve a mantener pulsado el botón.";
+"Know when they reply?" = "¿Saber cuándo responden?";
+"Nearsend Chat can tell you when a message arrives while the app is in the background. You can hide the text or turn this off any time. Your iPhone asks next." = "Nearsend Chat puede avisarte cuando llega un mensaje con la app en segundo plano. Puedes ocultar el texto o desactivarlo cuando quieras. Después te preguntará el iPhone.";
+"Blocked on this iPhone" = "Bloqueado en este iPhone";
+"This is turned off by Screen Time or a profile on this iPhone, so Nearsend Chat's own settings can't change it. Ask whoever manages the phone, or check Settings › Screen Time › Content & Privacy Restrictions." = "Está desactivado por Tiempo de uso o un perfil en este iPhone, así que los ajustes de Nearsend Chat no pueden cambiarlo. Pregunta a quien gestione el teléfono o revisa Ajustes › Tiempo de uso › Restricciones de contenido y privacidad.";
+"Hide the text any time" = "Oculta el texto cuando quieras";
+"Managed by Screen Time" = "Gestionado por Tiempo de uso";
 "Report" = "Denunciar";
 "Contact us" = "Contáctanos";
 "Copy address" = "Copiar dirección";

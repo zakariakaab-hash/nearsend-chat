@@ -457,6 +457,16 @@
     <string name="perm_chip_use">仅在使用时</string>
     <string name="notif_off_head">通知已关闭</string>
     <string name="notif_off_foot">Nearsend Chat 无法显示通知。请在“设置 › Nearsend Chat › 通知”中打开。</string>
+    <string name="perm_cam_ask_title">使用相机？</string>
+    <string name="perm_cam_ask_body">用于拍照发送到聊天或扫描朋友的二维码。不会录制或上传任何内容。接下来 iPhone 会询问。</string>
+    <string name="perm_mic_ask_title">使用麦克风？</string>
+    <string name="perm_mic_ask_body">仅在你按住麦克风按钮录制语音消息时使用。接下来 iPhone 会询问，然后请再次按住按钮。</string>
+    <string name="perm_notif_title">想知道对方何时回复吗？</string>
+    <string name="perm_notif_body">当应用在后台时，Nearsend Chat 可以在消息到达时通知你。你可以随时隐藏文字或关闭此功能。接下来 iPhone 会询问。</string>
+    <string name="perm_restricted_title">此 iPhone 上已被阻止</string>
+    <string name="perm_restricted_body">此功能已被此 iPhone 上的屏幕使用时间或描述文件关闭，Nearsend Chat 自身的设置无法更改。请询问管理此手机的人，或查看“设置 › 屏幕使用时间 › 内容和隐私访问限制”。</string>
+    <string name="perm_chip_notif">随时隐藏文字</string>
+    <string name="perm_chip_restricted">由屏幕使用时间管理</string>
     <string name="report">举报</string>
     <string name="contact_us">联系我们</string>
     <string name="copy_address">复制地址</string>
