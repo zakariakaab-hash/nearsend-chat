@@ -21,8 +21,8 @@ Turn Bluetooth on, allow the prompts, keep both screens on at first. Demo mode m
 | 4 | **Voice note** | One 10 s voice note each way | Arrives, plays, sound bars show | |
 | 5 | Add by QR | A: You → My code; B: Chats → + → Add contact → scan | B gets a chat with A, fingerprint matches | |
 | 6 | Message request | Phone C (or a fresh install) writes to A first | A sees "Message request", no notification text; Accept opens the chat | |
-| 7 | Bluetooth off | A: turn Bluetooth off in Control Center | A's list empties; tapping Close on the iOS alert opens the animated guide | |
-| 8 | Allow New Connections | Follow the guide | Guide closes by itself; B reappears on A within 20 s | |
+| 7 | Bluetooth off | A: turn Bluetooth off in Control Center | A's list empties; no iOS alert; Nearby says "Bluetooth is off. Turn it on in Control Center…" | |
+| 8 | Bluetooth back on | Turn it on in Control Center (tap Allow New Connections in Settings if shown) | B reappears on A within 20 s | |
 | 9 | Mesh switch ×10 | Nearby → switch Off/On ten times fast | No duplicates; B comes back every time | |
 | 10 | Walk away | Walk out of range 1 min, come back | B reappears without restarting (connection timeout fix) | |
 | 11 | Background + lock | Lock A, send from B | Notification with the hop sound within a few seconds | |

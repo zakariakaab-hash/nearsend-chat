@@ -17,10 +17,9 @@ Check that Bluetooth is on, that the other person has the app open or running in
 about 10 to 30 metres. Walls and crowds shorten the range. On iPhone, You → Bluetooth shows how many people are in range
 and through other phones.
 
-**iPhone says "would like to use Bluetooth for new connections".**
-Bluetooth was turned off for new connections in Control Center. Tap Settings in that message, or open Control Center and
-tap the Bluetooth button so it turns blue. If Settings → Bluetooth shows **Allow New Connections**, tap it. Nearsend Chat
-shows an animated guide for this (You → Bluetooth → How to turn on Bluetooth). Apps cannot turn Bluetooth on themselves.
+**Nearby says "Bluetooth is off".**
+Open Control Center (swipe down from the top-right corner) and tap the Bluetooth button so it turns blue. If Settings →
+Bluetooth shows **Allow New Connections**, tap it. Apps cannot turn Bluetooth on themselves.
 
 **Someone I don't know sent me a message.**
 On iPhone it arrives as a **message request**: open it and tap Accept to chat, or Block. You can choose to allow or block
@@ -65,7 +64,7 @@ away in the app switcher, iOS stops it until you open it again. With low battery
 Power Mode, the app looks for phones less often, so messages may take a little longer.
 
 **How do I delete my data?**
-You → Help → "Erase everything". It deletes all messages, keys and settings on this phone. We never had a copy.
+You → Account → "Erase everything". It deletes all messages, keys and settings on this phone. We never had a copy.
 
 ## Report a person or content
 

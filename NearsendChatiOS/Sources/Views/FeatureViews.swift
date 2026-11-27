@@ -23,6 +23,9 @@ enum Support {
     static let email = "support@nearsend.app"
 
     static var contactURL: URL? { mail(subject: "Nearsend Chat", body: "") }
+    static var feedbackURL: URL? {
+        mail(subject: "Nearsend Chat feedback", body: "\n\n---\nApp \(HelpSettingsView.version), iOS \(UIDevice.current.systemVersion)")
+    }
 
     /// A prefilled email reporting `text` (or a whole person when `text` is nil) sent by `name` / `id`.
     static func reportURL(name: String, id: String?, text: String?, date: Date? = nil) -> URL? {

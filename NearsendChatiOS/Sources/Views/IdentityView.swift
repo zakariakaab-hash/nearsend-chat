@@ -8,7 +8,6 @@ struct IdentityView: View {
     @State private var pickAvatar = false
 
     @State private var showScanner = false
-    @State private var transfer = false
     @AppStorage("language") private var language = "system"
     @State private var showMyCode = false
     @State private var scanResult: String?      // the verified person's name, or "" when the code matched nobody
@@ -60,17 +59,19 @@ struct IdentityView: View {
                         profileCard
                         // Like WhatsApp: the settings are rows right here, each opening its own page.
                         rowGroup {
-                            NavigationLink { PrivacySettingsView() } label: { SettingsRow(icon: "lock.fill", color: Color(hex: 0x2F6FE0), title: "Privacy") }
+                            NavigationLink { AccountSettingsView() } label: { SettingsRow(icon: "key", title: "Account") }
                             rowDivider
-                            NavigationLink { NotificationSettingsView() } label: { SettingsRow(icon: "bell.badge.fill", color: Color(hex: 0xE5484D), title: "Notifications") }
+                            NavigationLink { PrivacySettingsView() } label: { SettingsRow(icon: "lock", title: "Privacy") }
+                            rowDivider
+                            NavigationLink { NotificationSettingsView() } label: { SettingsRow(icon: "bell", title: "Notifications") }
                             rowDivider
                             NavigationLink { ConnectionView() } label: {
-                                SettingsRow(icon: "antenna.radiowaves.left.and.right", color: Color(hex: 0x0E9F8E), title: "Bluetooth",
+                                SettingsRow(icon: "antenna.radiowaves.left.and.right", title: "Bluetooth",
                                             value: LocalizedStringKey(store.bluetoothLabel))
                             }
                             rowDivider
                             HStack(spacing: 14) {
-                                SettingsIcon(icon: "globe", color: Color(hex: 0x30A14E))
+                                SettingsIcon(icon: "globe")
                                 Text("Language").foregroundStyle(Theme.ink).layoutPriority(1)
                                 Spacer(minLength: 4)
                                 Picker("Language", selection: $language) {
@@ -80,20 +81,15 @@ struct IdentityView: View {
                             }.padding(.horizontal, 16).frame(minHeight: 56)
                         }
                         rowGroup {
-                            Button { transfer = true } label: {
-                                SettingsRow(icon: "iphone.and.arrow.forward", color: Color(hex: 0x5B5BD6), title: "Move to another phone")
-                            }
+                            NavigationLink { ShareAppView() } label: { SettingsRow(icon: "heart", title: "Invite a friend") }
                             rowDivider
-                            NavigationLink { ShareAppView() } label: { SettingsRow(icon: "heart.fill", color: Color(hex: 0xE0457B), title: "Invite a friend") }
-                            rowDivider
-                            NavigationLink { HelpSettingsView() } label: { SettingsRow(icon: "questionmark.circle.fill", color: Color(hex: 0x3E8BD6), title: "Help") }
+                            NavigationLink { HelpSettingsView() } label: { SettingsRow(icon: "questionmark.circle", title: "Help") }
                         }
                     }.padding(.horizontal, 20).padding(.bottom, 24).readableWidth()
                 }
             }
             .toolbar(.hidden, for: .navigationBar)
             .sheet(isPresented: $pickAvatar) { AvatarPickerSheet().environmentObject(store) }
-            .sheet(isPresented: $transfer) { TransferSheet().environmentObject(store) }
             .sheet(isPresented: $showMyCode) { MyCodeSheet(payload: store.myCodePayload, fingerprint: store.myFingerprint, contactCode: store.myContactCode) }
             .fullScreenCover(isPresented: $showScanner) {
                 CodeScanner { code in
@@ -116,15 +112,14 @@ struct IdentityView: View {
 
 // MARK: - Settings
 
-/// A row like WhatsApp's settings: coloured icon, title, optional value, chevron.
+/// A row like WhatsApp's settings: plain outline icon, title, optional value, chevron.
 struct SettingsRow: View {
     let icon: String
-    let color: Color
     let title: LocalizedStringKey
     var value: LocalizedStringKey? = nil
     var body: some View {
         HStack(spacing: 14) {
-            SettingsIcon(icon: icon, color: color)
+            SettingsIcon(icon: icon)
             Text(title).foregroundStyle(Theme.ink)
             Spacer()
             if let value { Text(value).foregroundStyle(Theme.inkSecondary) }
@@ -136,10 +131,9 @@ struct SettingsRow: View {
 
 struct SettingsIcon: View {
     let icon: String
-    let color: Color
     var body: some View {
-        Image(systemName: icon).font(.system(size: 15, weight: .semibold)).foregroundStyle(.white)
-            .frame(width: 32, height: 32).background(color, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+        Image(systemName: icon).font(.system(size: 19, weight: .regular)).foregroundStyle(Theme.ink)
+            .frame(width: 32, height: 32)
     }
 }
 
@@ -150,11 +144,18 @@ struct SettingsPage<Content: View>: View {
     var body: some View {
         ZStack {
             SkyBackground()
-            List { content }.scrollContentBackground(.hidden).tint(Theme.actionBlue)
+            List { content }.scrollContentBackground(.hidden).tint(Theme.actionBlue).labelStyle(PlainIconLabelStyle())
         }
         .navigationTitle(title)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(.visible, for: .navigationBar)
+    }
+}
+
+/// Settings icons are plain and dark, like WhatsApp's; the list would tint them blue otherwise.
+struct PlainIconLabelStyle: LabelStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        HStack(spacing: 14) { configuration.icon.foregroundStyle(Theme.ink).frame(width: 28); configuration.title }
     }
 }
 
@@ -237,30 +238,68 @@ struct NotificationSettingsView: View {
     }
 }
 
-struct HelpSettingsView: View {
+/// Like WhatsApp's Account page: the things that concern the identity itself.
+struct AccountSettingsView: View {
     @EnvironmentObject var store: ChatStore
-    @AppStorage("onboarded") private var onboarded = true
-    @State private var shareLog = false
-    @State private var mail: URL?
+    @State private var transfer = false
     @State private var confirmWipe = false
 
     var body: some View {
-        SettingsPage(title: "Help") {
+        SettingsPage(title: "Account") {
             Section {
-                Button { onboarded = false } label: { Label("Show the intro", systemImage: "play.circle") }.foregroundStyle(Theme.ink)
-                Button { mail = Support.contactURL } label: { Label("Contact us", systemImage: "envelope") }.foregroundStyle(Theme.ink)
-                Button { shareLog = true } label: { Label("Share debug log", systemImage: "doc.text") }.foregroundStyle(Theme.ink)
+                Button { transfer = true } label: { Label("Move to another phone", systemImage: "iphone.and.arrow.forward") }
+                    .foregroundStyle(Theme.ink)
             } footer: {
-                settingFoot("The debug log has the last 500 events: who connected, packet types, errors. No messages, photos or keys. To report someone, long-press their message or open their contact info and tap Report.")
+                settingFoot("Moves your identity, chats and contacts to a new iPhone with a password-protected file.")
             }
             Section {
                 Button(role: .destructive) { confirmWipe = true } label: { Label("Erase everything", systemImage: "trash") }
             } footer: {
-                VStack(alignment: .leading, spacing: 6) {
-                    settingFoot("Not security audited yet. Open source (GPL-3.0).")
-                    Text(verbatim: "Nearsend Chat \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "") (\(Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? ""))")
-                        .foregroundStyle(.white.opacity(0.9))
+                settingFoot("Deletes all messages, keys and settings on this phone. You get a new identity. This cannot be undone.")
+            }
+        }
+        .sheet(isPresented: $transfer) { TransferSheet().environmentObject(store) }
+        .bottomConfirm(isPresented: $confirmWipe, title: "Erase all messages, keys and settings on this phone?",
+                       message: "This cannot be undone. You will get a new identity.", action: "Erase everything") { store.wipeAll() }
+    }
+}
+
+/// Like WhatsApp's Help page: help center, feedback, terms and privacy, licences, app version.
+struct HelpSettingsView: View {
+    @AppStorage("onboarded") private var onboarded = true
+    @Environment(\.openURL) private var openURL
+    @State private var shareLog = false
+    @State private var mail: URL?
+
+    static let helpCenter = URL(string: "https://chat.nearsend.app/support/")!
+    static let privacyPolicy = URL(string: "https://chat.nearsend.app/privacy/")!
+    /// The app has no terms of its own: Apple's standard licence agreement applies to App Store apps.
+    static let terms = URL(string: "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/")!
+    static var version: String {
+        let i = Bundle.main.infoDictionary
+        return "\(i?["CFBundleShortVersionString"] as? String ?? "") (\(i?["CFBundleVersion"] as? String ?? ""))"
+    }
+
+    var body: some View {
+        SettingsPage(title: "Help") {
+            Section {
+                Button { openURL(Self.helpCenter) } label: { Label("Help center", systemImage: "questionmark.circle") }
+                    .foregroundStyle(Theme.ink)
+                Button { mail = Support.feedbackURL } label: { Label("Send feedback", systemImage: "bubble.left.and.text.bubble.right") }
+                    .foregroundStyle(Theme.ink)
+                NavigationLink { TermsView() } label: { Label("Terms and Privacy Policy", systemImage: "doc.text") }
+                NavigationLink { LicencesView() } label: { Label("Licences", systemImage: "doc.plaintext") }
+                HStack {
+                    Label("App version", systemImage: "info.circle")
+                    Spacer()
+                    Text(verbatim: Self.version).foregroundStyle(Theme.inkSecondary)
                 }
+            }
+            Section {
+                Button { onboarded = false } label: { Label("Show the intro", systemImage: "play.circle") }.foregroundStyle(Theme.ink)
+                Button { shareLog = true } label: { Label("Share debug log", systemImage: "ladybug") }.foregroundStyle(Theme.ink)
+            } footer: {
+                settingFoot("The debug log has the last 500 events: who connected, packet types, errors. No messages, photos or keys. To report someone, long-press their message or open their contact info and tap Report.")
             }
         }
         .opensMail($mail)
@@ -268,8 +307,47 @@ struct HelpSettingsView: View {
             let head = "Nearsend Chat debug log\n\(UIDevice.current.model), iOS \(UIDevice.current.systemVersion)\n\n"
             ShareSheet(items: [head + (NLog.dump().isEmpty ? "(no events yet)" : NLog.dump())])
         }
-        .bottomConfirm(isPresented: $confirmWipe, title: "Erase all messages, keys and settings on this phone?",
-                       message: "This cannot be undone. You will get a new identity.", action: "Erase everything") { store.wipeAll() }
+    }
+}
+
+struct TermsView: View {
+    @Environment(\.openURL) private var openURL
+    var body: some View {
+        SettingsPage(title: "Terms and Privacy Policy") {
+            Section {
+                Button { openURL(HelpSettingsView.privacyPolicy) } label: { Label("Privacy policy", systemImage: "hand.raised") }
+                    .foregroundStyle(Theme.ink)
+                Button { openURL(HelpSettingsView.terms) } label: { Label("Terms of use", systemImage: "doc.text") }
+                    .foregroundStyle(Theme.ink)
+            } footer: {
+                settingFoot("Nearsend Chat has no accounts and collects no data. The terms of use are Apple's standard licence agreement for App Store apps.")
+            }
+        }
+    }
+}
+
+/// The licences of the app and of what it includes.
+struct LicencesView: View {
+    @Environment(\.openURL) private var openURL
+    var body: some View {
+        SettingsPage(title: "Licences") {
+            Section {
+                licence("Nearsend Chat", "GNU General Public License v3.0. A fork of Bitchat. The source code is public.",
+                        url: "https://github.com/zakariakaab-hash/nearsend-chat")
+                licence("Anton font", "Vernon Adams. SIL Open Font License 1.1.", url: "https://openfontlicense.org")
+            } footer: {
+                settingFoot("Everything else is Apple's own system frameworks (SwiftUI, Core Bluetooth, CryptoKit).")
+            }
+        }
+    }
+
+    private func licence(_ name: String, _ text: LocalizedStringKey, url: String) -> some View {
+        Button { if let u = URL(string: url) { openURL(u) } } label: {
+            VStack(alignment: .leading, spacing: 3) {
+                Text(verbatim: name).font(.headline).foregroundStyle(Theme.ink)
+                Text(text).font(.footnote).foregroundStyle(Theme.inkSecondary)
+            }
+        }
     }
 }
 
@@ -278,7 +356,6 @@ struct HelpSettingsView: View {
 struct ConnectionView: View {
     @EnvironmentObject var store: ChatStore
     @ObservedObject private var power = PowerMode.shared
-    @State private var guide = false
     @State private var batteryLow = false
 
     private var direct: Int { max(0, store.peers.count - store.relayedCount) }
@@ -296,7 +373,8 @@ struct ConnectionView: View {
             if !store.simulated && ["off", "unauthorized"].contains(store.bluetoothState) {
                 Section {
                     if store.bluetoothState == "off" {
-                        Button { guide = true } label: { Label("How to turn on Bluetooth", systemImage: "hand.tap.fill") }
+                        Label("Bluetooth is off. Turn it on in Control Center to find people nearby.", systemImage: "info.circle")
+                            .font(.footnote).foregroundStyle(Theme.inkSecondary)
                     } else {
                         Button { SystemSettings.open() } label: { Label("Open Settings", systemImage: "gear") }
                     }
@@ -319,7 +397,6 @@ struct ConnectionView: View {
                       systemImage: "info.circle").font(.footnote).foregroundStyle(Theme.inkSecondary)
             }
         }
-        .sheet(isPresented: $guide) { BluetoothGuideSheet().environmentObject(store) }
         .onAppear { batteryLow = PowerMode.batteryLow }
     }
 

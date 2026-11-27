@@ -67,10 +67,10 @@ final class BLETransport: NSObject {
     func start() {
         guard central == nil else { return }
         NLog.i("ble", "start: advertising + scanning, my id \(NLog.s(identity.id))")
-        // ShowPowerAlert: when Bluetooth is off, iOS shows its own "Turn On Bluetooth" alert, whose Settings button opens the
-        // Bluetooth page. Apps cannot open that page or switch Bluetooth on themselves.
+        // No iOS "would like to use Bluetooth" alert when Bluetooth is off (its Settings / Close buttons confused people): the
+        // Nearby card says Bluetooth is off and where to turn it on instead.
         central = CBCentralManager(delegate: self, queue: .main, options: [CBCentralManagerOptionRestoreIdentifierKey: Self.centralRestoreID,
-                                                                         CBCentralManagerOptionShowPowerAlertKey: true])
+                                                                         CBCentralManagerOptionShowPowerAlertKey: false])
         peripheralManager = CBPeripheralManager(delegate: self, queue: .main, options: [CBPeripheralManagerOptionRestoreIdentifierKey: Self.peripheralRestoreID])
         // Reading signal strength keeps the radio busy: every 6 s, or every 30 s when saving battery.
         timer = Timer.scheduledTimer(withTimeInterval: 3, repeats: true) { [weak self] _ in

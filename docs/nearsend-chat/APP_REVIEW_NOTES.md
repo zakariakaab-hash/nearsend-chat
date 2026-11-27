@@ -37,7 +37,7 @@ SOS
 SOS alerts only phones nearby that run Nearsend Chat. The screen states that it does not call emergency services and offers a call to the local emergency number.
 
 PRIVACY
-No accounts, analytics, ads or tracking. All data stays on the device; "Erase everything" (You > Help) deletes it. Location is used only when the user shares it or attaches it to an SOS; camera and microphone only for a photo or a voice message.
+No accounts, analytics, ads or tracking. All data stays on the device; "Erase everything" (You > Account) deletes it. Location is used only when the user shares it or attaches it to an SOS; camera and microphone only for a photo or a voice message.
 
 ENCRYPTION
 Apple CryptoKit: X25519, HKDF and ChaCha20-Poly1305. The transfer file uses PBKDF2-SHA256 and ChaCha20-Poly1305.

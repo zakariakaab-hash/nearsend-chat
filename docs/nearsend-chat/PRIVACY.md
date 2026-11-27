@@ -35,7 +35,7 @@ permission below apply to the Android app only.
   "Pass on messages for others" is on. These are kept in memory and are lost when the app restarts. Private messages
   stay encrypted; you cannot read them.
 
-"Erase everything" (You tab, or triple-tap the You title) deletes all of this and creates a new identity. Uninstalling the
+"Erase everything" (You → Account, or triple-tap the You title) deletes all of this and creates a new identity. Uninstalling the
 app removes it too. We cannot recover it, because we never had it.
 
 ## What other people nearby can see
