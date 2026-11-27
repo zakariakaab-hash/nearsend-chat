@@ -313,58 +313,88 @@ enum PermissionAsk: String, Identifiable {
     var hasSecondary: Bool { true }
 }
 
+/// A dialog like iOS's own permission prompts: a solid card in the middle of a dimmed screen, fading in and out.
+/// Presented with `.permissionDialog(...)`, which shows it full screen with a clear background and no slide.
 struct PermissionSheet: View {
     let ask: PermissionAsk
     /// Off at the end of onboarding: "Not now" would leave the person stuck on the last page.
     var allowsLater = true
     var onPrimary: () -> Void = {}
-    /// Called when the sheet closes without the main button (Not now, or swiped away).
+    /// Called when the dialog closes without the main button (Not now).
     var onLater: () -> Void = {}
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var shown = false
     @State private var acted = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            ZStack(alignment: .bottomTrailing) {
-                Image(systemName: ask.symbol)
-                    .font(.system(size: 34, weight: .semibold)).foregroundStyle(.white)
-                    .frame(width: 76, height: 76)
-                    .background(LinearGradient(colors: [Color(hex: 0x3F8CFF), Theme.actionBlue], startPoint: .top, endPoint: .bottom),
-                                in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-                Image(systemName: "hand.raised.fill").font(.system(size: 15, weight: .semibold)).foregroundStyle(.white)
-                    .frame(width: 30, height: 30).background(Theme.actionBlue, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
-                    .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).stroke(.white, lineWidth: 2))
-                    .offset(x: 10, y: 8)
-            }
-            .padding(.top, 8).accessibilityHidden(true)
-            Text(ask.title).font(.title2.weight(.bold)).foregroundStyle(.primary).fixedSize(horizontal: false, vertical: true)
-            Text(ask.message).font(.body).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-            illustration.frame(height: 170).clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                .overlay(alignment: .topLeading) {
-                    Label { Text(ask.chip) } icon: { Image(systemName: ask.isBluetooth ? "wifi.slash" : "hand.tap.fill") }
-                        .font(.subheadline.weight(.semibold)).foregroundStyle(Theme.actionBlue)
-                        .padding(.horizontal, 12).padding(.vertical, 7).background(.white, in: Capsule()).padding(10)
+        ZStack {
+            Color.black.opacity(shown ? 0.45 : 0).ignoresSafeArea()
+            card
+                .opacity(shown ? 1 : 0)
+                .scaleEffect(shown || reduceMotion ? 1 : 0.92)
+        }
+        .presentationBackground(.clear)
+        .onAppear { withAnimation(.easeOut(duration: 0.22)) { shown = true } }
+        .onDisappear { if !acted { onLater() } }
+    }
+
+    private var card: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 14) {
+                ZStack(alignment: .bottomTrailing) {
+                    Image(systemName: ask.symbol)
+                        .font(.system(size: 30, weight: .semibold)).foregroundStyle(.white)
+                        .frame(width: 66, height: 66)
+                        .background(LinearGradient(colors: [Color(hex: 0x3F8CFF), Theme.actionBlue], startPoint: .top, endPoint: .bottom),
+                                    in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    Image(systemName: "hand.raised.fill").font(.system(size: 13, weight: .semibold)).foregroundStyle(.white)
+                        .frame(width: 26, height: 26).background(Theme.actionBlue, in: RoundedRectangle(cornerRadius: 7, style: .continuous))
+                        .overlay(RoundedRectangle(cornerRadius: 7, style: .continuous).stroke(Color(.secondarySystemGroupedBackground), lineWidth: 2))
+                        .offset(x: 8, y: 7)
                 }
-                .accessibilityHidden(true)
-                .padding(.bottom, 6)
-            VStack(spacing: 10) {
-                Button { acted = true; dismiss(); onPrimary() } label: {
-                    Text(ask.primary).font(.headline).frame(maxWidth: .infinity, minHeight: 52)
-                        .foregroundStyle(.white).background(Theme.actionBlue, in: Capsule())
-                }
-                if ask.hasSecondary && allowsLater {
-                    Button { dismiss() } label: {
-                        Text("Not now").font(.headline).frame(maxWidth: .infinity, minHeight: 52)
-                            .foregroundStyle(Theme.ink).background(Theme.ink.opacity(0.08), in: Capsule())
+                .padding(.top, 4).accessibilityHidden(true)
+                Text(ask.title).font(.title3.weight(.bold)).foregroundStyle(.primary).fixedSize(horizontal: false, vertical: true)
+                Text(ask.message).font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                illustration.frame(height: 150).clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .overlay(alignment: .topLeading) {
+                        Label { Text(ask.chip) } icon: { Image(systemName: ask.isBluetooth ? "wifi.slash" : "hand.tap.fill") }
+                            .font(.footnote.weight(.semibold)).foregroundStyle(Theme.actionBlue)
+                            .padding(.horizontal, 10).padding(.vertical, 6).background(.white, in: Capsule()).padding(8)
+                    }
+                    .accessibilityHidden(true)
+                    .padding(.bottom, 4)
+                VStack(spacing: 10) {
+                    Button { close(acted: true); onPrimary() } label: {
+                        Text(ask.primary).font(.headline).frame(maxWidth: .infinity, minHeight: 50)
+                            .foregroundStyle(.white).background(Theme.actionBlue, in: Capsule())
+                    }
+                    if ask.hasSecondary && allowsLater {
+                        Button { close(acted: false) } label: {
+                            Text("Not now").font(.headline).frame(maxWidth: .infinity, minHeight: 50)
+                                .foregroundStyle(.primary).background(Color.primary.opacity(0.08), in: Capsule())
+                        }.buttonStyle(.plain)
                     }
                 }
             }
+            .padding(22)
         }
-        .padding(24)
-        .frame(maxHeight: .infinity, alignment: .top)
-        .presentationDetents([.height(ask.hasSecondary && allowsLater ? 680 : 620), .large])
-        .presentationCornerRadius(36)
-        .onDisappear { if !acted { onLater() } }
+        .scrollBounceBehavior(.basedOnSize)
+        .fixedSize(horizontal: false, vertical: true)
+        .frame(maxWidth: 400)
+        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 32, style: .continuous))
+        .shadow(color: .black.opacity(0.25), radius: 24, y: 8)
+        .padding(.horizontal, 22)
+    }
+
+    /// Fades out, then closes without the slide-down a full-screen cover would otherwise use.
+    private func close(acted: Bool) {
+        self.acted = acted
+        withAnimation(.easeIn(duration: 0.16)) { shown = false }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.17) {
+            var t = Transaction(); t.disablesAnimations = true
+            withTransaction(t) { dismiss() }
+        }
     }
 
     @ViewBuilder private var illustration: some View {
@@ -438,5 +468,24 @@ enum CameraAccess {
             AVCaptureDevice.requestAccess(for: .video) { granted in DispatchQueue.main.async { granted ? ok() : denied() } }
         default: denied()
         }
+    }
+}
+
+extension View {
+    /// Shows a permission dialog over everything (tab bar included), fading in instead of sliding up.
+    func permissionDialog(item: Binding<PermissionAsk?>, allowsLater: Bool = true,
+                          onPrimary: @escaping (PermissionAsk) -> Void, onLater: @escaping (PermissionAsk) -> Void = { _ in }) -> some View {
+        fullScreenCover(item: item) { a in
+            PermissionSheet(ask: a, allowsLater: allowsLater, onPrimary: { onPrimary(a) }, onLater: { onLater(a) })
+        }
+        .transaction(value: item.wrappedValue) { $0.disablesAnimations = true }
+    }
+
+    func permissionDialog(isPresented: Binding<Bool>, ask: PermissionAsk, allowsLater: Bool = true,
+                          onPrimary: @escaping () -> Void, onLater: @escaping () -> Void = {}) -> some View {
+        fullScreenCover(isPresented: isPresented) {
+            PermissionSheet(ask: ask, allowsLater: allowsLater, onPrimary: onPrimary, onLater: onLater)
+        }
+        .transaction(value: isPresented.wrappedValue) { $0.disablesAnimations = true }
     }
 }

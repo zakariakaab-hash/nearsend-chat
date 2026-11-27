@@ -147,9 +147,7 @@ struct ThreadView: View {
         .opensMail($report)
         .alert("Couldn't use this picture", isPresented: $store.photoError) { Button("Close", role: .cancel) {} }
         .alert("No position yet. Try again outdoors.", isPresented: $noPosition) { Button("Close", role: .cancel) {} }
-        .sheet(item: $locationAsk) { a in
-            PermissionSheet(ask: a) { if a == .location { store.requestLocation() } else { SystemSettings.open() } }
-        }
+        .permissionDialog(item: $locationAsk, onPrimary: { a in if a == .location { store.requestLocation() } else { SystemSettings.open() } })
         .fullScreenCover(isPresented: Binding(get: { bigPhoto != nil }, set: { if !$0 { bigPhoto = nil } })) {
             ZStack {
                 Color.black.ignoresSafeArea()
@@ -838,7 +836,7 @@ struct VoiceRecordButton: View {
             .accessibilityAddTraits(.isButton)
             // VoiceOver cannot hold: activating starts recording, activating again sends it.
             .accessibilityAction { if recorder.isRecording { recorder.stop() } else { recorder.start(onFinish: send) } }
-            .sheet(isPresented: $recorder.denied) { PermissionSheet(ask: .microphoneDenied) { SystemSettings.open() } }
+            .permissionDialog(isPresented: $recorder.denied, ask: .microphoneDenied, onPrimary: { SystemSettings.open() })
     }
 }
 

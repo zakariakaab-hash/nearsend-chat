@@ -33,15 +33,13 @@ struct SosView: View {
             .onChange(of: store.locationStatus) { _, s in if s == .denied || s == .restricted { store.shareLocation = false } }
             // Turning "Attach my location" on asks for permission right away, so the position is ready before an emergency.
             .onChange(of: store.shareLocation) { _, on in if on { ensureLocation() } }
-            .sheet(item: $locationAsk) { a in
-                PermissionSheet(ask: a, onPrimary: {
-                    switch a {
-                    case .location: store.requestLocation()
-                    case .locationServicesOff: DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { LocationServicesAlert.show() }
-                    default: SystemSettings.open()
-                    }
-                }, onLater: { store.shareLocation = false })   // not now: the alarm goes without a position, and says so
-            }
+            .permissionDialog(item: $locationAsk, onPrimary: { a in
+                switch a {
+                case .location: store.requestLocation()
+                case .locationServicesOff: DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { LocationServicesAlert.show() }
+                default: SystemSettings.open()
+                }
+            }, onLater: { _ in store.shareLocation = false })   // not now: the alarm goes without a position, and says so
     }
 
     /// Location for the SOS: ask iOS the first time; if it was refused, explain and offer Settings. Phone-wide Location

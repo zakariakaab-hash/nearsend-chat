@@ -383,7 +383,7 @@ struct AddContactSheet: View {
             .fullScreenCover(isPresented: $scanning) {
                 CodeScanner { code in scanning = false; if let code { add(code, inPerson: true) } }.ignoresSafeArea()
             }
-            .sheet(item: $cameraAsk) { a in PermissionSheet(ask: a) { SystemSettings.open() } }
+            .permissionDialog(item: $cameraAsk, onPrimary: { _ in SystemSettings.open() })
             .sheet(isPresented: $showMine) {
                 MyCodeSheet(payload: store.myCodePayload, fingerprint: store.myFingerprint, contactCode: store.myContactCode)
             }

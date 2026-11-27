@@ -92,7 +92,7 @@ struct IdentityView: View {
             }
             .toolbar(.hidden, for: .navigationBar)
             .sheet(isPresented: $pickAvatar) { AvatarPickerSheet().environmentObject(store) }
-            .sheet(item: $cameraAsk) { a in PermissionSheet(ask: a) { SystemSettings.open() } }
+            .permissionDialog(item: $cameraAsk, onPrimary: { _ in SystemSettings.open() })
             .sheet(isPresented: $showMyCode) { MyCodeSheet(payload: store.myCodePayload, fingerprint: store.myFingerprint, contactCode: store.myContactCode) }
             .fullScreenCover(isPresented: $showScanner) {
                 CodeScanner { code in

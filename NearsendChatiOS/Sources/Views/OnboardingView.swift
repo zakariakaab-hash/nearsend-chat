@@ -52,9 +52,8 @@ struct OnboardingView: View {
                     if page == pages.count { askBluetooth = true } else { withAnimation { page += 1 } }
                 }.padding(.horizontal, 24).padding(.bottom, 24)
                 // Explains Bluetooth in our own words first; Continue lets iOS show its permission alert.
-                .sheet(isPresented: $askBluetooth) {
-                    PermissionSheet(ask: .bluetooth, allowsLater: false) { DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { finish() } }
-                }
+                .permissionDialog(isPresented: $askBluetooth, ask: .bluetooth, allowsLater: false,
+                                  onPrimary: { DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { finish() } })
             }
         }
 
