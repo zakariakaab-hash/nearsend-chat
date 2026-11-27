@@ -53,7 +53,19 @@ struct RootView: View {
     @AppStorage("tab") private var tab = 0
     /// Filled dark icons for the other tabs; the open tab shows its icon as an outline, in the accent colour.
     private func tabLabel(_ title: LocalizedStringKey, _ icon: String, _ index: Int) -> some View {
-        Label { Text(title) } icon: { Image(systemName: icon).environment(\.symbolVariants, tab == index ? .none : .fill) }
+        Label { Text(title) } icon: {
+            if tab == index, let outline = Self.outline(icon) { Image(uiImage: outline) }
+            else { Image(systemName: icon).environment(\.symbolVariants, .fill) }
+        }
+    }
+    /// iOS 26 fills the selected tab's SF Symbol on its own. Drawing the outline into a plain template bitmap
+    /// keeps it an outline (still tinted with the accent colour by the tab bar).
+    private static func outline(_ name: String) -> UIImage? {
+        let config = UIImage.SymbolConfiguration(pointSize: 22, weight: .regular)
+        guard let symbol = UIImage(systemName: name, withConfiguration: config)?.withTintColor(.black, renderingMode: .alwaysOriginal) else { return nil }
+        let f = UIGraphicsImageRendererFormat(); f.scale = 3
+        return UIGraphicsImageRenderer(size: symbol.size, format: f).image { _ in symbol.draw(at: .zero) }
+            .withRenderingMode(.alwaysTemplate)
     }
     var body: some View {
         TabView(selection: $tab) {
