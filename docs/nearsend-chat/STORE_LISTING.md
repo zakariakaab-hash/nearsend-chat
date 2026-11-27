@@ -71,7 +71,7 @@ WHAT YOU CAN DO
 • Private chats, end-to-end encrypted. Phones that pass a message along cannot read it.
 • Out of range? Your message waits and is carried by phones nearby for up to 24 hours, then handed over when the person shows up.
 • A public Nearby channel for everyone in range (clearly labelled: not encrypted).
-• Group chats, announcements that stay visible for a few hours, and small photos to a contact in range.
+• Group chats, announcements that stay visible for a few hours, and small photos and voice notes to a contact in range.
 • SOS: alert every phone nearby, with your position if you choose. It does NOT call emergency services.
 • Emoji and colour profile pictures, and a radar that shows who is near by signal strength.
 • Add a contact by scanning their QR code, and verify them by comparing fingerprints in person.
