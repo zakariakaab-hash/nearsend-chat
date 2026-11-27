@@ -446,6 +446,7 @@
     <string name="perm_loc_denied_body">Pour partager votre position, autorisez la localisation dans Réglages › Nearsend Chat › Position.</string>
     <string name="perm_chip_bt">Sans internet</string>
     <string name="perm_chip_loc">Seulement quand vous partagez</string>
+    <string name="perm_bt_off_body2">Nearsend Chat a besoin du Bluetooth pour trouver des personnes à proximité. Touchez Activer le Bluetooth, puis Réglages, et activez le Bluetooth. Si vous voyez Autoriser les nouvelles connexions, touchez-le.</string>
     <string name="report">Signaler</string>
     <string name="contact_us">Nous contacter</string>
     <string name="copy_address">Copier l\'adresse</string>

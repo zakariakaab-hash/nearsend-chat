@@ -32,12 +32,18 @@ struct NearbyView: View {
             .toolbar(.hidden, for: .navigationBar)
             .navigationDestination(item: $chat) { p in ThreadView(conversationID: p.id, peer: p) }
             .sheet(isPresented: $newPost) { NewPostSheet().environmentObject(store) }
-            .sheet(item: $ask) { a in PermissionSheet(ask: a) { if a == .bluetoothDenied { SystemSettings.open() } } }
+            .sheet(item: $ask) { a in
+                PermissionSheet(ask: a) {
+                    if a == .bluetoothDenied { SystemSettings.open() }
+                    else { DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { BluetoothPowerAlert.show() } }
+                }
+            }
             // Bluetooth off or not allowed: say so once per launch, in a sheet like iOS's own prompts.
             .onChange(of: store.bluetoothState, initial: true) { _, s in
                 guard !store.simulated, ["off", "unauthorized"].contains(s), !Self.toldThisLaunch.contains(s) else { return }
                 Self.toldThisLaunch.insert(s)
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+                // Wait for onboarding's own sheet and screen change to finish, or iOS refuses to show this one.
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
                     if store.bluetoothState == s { ask = s == "off" ? .bluetoothOff : .bluetoothDenied }
                 }
             }
@@ -79,6 +85,12 @@ struct NearbyView: View {
                     // Not allowed: our own page in Settings has the switch.
                     if needsSettings && store.bluetoothState == "unauthorized" {
                         Button("Open Settings") { SystemSettings.open() }.font(.footnote.weight(.semibold)).foregroundStyle(Theme.link)
+                    } else if needsSettings {
+                        Button { ask = .bluetoothOff } label: {
+                            Label("Turn on Bluetooth", systemImage: "antenna.radiowaves.left.and.right").font(.subheadline.weight(.semibold))
+                                .padding(.horizontal, 14).frame(minHeight: 40)
+                                .foregroundStyle(.white).background(Theme.actionBlue, in: Capsule())
+                        }.padding(.top, 4)
                     }
                 }
                 Spacer()

@@ -444,6 +444,7 @@
 "To share your position, allow location in Settings › Nearsend Chat › Location." = "位置を共有するには、設定 › Nearsend Chat › 位置情報で許可してください。";
 "No internet needed" = "インターネット不要";
 "Only when you share" = "共有するときだけ";
+"Nearsend Chat needs Bluetooth to find people nearby. Tap Turn on Bluetooth, then Settings, and switch Bluetooth on. If you see Allow New Connections, tap it." = "近くの人を見つけるには Bluetooth が必要です。「Bluetooth をオン」をタップし、「設定」で Bluetooth をオンにしてください。「新しい接続を許可」が表示されたらタップします。";
 "Report" = "報告";
 "Contact us" = "お問い合わせ";
 "Copy address" = "アドレスをコピー";

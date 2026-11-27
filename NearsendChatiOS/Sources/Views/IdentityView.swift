@@ -373,8 +373,7 @@ struct ConnectionView: View {
             if !store.simulated && ["off", "unauthorized"].contains(store.bluetoothState) {
                 Section {
                     if store.bluetoothState == "off" {
-                        Label("Bluetooth is off. Turn it on in Control Center to find people nearby.", systemImage: "info.circle")
-                            .font(.footnote).foregroundStyle(Theme.inkSecondary)
+                        Button { BluetoothPowerAlert.show() } label: { Label("Turn on Bluetooth", systemImage: "antenna.radiowaves.left.and.right") }
                     } else {
                         Button { SystemSettings.open() } label: { Label("Open Settings", systemImage: "gear") }
                     }

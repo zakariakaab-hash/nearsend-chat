@@ -446,6 +446,7 @@
     <string name="perm_loc_denied_body">要分享你的位置，请在“设置 › Nearsend Chat › 位置”中允许。</string>
     <string name="perm_chip_bt">无需联网</string>
     <string name="perm_chip_loc">仅在分享时</string>
+    <string name="perm_bt_off_body2">Nearsend Chat 需要蓝牙来查找附近的人。轻点“打开蓝牙”，再轻点“设置”，然后打开蓝牙。如果看到“允许新连接”，请轻点。</string>
     <string name="report">举报</string>
     <string name="contact_us">联系我们</string>
     <string name="copy_address">复制地址</string>

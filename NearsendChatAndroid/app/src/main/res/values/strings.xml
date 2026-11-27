@@ -447,6 +447,7 @@
     <string name="perm_loc_denied_body">To share your position, allow location in Settings › Nearsend Chat › Location.</string>
     <string name="perm_chip_bt">No internet needed</string>
     <string name="perm_chip_loc">Only when you share</string>
+    <string name="perm_bt_off_body2">Nearsend Chat needs Bluetooth to find people nearby. Tap Turn on Bluetooth, then Settings, and switch Bluetooth on. If you see Allow New Connections, tap it.</string>
     <string name="report">Report</string>
     <string name="contact_us">Contact us</string>
     <string name="copy_address">Copy address</string>

@@ -446,6 +446,7 @@
     <string name="perm_loc_denied_body">لمشاركة موقعك، اسمح بالموقع من الإعدادات › Nearsend Chat › الموقع.</string>
     <string name="perm_chip_bt">لا حاجة للإنترنت</string>
     <string name="perm_chip_loc">فقط عند المشاركة</string>
+    <string name="perm_bt_off_body2">يحتاج Nearsend Chat إلى البلوتوث للعثور على أشخاص قريبين. انقر على تشغيل البلوتوث، ثم الإعدادات، وشغّل البلوتوث. إذا ظهر السماح باتصالات جديدة، فانقر عليه.</string>
     <string name="report">إبلاغ</string>
     <string name="contact_us">اتصل بنا</string>
     <string name="copy_address">نسخ العنوان</string>

@@ -446,6 +446,7 @@
     <string name="perm_loc_denied_body">Konumunu paylaşmak için Ayarlar › Nearsend Chat › Konum\'dan izin ver.</string>
     <string name="perm_chip_bt">İnternet gerekmez</string>
     <string name="perm_chip_loc">Yalnızca paylaştığında</string>
+    <string name="perm_bt_off_body2">Nearsend Chat\'in yakındaki kişileri bulmak için Bluetooth\'a ihtiyacı var. Bluetooth\'u aç\'a, ardından Ayarlar\'a dokun ve Bluetooth\'u aç. Yeni Bağlantılara İzin Ver\'i görürsen dokun.</string>
     <string name="report">Bildir</string>
     <string name="contact_us">Bize ulaşın</string>
     <string name="copy_address">Adresi kopyala</string>

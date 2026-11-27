@@ -274,7 +274,7 @@ enum PermissionAsk: String, Identifiable {
     var message: LocalizedStringKey {
         switch self {
         case .bluetooth: "It finds phones nearby and sends them your messages, with no internet. Your iPhone asks next: tap Allow."
-        case .bluetoothOff: "Swipe down from the top-right corner to open Control Center, and tap Bluetooth so it turns blue. Apps can't turn it on for you."
+        case .bluetoothOff: "Nearsend Chat needs Bluetooth to find people nearby. Tap Turn on Bluetooth, then Settings, and switch Bluetooth on. If you see Allow New Connections, tap it."
         case .bluetoothDenied: "Nearsend Chat needs Bluetooth to find people nearby. Turn it on in Settings › Nearsend Chat › Bluetooth."
         case .location: "Only when you share it in a chat or attach it to an SOS. It goes over Bluetooth to the people you choose, never to us. Your iPhone asks next."
         case .locationDenied: "To share your position, allow location in Settings › Nearsend Chat › Location."
@@ -289,11 +289,11 @@ enum PermissionAsk: String, Identifiable {
     var primary: LocalizedStringKey {
         switch self {
         case .bluetooth, .location: "Continue"
-        case .bluetoothOff: "OK"
+        case .bluetoothOff: "Turn on Bluetooth"
         case .bluetoothDenied, .locationDenied: "Open Settings"
         }
     }
-    var hasSecondary: Bool { self != .bluetoothOff }
+    var hasSecondary: Bool { true }
 }
 
 struct PermissionSheet: View {

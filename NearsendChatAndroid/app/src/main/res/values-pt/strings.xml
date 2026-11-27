@@ -446,6 +446,7 @@
     <string name="perm_loc_denied_body">Para partilhar a tua posição, permite a localização em Definições › Nearsend Chat › Localização.</string>
     <string name="perm_chip_bt">Sem internet</string>
     <string name="perm_chip_loc">Só quando partilhas</string>
+    <string name="perm_bt_off_body2">O Nearsend Chat precisa de Bluetooth para encontrar pessoas por perto. Toca em Ligar o Bluetooth, depois em Definições, e liga o Bluetooth. Se vires Permitir novas ligações, toca nisso.</string>
     <string name="report">Denunciar</string>
     <string name="contact_us">Fale conosco</string>
     <string name="copy_address">Copiar endereço</string>

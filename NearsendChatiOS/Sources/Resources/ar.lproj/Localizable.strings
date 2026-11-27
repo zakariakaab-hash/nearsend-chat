@@ -444,6 +444,7 @@
 "To share your position, allow location in Settings › Nearsend Chat › Location." = "لمشاركة موقعك، اسمح بالموقع من الإعدادات › Nearsend Chat › الموقع.";
 "No internet needed" = "لا حاجة للإنترنت";
 "Only when you share" = "فقط عند المشاركة";
+"Nearsend Chat needs Bluetooth to find people nearby. Tap Turn on Bluetooth, then Settings, and switch Bluetooth on. If you see Allow New Connections, tap it." = "يحتاج Nearsend Chat إلى البلوتوث للعثور على أشخاص قريبين. انقر على تشغيل البلوتوث، ثم الإعدادات، وشغّل البلوتوث. إذا ظهر السماح باتصالات جديدة، فانقر عليه.";
 "Report" = "إبلاغ";
 "Contact us" = "اتصل بنا";
 "Copy address" = "نسخ العنوان";

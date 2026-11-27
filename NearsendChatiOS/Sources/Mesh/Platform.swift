@@ -1,4 +1,5 @@
 import AudioToolbox
+import CoreBluetooth
 import CoreLocation
 import Foundation
 import Security
@@ -105,6 +106,17 @@ final class LocationFeed: NSObject, CLLocationManagerDelegate {
 
     func locationManager(_ m: CLLocationManager, didUpdateLocations locations: [CLLocation]) { if let l = locations.last { onUpdate?(l) } }
     func locationManagerDidChangeAuthorization(_ m: CLLocationManager) { onStatus?(m.authorizationStatus) }
+}
+
+/// Shows iOS's own "Turn on Bluetooth" alert on request. Its Settings button is the only way into Settings › Bluetooth:
+/// apps cannot open that page or switch Bluetooth on. The main transport never shows it on its own (it confused people);
+/// only the "Turn on Bluetooth" button does, by creating a short-lived manager that asks for it.
+enum BluetoothPowerAlert {
+    private static var manager: CBCentralManager?
+    static func show() {
+        manager = CBCentralManager(delegate: nil, queue: .main, options: [CBCentralManagerOptionShowPowerAlertKey: true])
+        DispatchQueue.main.asyncAfter(deadline: .now() + 30) { manager = nil }
+    }
 }
 
 enum SystemSettings {
