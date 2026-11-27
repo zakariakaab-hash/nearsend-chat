@@ -447,6 +447,9 @@
     <string name="perm_chip_bt">Inget internet behövs</string>
     <string name="perm_chip_loc">Bara när du delar</string>
     <string name="perm_bt_off_body2">Nearsend Chat behöver Bluetooth för att hitta personer i närheten. Tryck på Slå på Bluetooth, sedan Inställningar, och slå på Bluetooth. Om du ser Tillåt nya anslutningar, tryck på det.</string>
+    <string name="perm_ls_title">Platstjänster är avstängda</string>
+    <string name="perm_ls_body">För att bifoga din position behövs Platstjänster. Tryck på Slå på Platstjänster, sedan Inställningar, och slå på det.</string>
+    <string name="perm_ls_button">Slå på Platstjänster</string>
     <string name="report">Rapportera</string>
     <string name="contact_us">Kontakta oss</string>
     <string name="copy_address">Kopiera adress</string>

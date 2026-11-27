@@ -445,6 +445,9 @@
 "No internet needed" = "インターネット不要";
 "Only when you share" = "共有するときだけ";
 "Nearsend Chat needs Bluetooth to find people nearby. Tap Turn on Bluetooth, then Settings, and switch Bluetooth on. If you see Allow New Connections, tap it." = "近くの人を見つけるには Bluetooth が必要です。「Bluetooth をオン」をタップし、「設定」で Bluetooth をオンにしてください。「新しい接続を許可」が表示されたらタップします。";
+"Location Services is off" = "位置情報サービスがオフです";
+"Attaching your position needs Location Services. Tap Turn on Location Services, then Settings, and switch it on." = "位置を添付するには位置情報サービスが必要です。「位置情報サービスをオン」をタップし、「設定」でオンにしてください。";
+"Turn on Location Services" = "位置情報サービスをオン";
 "Report" = "報告";
 "Contact us" = "お問い合わせ";
 "Copy address" = "アドレスをコピー";

@@ -448,6 +448,9 @@
     <string name="perm_chip_bt">No internet needed</string>
     <string name="perm_chip_loc">Only when you share</string>
     <string name="perm_bt_off_body2">Nearsend Chat needs Bluetooth to find people nearby. Tap Turn on Bluetooth, then Settings, and switch Bluetooth on. If you see Allow New Connections, tap it.</string>
+    <string name="perm_ls_title">Location Services is off</string>
+    <string name="perm_ls_body">Attaching your position needs Location Services. Tap Turn on Location Services, then Settings, and switch it on.</string>
+    <string name="perm_ls_button">Turn on Location Services</string>
     <string name="report">Report</string>
     <string name="contact_us">Contact us</string>
     <string name="copy_address">Copy address</string>

@@ -445,6 +445,9 @@
 "No internet needed" = "Kein Internet nötig";
 "Only when you share" = "Nur wenn du teilst";
 "Nearsend Chat needs Bluetooth to find people nearby. Tap Turn on Bluetooth, then Settings, and switch Bluetooth on. If you see Allow New Connections, tap it." = "Nearsend Chat braucht Bluetooth, um Leute in der Nähe zu finden. Tippe auf „Bluetooth einschalten“, dann auf „Einstellungen“, und schalte Bluetooth ein. Wenn du „Neue Verbindungen erlauben“ siehst, tippe darauf.";
+"Location Services is off" = "Ortungsdienste sind aus";
+"Attaching your position needs Location Services. Tap Turn on Location Services, then Settings, and switch it on." = "Zum Anhängen deiner Position brauchst du die Ortungsdienste. Tippe auf „Ortungsdienste einschalten“, dann auf „Einstellungen“, und schalte sie ein.";
+"Turn on Location Services" = "Ortungsdienste einschalten";
 "Report" = "Melden";
 "Contact us" = "Kontakt";
 "Copy address" = "Adresse kopieren";

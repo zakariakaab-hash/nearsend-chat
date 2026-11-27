@@ -119,6 +119,18 @@ enum BluetoothPowerAlert {
     }
 }
 
+/// iOS's own "Turn On Location Services" alert, shown on request: asking for a position while Location Services is off
+/// makes iOS show it, and its Settings button leads to Settings › Privacy & Security › Location Services.
+enum LocationServicesAlert {
+    private static var manager: CLLocationManager?
+    static func show() {
+        let m = CLLocationManager()
+        manager = m
+        m.startUpdatingLocation()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 10) { m.stopUpdatingLocation(); manager = nil }
+    }
+}
+
 enum SystemSettings {
     static func open() {
         if let url = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(url) }

@@ -447,6 +447,9 @@
     <string name="perm_chip_bt">无需联网</string>
     <string name="perm_chip_loc">仅在分享时</string>
     <string name="perm_bt_off_body2">Nearsend Chat 需要蓝牙来查找附近的人。轻点“打开蓝牙”，再轻点“设置”，然后打开蓝牙。如果看到“允许新连接”，请轻点。</string>
+    <string name="perm_ls_title">定位服务已关闭</string>
+    <string name="perm_ls_body">附加你的位置需要定位服务。轻点“打开定位服务”，再轻点“设置”并将其打开。</string>
+    <string name="perm_ls_button">打开定位服务</string>
     <string name="report">举报</string>
     <string name="contact_us">联系我们</string>
     <string name="copy_address">复制地址</string>

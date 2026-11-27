@@ -19,22 +19,36 @@ struct SosView: View {
 
     @EnvironmentObject var store: ChatStore
     @Environment(\.openURL) private var openURL
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         sosContent
             // CLLocationManager.locationServicesEnabled() must not run on the main thread.
-            .task(id: store.locationStatus) { servicesOff = await Task.detached { !CLLocationManager.locationServicesEnabled() }.value }
+            .task(id: "\(store.locationStatus.rawValue)-\(scenePhase == .active)") {
+                servicesOff = await Task.detached { !CLLocationManager.locationServicesEnabled() }.value
+                // Back from Settings with Location Services on: continue asking for the app's permission.
+                if !servicesOff && store.shareLocation && store.locationStatus == .notDetermined && locationAsk == nil { ensureLocation() }
+            }
+            // The switch shows the truth: refused in iOS's alert means no position goes with the SOS.
+            .onChange(of: store.locationStatus) { _, s in if s == .denied || s == .restricted { store.shareLocation = false } }
             // Turning "Attach my location" on asks for permission right away, so the position is ready before an emergency.
             .onChange(of: store.shareLocation) { _, on in if on { ensureLocation() } }
             .sheet(item: $locationAsk) { a in
-                PermissionSheet(ask: a) { if a == .location { store.requestLocation() } else { SystemSettings.open() } }
+                PermissionSheet(ask: a, onPrimary: {
+                    switch a {
+                    case .location: store.requestLocation()
+                    case .locationServicesOff: DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { LocationServicesAlert.show() }
+                    default: SystemSettings.open()
+                    }
+                }, onLater: { store.shareLocation = false })   // not now: the alarm goes without a position, and says so
             }
     }
 
     /// Location for the SOS: ask iOS the first time; if it was refused, explain and offer Settings. Phone-wide Location
     /// Services off and Screen Time blocks are explained under the switch.
     private func ensureLocation() {
-        guard !store.hasLocationPermission, !servicesOff, store.locationStatus != .restricted else { return }
+        guard !store.hasLocationPermission, store.locationStatus != .restricted else { return }
+        if servicesOff { locationAsk = .locationServicesOff; return }
         locationAsk = store.locationStatus == .notDetermined ? .location : .locationDenied
     }
 
@@ -89,6 +103,9 @@ struct SosView: View {
                         Text(servicesOff ? "Location Services is off on this iPhone. Turn it on in Settings › Privacy & Security › Location Services."
                                          : "Location is blocked by Screen Time. Allow it in Settings › Screen Time › Content & Privacy Restrictions › Location Services.")
                             .font(.footnote).foregroundStyle(sosRed)
+                        if servicesOff {
+                            Button("Turn on Location Services") { locationAsk = .locationServicesOff }.font(.footnote.weight(.semibold))
+                        }
                     } else if !store.hasLocationPermission {
                         HStack {
                             Text("Location permission needed.").font(.footnote).foregroundStyle(sosRed)

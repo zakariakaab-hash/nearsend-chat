@@ -447,6 +447,9 @@
     <string name="perm_chip_bt">インターネット不要</string>
     <string name="perm_chip_loc">共有するときだけ</string>
     <string name="perm_bt_off_body2">近くの人を見つけるには Bluetooth が必要です。「Bluetooth をオン」をタップし、「設定」で Bluetooth をオンにしてください。「新しい接続を許可」が表示されたらタップします。</string>
+    <string name="perm_ls_title">位置情報サービスがオフです</string>
+    <string name="perm_ls_body">位置を添付するには位置情報サービスが必要です。「位置情報サービスをオン」をタップし、「設定」でオンにしてください。</string>
+    <string name="perm_ls_button">位置情報サービスをオン</string>
     <string name="report">報告</string>
     <string name="contact_us">お問い合わせ</string>
     <string name="copy_address">アドレスをコピー</string>

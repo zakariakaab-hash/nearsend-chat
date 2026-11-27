@@ -445,6 +445,9 @@
 "No internet needed" = "Inget internet behövs";
 "Only when you share" = "Bara när du delar";
 "Nearsend Chat needs Bluetooth to find people nearby. Tap Turn on Bluetooth, then Settings, and switch Bluetooth on. If you see Allow New Connections, tap it." = "Nearsend Chat behöver Bluetooth för att hitta personer i närheten. Tryck på Slå på Bluetooth, sedan Inställningar, och slå på Bluetooth. Om du ser Tillåt nya anslutningar, tryck på det.";
+"Location Services is off" = "Platstjänster är avstängda";
+"Attaching your position needs Location Services. Tap Turn on Location Services, then Settings, and switch it on." = "För att bifoga din position behövs Platstjänster. Tryck på Slå på Platstjänster, sedan Inställningar, och slå på det.";
+"Turn on Location Services" = "Slå på Platstjänster";
 "Report" = "Rapportera";
 "Contact us" = "Kontakta oss";
 "Copy address" = "Kopiera adress";

@@ -258,7 +258,7 @@ struct ConfirmSheet: View {
 /// something is off or was refused) the app shows this sheet in the same spirit as iOS's location prompt: icon, title,
 /// one honest paragraph, a small picture of what it is for, and large buttons.
 enum PermissionAsk: String, Identifiable {
-    case bluetooth, bluetoothOff, bluetoothDenied, location, locationDenied
+    case bluetooth, bluetoothOff, bluetoothDenied, location, locationDenied, locationServicesOff
     var id: String { rawValue }
     var isBluetooth: Bool { [.bluetooth, .bluetoothOff, .bluetoothDenied].contains(self) }
 
@@ -269,6 +269,7 @@ enum PermissionAsk: String, Identifiable {
         case .bluetoothDenied: "Bluetooth is not allowed"
         case .location: "Share your location?"
         case .locationDenied: "Location is off for Nearsend Chat"
+        case .locationServicesOff: "Location Services is off"
         }
     }
     var message: LocalizedStringKey {
@@ -278,12 +279,13 @@ enum PermissionAsk: String, Identifiable {
         case .bluetoothDenied: "Nearsend Chat needs Bluetooth to find people nearby. Turn it on in Settings › Nearsend Chat › Bluetooth."
         case .location: "Only when you share it in a chat or attach it to an SOS. It goes over Bluetooth to the people you choose, never to us. Your iPhone asks next."
         case .locationDenied: "To share your position, allow location in Settings › Nearsend Chat › Location."
+        case .locationServicesOff: "Attaching your position needs Location Services. Tap Turn on Location Services, then Settings, and switch it on."
         }
     }
     var chip: LocalizedStringKey {
         switch self {
         case .bluetooth, .bluetoothOff, .bluetoothDenied: "No internet needed"
-        case .location, .locationDenied: "Only when you share"
+        case .location, .locationDenied, .locationServicesOff: "Only when you share"
         }
     }
     var primary: LocalizedStringKey {
@@ -291,6 +293,7 @@ enum PermissionAsk: String, Identifiable {
         case .bluetooth, .location: "Continue"
         case .bluetoothOff: "Turn on Bluetooth"
         case .bluetoothDenied, .locationDenied: "Open Settings"
+        case .locationServicesOff: "Turn on Location Services"
         }
     }
     var hasSecondary: Bool { true }
@@ -301,7 +304,10 @@ struct PermissionSheet: View {
     /// Off at the end of onboarding: "Not now" would leave the person stuck on the last page.
     var allowsLater = true
     var onPrimary: () -> Void = {}
+    /// Called when the sheet closes without the main button (Not now, or swiped away).
+    var onLater: () -> Void = {}
     @Environment(\.dismiss) private var dismiss
+    @State private var acted = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -328,7 +334,7 @@ struct PermissionSheet: View {
                 .accessibilityHidden(true)
                 .padding(.bottom, 6)
             VStack(spacing: 10) {
-                Button { dismiss(); onPrimary() } label: {
+                Button { acted = true; dismiss(); onPrimary() } label: {
                     Text(ask.primary).font(.headline).frame(maxWidth: .infinity, minHeight: 52)
                         .foregroundStyle(.white).background(Theme.actionBlue, in: Capsule())
                 }
@@ -344,6 +350,7 @@ struct PermissionSheet: View {
         .frame(maxHeight: .infinity, alignment: .top)
         .presentationDetents([.height(ask.hasSecondary && allowsLater ? 680 : 620), .large])
         .presentationCornerRadius(36)
+        .onDisappear { if !acted { onLater() } }
     }
 
     @ViewBuilder private var illustration: some View {

@@ -445,6 +445,9 @@
 "No internet needed" = "İnternet gerekmez";
 "Only when you share" = "Yalnızca paylaştığında";
 "Nearsend Chat needs Bluetooth to find people nearby. Tap Turn on Bluetooth, then Settings, and switch Bluetooth on. If you see Allow New Connections, tap it." = "Nearsend Chat'in yakındaki kişileri bulmak için Bluetooth'a ihtiyacı var. Bluetooth'u aç'a, ardından Ayarlar'a dokun ve Bluetooth'u aç. Yeni Bağlantılara İzin Ver'i görürsen dokun.";
+"Location Services is off" = "Konum Servisleri kapalı";
+"Attaching your position needs Location Services. Tap Turn on Location Services, then Settings, and switch it on." = "Konumunu eklemek için Konum Servisleri gerekir. Konum Servislerini aç'a, ardından Ayarlar'a dokun ve aç.";
+"Turn on Location Services" = "Konum Servislerini aç";
 "Report" = "Bildir";
 "Contact us" = "Bize ulaşın";
 "Copy address" = "Adresi kopyala";

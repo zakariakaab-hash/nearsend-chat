@@ -445,6 +445,9 @@
 "No internet needed" = "Интернет не нужен";
 "Only when you share" = "Только когда вы делитесь";
 "Nearsend Chat needs Bluetooth to find people nearby. Tap Turn on Bluetooth, then Settings, and switch Bluetooth on. If you see Allow New Connections, tap it." = "Nearsend Chat нужен Bluetooth, чтобы находить людей рядом. Нажмите «Включить Bluetooth», затем «Настройки», и включите Bluetooth. Если видите «Разрешить новые подключения», нажмите.";
+"Location Services is off" = "Службы геолокации выключены";
+"Attaching your position needs Location Services. Tap Turn on Location Services, then Settings, and switch it on." = "Чтобы прикрепить позицию, нужны службы геолокации. Нажмите «Включить геолокацию», затем «Настройки», и включите её.";
+"Turn on Location Services" = "Включить геолокацию";
 "Report" = "Пожаловаться";
 "Contact us" = "Связаться с нами";
 "Copy address" = "Скопировать адрес";

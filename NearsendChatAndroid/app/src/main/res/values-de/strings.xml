@@ -447,6 +447,9 @@
     <string name="perm_chip_bt">Kein Internet nötig</string>
     <string name="perm_chip_loc">Nur wenn du teilst</string>
     <string name="perm_bt_off_body2">Nearsend Chat braucht Bluetooth, um Leute in der Nähe zu finden. Tippe auf „Bluetooth einschalten“, dann auf „Einstellungen“, und schalte Bluetooth ein. Wenn du „Neue Verbindungen erlauben“ siehst, tippe darauf.</string>
+    <string name="perm_ls_title">Ortungsdienste sind aus</string>
+    <string name="perm_ls_body">Zum Anhängen deiner Position brauchst du die Ortungsdienste. Tippe auf „Ortungsdienste einschalten“, dann auf „Einstellungen“, und schalte sie ein.</string>
+    <string name="perm_ls_button">Ortungsdienste einschalten</string>
     <string name="report">Melden</string>
     <string name="contact_us">Kontakt</string>
     <string name="copy_address">Adresse kopieren</string>
