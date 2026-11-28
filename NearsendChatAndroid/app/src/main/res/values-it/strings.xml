@@ -467,6 +467,9 @@
     <string name="perm_restricted_body">È disattivato da Tempo di utilizzo o da un profilo su questo iPhone, quindi le impostazioni di Nearsend Chat non possono cambiarlo. Chiedi a chi gestisce il telefono o controlla Impostazioni › Tempo di utilizzo › Restrizioni contenuti e privacy.</string>
     <string name="perm_chip_notif">Nascondi il testo quando vuoi</string>
     <string name="perm_chip_restricted">Gestito da Tempo di utilizzo</string>
+    <string name="xfer_more_chars">Mancano %1$d caratteri</string>
+    <string name="xfer_pw_match">Le password coincidono</string>
+    <string name="xfer_pw_nomatch">Le password non coincidono</string>
     <string name="report">Segnala</string>
     <string name="contact_us">Contattaci</string>
     <string name="copy_address">Copia indirizzo</string>

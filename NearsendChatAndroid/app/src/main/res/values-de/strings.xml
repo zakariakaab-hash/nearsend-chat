@@ -467,6 +467,9 @@
     <string name="perm_restricted_body">Das ist durch Bildschirmzeit oder ein Profil auf diesem iPhone gesperrt, deshalb können die Einstellungen von Nearsend Chat es nicht ändern. Frag die Person, die das Handy verwaltet, oder prüfe Einstellungen › Bildschirmzeit › Beschränkungen.</string>
     <string name="perm_chip_notif">Text jederzeit ausblenden</string>
     <string name="perm_chip_restricted">Von Bildschirmzeit verwaltet</string>
+    <string name="xfer_more_chars">Noch %1$d Zeichen</string>
+    <string name="xfer_pw_match">Die Passwörter stimmen überein</string>
+    <string name="xfer_pw_nomatch">Die Passwörter stimmen nicht überein</string>
     <string name="report">Melden</string>
     <string name="contact_us">Kontakt</string>
     <string name="copy_address">Adresse kopieren</string>

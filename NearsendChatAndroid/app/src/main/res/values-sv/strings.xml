@@ -467,6 +467,9 @@
     <string name="perm_restricted_body">Det här är avstängt av Skärmtid eller en profil på den här iPhonen, så Nearsend Chats egna inställningar kan inte ändra det. Fråga den som hanterar telefonen eller kontrollera Inställningar › Skärmtid › Innehålls- och integritetsbegränsningar.</string>
     <string name="perm_chip_notif">Dölj texten när som helst</string>
     <string name="perm_chip_restricted">Hanteras av Skärmtid</string>
+    <string name="xfer_more_chars">%1$d tecken till behövs</string>
+    <string name="xfer_pw_match">Lösenorden matchar</string>
+    <string name="xfer_pw_nomatch">Lösenorden matchar inte</string>
     <string name="report">Rapportera</string>
     <string name="contact_us">Kontakta oss</string>
     <string name="copy_address">Kopiera adress</string>

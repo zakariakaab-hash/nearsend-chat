@@ -1,3 +1,4 @@
+import UniformTypeIdentifiers
 import LocalAuthentication
 import SwiftUI
 import UserNotifications
@@ -473,6 +474,12 @@ struct ShareAppView: View {
 struct TransferSheet: View {
     @EnvironmentObject var store: ChatStore
     @Environment(\.dismiss) private var dismiss
+    @AppStorage("onboarded") private var onboarded = false
+    /// A transfer file opened from AirDrop or Files starts on the "new phone" side with the file already chosen.
+    init(openedFile: URL? = nil) {
+        _mode = State(initialValue: openedFile == nil ? 0 : 1)
+        _picked = State(initialValue: openedFile)
+    }
     @State private var mode = 0
     @State private var password = ""
     @State private var repeatPassword = ""
@@ -498,6 +505,16 @@ struct TransferSheet: View {
                     Section {
                         SecureField("Password (at least 10 characters)", text: $password).textContentType(.newPassword)
                         SecureField("Repeat the password", text: $repeatPassword).textContentType(.newPassword)
+                        if !password.isEmpty && password.count < 10 {
+                            Label("\(10 - password.count) more characters needed", systemImage: "info.circle")
+                                .font(.footnote).foregroundStyle(Theme.inkSecondary)
+                        } else if !repeatPassword.isEmpty {
+                            if password == repeatPassword {
+                                Label("The passwords match", systemImage: "checkmark.circle.fill").font(.footnote).foregroundStyle(Theme.secure)
+                            } else {
+                                Label("The passwords don't match", systemImage: "xmark.circle.fill").font(.footnote).foregroundStyle(.red)
+                            }
+                        }
                         Toggle("Include photos and voice notes", isOn: $includePhotos)
                     } header: { Text("1 · Make a transfer file") } footer: {
                         Text("The file holds your identity, chats and contacts, locked with this password. Without it nobody can open the file, not even us. Nothing is uploaded: you choose where the file goes.")
@@ -507,6 +524,7 @@ struct TransferSheet: View {
                             HStack { Text("Make the file"); Spacer(); if working { ProgressView() } }
                         }.disabled(!passwordOK || working)
                         if let file {
+                            Label(file.lastPathComponent, systemImage: "checkmark.circle.fill").foregroundStyle(Theme.secure)
                             ShareLink(item: file) { Label("Send the file to the new phone", systemImage: "square.and.arrow.up") }
                         }
                     } footer: {
@@ -534,7 +552,8 @@ struct TransferSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
             .onChange(of: mode) { _, _ in password = ""; repeatPassword = ""; error = nil; file = nil }
-            .fileImporter(isPresented: $pickFile, allowedContentTypes: [.item]) { r in
+            .onChange(of: password) { _, _ in error = nil; restored = false }
+            .fileImporter(isPresented: $pickFile, allowedContentTypes: [.nearsendTransfer]) { r in
                 if case .success(let url) = r { picked = url; error = nil }
             }
             .bottomConfirm(isPresented: $confirmRestore, title: "Replace everything on this phone?",
@@ -558,11 +577,17 @@ struct TransferSheet: View {
         working = true; error = nil
         let pw = password
         Task {
-            do { try store.restoreTransfer(from: picked, password: pw); restored = true }
+            do { try store.restoreTransfer(from: picked, password: pw); restored = true; onboarded = true }
             catch { self.error = error.localizedDescription }
             working = false
         }
     }
+}
+
+extension UTType {
+    /// The "Move to another phone" file: `Nearsend transfer <date>.nearsend` (declared in Info.plist, so AirDrop and
+    /// Files offer to open it in Nearsend Chat).
+    static let nearsendTransfer = UTType(exportedAs: "app.nearsend.chat.transfer", conformingTo: .data)
 }
 
 /// A QR code of our fingerprint, for a friend to scan with "Scan a code".

@@ -28,6 +28,19 @@ targets:
         NSCameraUsageDescription: Used when you take a photo to send in a chat or scan a friend's QR code. Nothing is recorded or uploaded.
         NSLocationWhenInUseUsageDescription: Only used when you share your location in a chat or send an SOS, so people nearby can find you.
         UIBackgroundModes: [bluetooth-central, bluetooth-peripheral]
+        # "Move to another phone" file (.nearsend): AirDrop and Files open it in the app
+        UTExportedTypeDeclarations:
+          - UTTypeIdentifier: app.nearsend.chat.transfer
+            UTTypeDescription: Nearsend transfer file
+            UTTypeConformsTo: [public.data]
+            UTTypeTagSpecification:
+              public.filename-extension: [nearsend]
+        CFBundleDocumentTypes:
+          - CFBundleTypeName: Nearsend transfer file
+            CFBundleTypeRole: Viewer
+            LSHandlerRank: Owner
+            LSItemContentTypes: [app.nearsend.chat.transfer]
+        LSSupportsOpeningDocumentsInPlace: false
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
         UISupportedInterfaceOrientations~ipad: [UIInterfaceOrientationPortrait, UIInterfaceOrientationPortraitUpsideDown, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
     settings:

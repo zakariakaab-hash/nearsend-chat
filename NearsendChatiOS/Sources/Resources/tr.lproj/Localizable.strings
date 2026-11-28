@@ -465,6 +465,9 @@
 "This is turned off by Screen Time or a profile on this iPhone, so Nearsend Chat's own settings can't change it. Ask whoever manages the phone, or check Settings › Screen Time › Content & Privacy Restrictions." = "Bu, bu iPhone'da Ekran Süresi veya bir profil tarafından kapatılmış; Nearsend Chat'in kendi ayarları bunu değiştiremez. Telefonu yöneten kişiye sor veya Ayarlar › Ekran Süresi › İçerik ve Gizlilik Sınırlamaları'na bak.";
 "Hide the text any time" = "Metni istediğin zaman gizle";
 "Managed by Screen Time" = "Ekran Süresi tarafından yönetiliyor";
+"%lld more characters needed" = "%lld karakter daha gerekli";
+"The passwords match" = "Şifreler eşleşiyor";
+"The passwords don't match" = "Şifreler eşleşmiyor";
 "Report" = "Bildir";
 "Contact us" = "Bize ulaşın";
 "Copy address" = "Adresi kopyala";

@@ -467,6 +467,9 @@
     <string name="perm_restricted_body">Bu, bu iPhone\'da Ekran Süresi veya bir profil tarafından kapatılmış; Nearsend Chat\'in kendi ayarları bunu değiştiremez. Telefonu yöneten kişiye sor veya Ayarlar › Ekran Süresi › İçerik ve Gizlilik Sınırlamaları\'na bak.</string>
     <string name="perm_chip_notif">Metni istediğin zaman gizle</string>
     <string name="perm_chip_restricted">Ekran Süresi tarafından yönetiliyor</string>
+    <string name="xfer_more_chars">%1$d karakter daha gerekli</string>
+    <string name="xfer_pw_match">Şifreler eşleşiyor</string>
+    <string name="xfer_pw_nomatch">Şifreler eşleşmiyor</string>
     <string name="report">Bildir</string>
     <string name="contact_us">Bize ulaşın</string>
     <string name="copy_address">Adresi kopyala</string>

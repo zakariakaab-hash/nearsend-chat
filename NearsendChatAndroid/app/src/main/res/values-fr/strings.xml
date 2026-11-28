@@ -467,6 +467,9 @@
     <string name="perm_restricted_body">C\'est désactivé par Temps d\'écran ou un profil sur cet iPhone, donc les réglages de Nearsend Chat ne peuvent pas le changer. Demandez à la personne qui gère le téléphone, ou vérifiez Réglages › Temps d\'écran › Restrictions relatives au contenu et à la confidentialité.</string>
     <string name="perm_chip_notif">Masquez le texte à tout moment</string>
     <string name="perm_chip_restricted">Géré par Temps d\'écran</string>
+    <string name="xfer_more_chars">Encore %1$d caractères</string>
+    <string name="xfer_pw_match">Les mots de passe correspondent</string>
+    <string name="xfer_pw_nomatch">Les mots de passe ne correspondent pas</string>
     <string name="report">Signaler</string>
     <string name="contact_us">Nous contacter</string>
     <string name="copy_address">Copier l\'adresse</string>

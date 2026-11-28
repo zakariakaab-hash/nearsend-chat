@@ -467,6 +467,9 @@
     <string name="perm_restricted_body">Isto está desligado pelo Tempo de ecrã ou por um perfil neste iPhone, por isso as definições do Nearsend Chat não o podem mudar. Pergunta a quem gere o telefone ou vê Definições › Tempo de ecrã › Restrições de conteúdo e privacidade.</string>
     <string name="perm_chip_notif">Oculta o texto quando quiseres</string>
     <string name="perm_chip_restricted">Gerido pelo Tempo de ecrã</string>
+    <string name="xfer_more_chars">Faltam %1$d caracteres</string>
+    <string name="xfer_pw_match">As palavras-passe coincidem</string>
+    <string name="xfer_pw_nomatch">As palavras-passe não coincidem</string>
     <string name="report">Denunciar</string>
     <string name="contact_us">Fale conosco</string>
     <string name="copy_address">Copiar endereço</string>

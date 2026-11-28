@@ -468,6 +468,9 @@
     <string name="perm_restricted_body">This is turned off by Screen Time or a profile on this iPhone, so Nearsend Chat\'s own settings can\'t change it. Ask whoever manages the phone, or check Settings › Screen Time › Content &amp; Privacy Restrictions.</string>
     <string name="perm_chip_notif">Hide the text any time</string>
     <string name="perm_chip_restricted">Managed by Screen Time</string>
+    <string name="xfer_more_chars">%1$d more characters needed</string>
+    <string name="xfer_pw_match">The passwords match</string>
+    <string name="xfer_pw_nomatch">The passwords don\'t match</string>
     <string name="report">Report</string>
     <string name="contact_us">Contact us</string>
     <string name="copy_address">Copy address</string>

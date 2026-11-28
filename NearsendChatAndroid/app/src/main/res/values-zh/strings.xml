@@ -467,6 +467,9 @@
     <string name="perm_restricted_body">此功能已被此 iPhone 上的屏幕使用时间或描述文件关闭，Nearsend Chat 自身的设置无法更改。请询问管理此手机的人，或查看“设置 › 屏幕使用时间 › 内容和隐私访问限制”。</string>
     <string name="perm_chip_notif">随时隐藏文字</string>
     <string name="perm_chip_restricted">由屏幕使用时间管理</string>
+    <string name="xfer_more_chars">还需 %1$d 个字符</string>
+    <string name="xfer_pw_match">两次密码一致</string>
+    <string name="xfer_pw_nomatch">两次密码不一致</string>
     <string name="report">举报</string>
     <string name="contact_us">联系我们</string>
     <string name="copy_address">复制地址</string>

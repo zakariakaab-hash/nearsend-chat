@@ -1040,13 +1040,12 @@ final class ChatStore: ObservableObject {
 /// password nobody can open it. Layout: "NSXFER1" | salt (16 bytes) | rounds (UInt32, big-endian) | sealed box.
 extension ChatStore {
     enum TransferError: LocalizedError {
-        case wrongPassword, notATransferFile, noIdentity, simulator
+        case wrongPassword, notATransferFile, noIdentity
         var errorDescription: String? {
             switch self {
             case .wrongPassword: localized("Wrong password, or the file is damaged.")
             case .notATransferFile: localized("This is not a Nearsend transfer file.")
             case .noIdentity: localized("This phone has no identity to move yet.")
-            case .simulator: "Moving to another phone needs a real iPhone."   // simulator only, never shown to users
             }
         }
     }
@@ -1077,8 +1076,8 @@ extension ChatStore {
 
     /// Writes the transfer file to a temporary folder and returns it, to be shared (AirDrop, Files…).
     func makeTransferFile(password: String, includePhotos: Bool) throws -> URL {
-        guard !simulated else { throw TransferError.simulator }
         saveNow()
+        if KeyStore.exportKey() == nil { _ = KeyStore.loadOrCreate() }   // the simulator's demo mode never made one
         guard let key = KeyStore.exportKey() else { throw TransferError.noIdentity }
         var photos: [String: Data] = [:]
         if includePhotos, let files = try? FileManager.default.contentsOfDirectory(at: Self.photosDir, includingPropertiesForKeys: nil) {
@@ -1101,7 +1100,6 @@ extension ChatStore {
 
     /// Replaces this phone's identity, chats and settings with the ones in the file. Bluetooth restarts as that identity.
     func restoreTransfer(from url: URL, password: String) throws {
-        guard !simulated else { throw TransferError.simulator }
         let scoped = url.startAccessingSecurityScopedResource()
         defer { if scoped { url.stopAccessingSecurityScopedResource() } }
         let file = try Data(contentsOf: url)

@@ -467,6 +467,9 @@
     <string name="perm_restricted_body">هذا متوقف بواسطة مدة استخدام الجهاز أو ملف تعريف على هذا الـ iPhone، لذا لا يمكن لإعدادات Nearsend Chat تغييره. اسأل من يدير الهاتف أو راجع الإعدادات › مدة استخدام الجهاز › قيود المحتوى والخصوصية.</string>
     <string name="perm_chip_notif">أخفِ النص في أي وقت</string>
     <string name="perm_chip_restricted">تُديره مدة استخدام الجهاز</string>
+    <string name="xfer_more_chars">مطلوب %1$d أحرف إضافية</string>
+    <string name="xfer_pw_match">كلمتا المرور متطابقتان</string>
+    <string name="xfer_pw_nomatch">كلمتا المرور غير متطابقتين</string>
     <string name="report">إبلاغ</string>
     <string name="contact_us">اتصل بنا</string>
     <string name="copy_address">نسخ العنوان</string>

@@ -9,6 +9,8 @@ struct NearsendChatApp: App {
     @AppStorage("appLock") private var appLock = false
     /// App lock: closed at launch and every time the app goes to the background.
     @State private var locked = UserDefaults.standard.bool(forKey: "appLock")
+    /// A transfer file opened from AirDrop or Files (also on a fresh install, before onboarding).
+    @State private var openedTransfer: OpenedFile?
 
     init() {
         let a = UITabBarAppearance()
@@ -36,10 +38,14 @@ struct NearsendChatApp: App {
                 power.applyBrightness(active: p == .active)
                 if p == .background && appLock { locked = true }
             }
+            .onOpenURL { url in if url.pathExtension.lowercased() == "nearsend" { openedTransfer = OpenedFile(url: url) } }
+            .sheet(item: $openedTransfer) { f in TransferSheet(openedFile: f.url).environmentObject(store) }
             .onChange(of: power.saver) { _, _ in power.applyBrightness(active: scenePhase == .active) }
         }
     }
 }
+
+struct OpenedFile: Identifiable { let url: URL; var id: URL { url } }
 
 struct RootView: View {
     @EnvironmentObject var store: ChatStore

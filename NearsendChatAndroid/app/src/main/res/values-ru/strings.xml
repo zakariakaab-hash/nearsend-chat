@@ -467,6 +467,9 @@
     <string name="perm_restricted_body">Это выключено Экранным временем или профилем на этом iPhone, поэтому настройки Nearsend Chat не могут это изменить. Спросите того, кто управляет телефоном, или проверьте Настройки › Экранное время › Контент и конфиденциальность.</string>
     <string name="perm_chip_notif">Текст можно скрыть</string>
     <string name="perm_chip_restricted">Управляется Экранным временем</string>
+    <string name="xfer_more_chars">Нужно ещё символов: %1$d</string>
+    <string name="xfer_pw_match">Пароли совпадают</string>
+    <string name="xfer_pw_nomatch">Пароли не совпадают</string>
     <string name="report">Пожаловаться</string>
     <string name="contact_us">Связаться с нами</string>
     <string name="copy_address">Скопировать адрес</string>

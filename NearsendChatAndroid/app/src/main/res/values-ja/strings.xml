@@ -467,6 +467,9 @@
     <string name="perm_restricted_body">この iPhone のスクリーンタイムまたはプロファイルでオフにされているため、Nearsend Chat の設定では変更できません。管理している人に確認するか、設定 › スクリーンタイム › コンテンツとプライバシーの制限を確認してください。</string>
     <string name="perm_chip_notif">本文はいつでも非表示に</string>
     <string name="perm_chip_restricted">スクリーンタイムで管理</string>
+    <string name="xfer_more_chars">あと %1$d 文字必要です</string>
+    <string name="xfer_pw_match">パスワードが一致しています</string>
+    <string name="xfer_pw_nomatch">パスワードが一致しません</string>
     <string name="report">報告</string>
     <string name="contact_us">お問い合わせ</string>
     <string name="copy_address">アドレスをコピー</string>
